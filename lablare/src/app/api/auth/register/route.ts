@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         nome_completo,
         email,
         hash_senha,
-        id_perfil: 1, // Assumindo um ID de perfil padrão
+        id_perfil: 1,
       },
     });
 
