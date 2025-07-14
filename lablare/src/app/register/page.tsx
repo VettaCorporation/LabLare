@@ -16,31 +16,46 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    // Se o usuário está autenticado E NÃO é um administrador, redireciona
+    // PRIMEIRA VERIFICAÇÃO: Se o usuário NÃO ESTÁ AUTENTICADO, redireciona para o login
+    if (status === 'unauthenticated') {
+      alert('Você precisa estar logado para acessar esta página.'); // Mensagem mais genérica
+      router.push('/'); // Redireciona para a página de login (sua raiz)
+      return; // Interrompe a execução do useEffect
+    }
+
+    // SEGUNDA VERIFICAÇÃO: Se o usuário está autenticado E NÃO é um administrador, redireciona
     if (status === 'authenticated' && session?.user?.nome_perfil !== 'Administrador') {
       alert('Acesso negado. Apenas administradores podem registrar novos usuários.');
       router.push('/dashboard'); // Redireciona para o dashboard
+      return; // Interrompe a execução do useEffect
     }
-    // Se o status é 'unauthenticated' (não logado), a página de registro é exibida.
-    // Isso permite que um administrador (que precisa estar logado) acesse a página.
+
+    // Se chegamos aqui, significa que o status é 'authenticated' E o nome_perfil É 'Administrador'.
+    // Então, o usuário está autorizado a ver a página.
   }, [session, status, router]);
 
-  // Se a sessão está carregando, mostra um loader
+  // Renderiza um loader enquanto a sessão está sendo verificada
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p>Carregando...</p>
+        <p className="text-lg text-gray-700">Verificando permissões...</p>
       </div>
     );
   }
 
-  // Renderiza o formulário de registro se o usuário é administrador ou se não está autenticado
-  // (a lógica de redirecionamento já cuidou dos não-admins logados)
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <RegisterForm />
-    </div>
-  );
+  // Renderiza o formulário SOMENTE se o usuário estiver autenticado E for um Administrador.
+  // Se não for, o useEffect já terá redirecionado.
+  if (status === 'authenticated' && session?.user?.nome_perfil === 'Administrador') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <RegisterForm />
+      </div>
+    );
+  }
+
+  // Caso contrário (por exemplo, se o useEffect já redirecionou mas o componente ainda não desmontou),
+  // não renderiza nada ou uma mensagem de espera.
+  return null; // Ou uma mensagem como "Aguarde o redirecionamento..."
 };
 
 export default RegisterPage;
