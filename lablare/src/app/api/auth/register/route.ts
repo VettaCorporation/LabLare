@@ -1,8 +1,9 @@
-import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
+import { PrismaClient } from '../../../../generated/prisma'; // Caminho relativo
 
 const prisma = new PrismaClient();
+// ... restante do seu código
 
 export async function POST(req: NextRequest) {
   try {

@@ -128,6 +128,8 @@ const RegisterForm: React.FC = () => {
       </div>
 
       {/* Dropdown de Perfil */}
+
+
       <div>
         <label htmlFor="perfil" className="block text-gray-700 text-sm font-bold mb-2">
           Tipo de Perfil
@@ -135,7 +137,7 @@ const RegisterForm: React.FC = () => {
         <select
           id="perfil"
           value={idPerfilSelecionado}
-          onChange={(e) => setIdPerfilSelecionado(Number(e.target.value))} // Converte para número
+          onChange={(e) => setIdPerfilSelecionado(Number(e.target.value))}
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
         >
           <option value="" disabled>Selecione um perfil</option>
