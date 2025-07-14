@@ -190,11 +190,6 @@ const RegisterForm: React.FC = () => {
       >
         Registrar
       </button>
-
-      {/* Link para Login */}
-      <Link href="/" className="inline-block align-baseline text-sm text-blue-500 hover:text-blue-800 text-center mt-4">
-        Já tem uma conta? Faça Login
-      </Link>
     </form>
   );
 };

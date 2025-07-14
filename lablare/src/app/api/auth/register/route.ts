@@ -3,14 +3,15 @@ import bcrypt from 'bcrypt';
 import { PrismaClient } from '../../../../generated/prisma'; // Caminho relativo
 
 const prisma = new PrismaClient();
-// ... restante do seu código
 
 export async function POST(req: NextRequest) {
   try {
-    const { nome_completo, email, senha } = await req.json();
+    // CORREÇÃO: Adicione 'id_perfil' à desestruturação aqui
+    const { nome_completo, email, senha, id_perfil } = await req.json();
 
-    if (!nome_completo || !email || !senha) {
-      return NextResponse.json({ error: 'Todos os campos são obrigatórios' }, { status: 400 });
+    // CORREÇÃO: Inclua 'id_perfil' na validação de campos obrigatórios
+    if (!nome_completo || !email || !senha || !id_perfil) {
+      return NextResponse.json({ error: 'Todos os campos (incluindo perfil) são obrigatórios' }, { status: 400 });
     }
 
     const existingUser = await prisma.usuario.findUnique({
@@ -28,13 +29,19 @@ export async function POST(req: NextRequest) {
         nome_completo,
         email,
         hash_senha,
-        id_perfil: 1,
+        id_perfil,
       },
     });
 
-    return NextResponse.json(newUser, { status: 201 });
+    // É uma boa prática não retornar a senha hashada para o cliente
+    const { hash_senha: _, ...userWithoutHash } = newUser;
+    return NextResponse.json(userWithoutHash, { status: 201 });
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
-    return NextResponse.json({ error: 'Erro ao registrar usuário' }, { status: 500 });
+    // Adicionado mais detalhes ao erro para depuração
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao registrar usuário.';
+    return NextResponse.json({ error: 'Erro ao registrar usuário', details: errorMessage }, { status: 500 });
+  } finally {
+    await prisma.$disconnect(); // Garante que a conexão com o DB seja fechada
   }
 }

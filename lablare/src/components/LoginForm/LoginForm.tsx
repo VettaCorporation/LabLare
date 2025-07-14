@@ -1,15 +1,17 @@
-'use client';
+// src/components/LoginForm/LoginForm.tsx
+'use client'; // Mantenha esta diretiva no topo!
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 interface LoginFormProps {
   userLabel?: 'CPF' | 'LOGIN' | 'Usuário';
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ userLabel = 'Usuário' }) => {
-  const [usuario, setUsuario] = useState('');
+  const [usuario, setUsuario] = useState(''); // Será o email
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const router = useRouter();
@@ -24,24 +26,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ userLabel = 'Usuário' }) => {
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: usuario, senha }),
+      const result = await signIn('credentials', {
+        email: usuario,
+        senha: senha,
+        redirect: false,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('Login bem-sucedido:', data);
+      if (result?.error) {
+        setErro('Usuário ou senha inválidos.');
+        console.error('Erro de login:', result.error);
+      } else if (result?.ok) {
+        console.log('Login bem-sucedido!');
         router.push('/dashboard');
-      } else {
-        setErro(data.error || 'Erro ao fazer login. Tente novamente.');
       }
     } catch (apiError) {
-      console.error('Erro na requisição de login:', apiError);
+      console.error('Erro inesperado durante o login:', apiError);
       setErro('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
   };
@@ -84,9 +83,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ userLabel = 'Usuário' }) => {
       <Link href="/esqueci-senha" className="inline-block align-baseline text-sm text-blue-500 hover:text-blue-800 text-center mt-4">
         Esqueceu a senha?
       </Link>
-      <Link href="/register" className="inline-block align-baseline text-sm text-blue-500 hover:text-blue-800 text-center mt-2">
+      {/* REMOVIDO: O link para a página de registro */}
+      {/* <Link href="/register" className="inline-block align-baseline text-sm text-blue-500 hover:text-blue-800 text-center mt-2">
         Não tem uma conta? Crie agora!
-      </Link>
+      </Link> */}
     </form>
   );
 };
