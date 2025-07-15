@@ -60,7 +60,6 @@ export default function AtendimentoPage() {
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Atendimento ao Paciente</h1>
 
-      {/* Seção de Busca Rápida de Paciente */}
       <div style={{ marginBottom: '30px', border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
         <h2>Busca Rápida de Paciente</h2>
         <label htmlFor="searchPaciente" style={{ display: 'block', marginBottom: '5px' }}>Buscar Paciente por Nome Completo ou CPF:</label>
@@ -94,7 +93,6 @@ export default function AtendimentoPage() {
         )}
       </div>
 
-      {/* Informações do Paciente Selecionado / Cadastro de Novo Paciente */}
       <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
         {selectedPaciente ? (
           <div>
@@ -110,7 +108,6 @@ export default function AtendimentoPage() {
             }} style={{ padding: '8px 15px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}>
               Trocar Paciente
             </button>
-            {/* botão iniciar solicitação de exames */}
             <button style={{ padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
               Prosseguir para Solicitação de Exames
             </button>
