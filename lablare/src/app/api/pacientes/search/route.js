@@ -16,7 +16,6 @@ export async function GET(request) {
       where: {
         nome_completo: {
           contains: nome,
-          mode: 'insensitive',
         },
       },
       select: { 

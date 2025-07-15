@@ -1,7 +1,7 @@
 "use client"; 
 
 import React, { useState, useEffect, useCallback } from 'react';
-import PacienteCadastroForm from '../../components/PacienteCadastroForm'; 
+import PacienteCadastroForm from '../../components/PacienteCadastroForm/PacienteCadastroForm';
 
 const debounce = (func, delay) => {
   let timeoutId;
