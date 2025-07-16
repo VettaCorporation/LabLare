@@ -3,9 +3,7 @@
 import React, { useState, useEffect } from 'react';
 
 export default function ExameSelection({ onExamesSelected, initialSelectedExames = [] }) {
-  /** @type {Exame[]} */
   const [availableExames, setAvailableExames] = useState([]);
-  /** @type {Exame[]} */
   const [selectedExames, setSelectedExames] = useState(initialSelectedExames);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

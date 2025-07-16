@@ -15,7 +15,6 @@ export default function SolicitacoesPage() {
                               session?.user?.nome_perfil === 'Técnico de Laboratório' || 
                               session?.user?.nome_perfil === 'Biomédico';
 
-
   useEffect(() => {
     if (status === 'authenticated' && canViewSolicitacoes) {
       const fetchSolicitacoes = async () => {
