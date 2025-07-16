@@ -7,6 +7,7 @@ import LogoLab from '../../../public/assets/img/Logo.png';
 import {
   HomeIcon,
   UsersIcon,
+  UserGroupIcon, // 1. IMPORTAR O NOVO ÍCONE
   DocumentTextIcon,
   CalculatorIcon,
   KeyIcon,
@@ -17,6 +18,7 @@ import {
 const navigation = [
   { name: 'Painel', href: '/dashboard', icon: HomeIcon },
   { name: 'Pacientes', href: '/atendimento', icon: UsersIcon },
+  { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },
   { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon },
   { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
   { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon },
