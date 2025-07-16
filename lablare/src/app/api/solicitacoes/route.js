@@ -70,27 +70,39 @@ export async function POST(req) {
 }
 
 export async function GET(req) {
+  // Extrai os parâmetros de busca da URL da requisição
+  const { searchParams } = new URL(req.url);
+  const pacienteId = searchParams.get('pacienteId');
+
   try {
+    // Objeto de condição para a query do Prisma
+    const whereCondition = {};
+    if (pacienteId) {
+      // Se um pacienteId for fornecido, adiciona à condição de busca
+      whereCondition.id_paciente = parseInt(pacienteId, 10);
+    }
+
     const solicitacoes = await prisma.solicitacao.findMany({
+      where: whereCondition, // Aplica a condição de busca
       orderBy: {
-        data_hora_solicitacao: 'desc', 
+        data_hora_solicitacao: 'desc',
       },
-      include: { 
+      include: {
         paciente: {
           select: {
             nome_completo: true,
             cpf: true,
           },
         },
-        recepcionista: { 
+        recepcionista: {
           select: {
             nome_completo: true,
             email: true,
           },
         },
-        itens_solicitacao: { 
+        itens_solicitacao: {
           include: {
-            exame_catalogo: { 
+            exame_catalogo: {
               select: {
                 nome_exame: true,
                 preco: true,
@@ -105,6 +117,10 @@ export async function GET(req) {
 
   } catch (error) {
     console.error('Erro ao buscar solicitações:', error);
+    // Adiciona uma verificação para retornar um erro mais específico caso o ID seja inválido
+    if (error instanceof Error && error.message.includes('Argument `id_paciente`')) {
+      return NextResponse.json({ error: 'ID de paciente inválido.' }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Erro ao buscar solicitações de exames.' }, { status: 500 });
   } finally {
     await prisma.$disconnect();

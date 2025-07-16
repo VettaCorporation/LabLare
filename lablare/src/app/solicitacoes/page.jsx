@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+// Importa o hook useSearchParams para ler os parâmetros da URL
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SolicitacoesPage() {
@@ -10,16 +12,27 @@ export default function SolicitacoesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Hook para acessar os parâmetros da URL
+  const searchParams = useSearchParams();
+  const pacienteId = searchParams.get('pacienteId');
+
   const canViewSolicitacoes = session?.user?.nome_perfil === 'Recepcionista' ||
                               session?.user?.nome_perfil === 'Administrador' ||
-                              session?.user?.nome_perfil === 'Técnico de Laboratório' || 
+                              session?.user?.nome_perfil === 'Técnico de Laboratório' ||
                               session?.user?.nome_perfil === 'Biomédico';
+
 
   useEffect(() => {
     if (status === 'authenticated' && canViewSolicitacoes) {
       const fetchSolicitacoes = async () => {
         try {
-          const response = await fetch('/api/solicitacoes');
+          // Constrói a URL da API, adicionando o pacienteId se ele existir
+          let apiUrl = '/api/solicitacoes';
+          if (pacienteId) {
+            apiUrl += `?pacienteId=${pacienteId}`;
+          }
+
+          const response = await fetch(apiUrl);
           if (!response.ok) {
             throw new Error('Falha ao buscar solicitações.');
           }
@@ -36,7 +49,8 @@ export default function SolicitacoesPage() {
     } else if (status !== 'loading') {
       setLoading(false);
     }
-  }, [status, canViewSolicitacoes]);
+  }, [status, canViewSolicitacoes, pacienteId]); // Adiciona pacienteId como dependência
+
 
   if (status === 'loading' || loading) {
     return <div className="text-center text-xl mt-10">Carregando solicitações...</div>;
