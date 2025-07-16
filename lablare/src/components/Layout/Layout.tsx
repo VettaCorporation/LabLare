@@ -1,5 +1,4 @@
-// components/Layout/Layout.tsx
-"use client"; // Se este componente for usado em um App Router
+'use client';
 
 import React from 'react';
 import Header from '../Header/Header';

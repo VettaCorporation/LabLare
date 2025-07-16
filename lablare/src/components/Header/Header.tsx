@@ -1,9 +1,9 @@
-// components/Header/Header.tsx
-"use client"; // Se este componente for usado em um App Router ou tiver interatividade
+// src/components/Header/Header.tsx
+'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
-import LogoLab from '../../../public/assets/img/Logo.png';
+import LogoLab from '../../../public/assets/img/Logo.png'; // Verifique o caminho real do seu logo
 
 const Header: React.FC = () => {
   return (
@@ -13,14 +13,14 @@ const Header: React.FC = () => {
           <Image
             src={LogoLab}
             alt="Lare Laboratório Logo"
-            width={120}
-            height={38}
+            width={120} 
+            height={38} 
             priority
           />
         </Link>
 
         <ul className="hidden md:flex space-x-6">
-          <li><Link href="/" className="text-gray-700 hover:text-[#3CB371] font-medium text-sm transition-colors duration-200">Início</Link></li>
+          <li><Link href="/home" className="text-gray-700 hover:text-[#3CB371] font-medium text-sm transition-colors duration-200">Início</Link></li>
           <li><Link href="/quem-somos" className="text-gray-700 hover:text-[#3CB371] font-medium text-sm transition-colors duration-200">Quem Somos</Link></li>
           <li><Link href="/exames" className="text-gray-700 hover:text-[#3CB371] font-medium text-sm transition-colors duration-200">Exames</Link></li>
           <li><Link href="/convenios" className="text-gray-700 hover:text-[#3CB371] font-medium text-sm transition-colors duration-200">Convênios</Link></li>

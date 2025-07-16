@@ -1,37 +1,10 @@
-// pages/index.tsx ou app/page.tsx
-"use client";
+// src/app/page.tsx
+// Esta página será a rota raiz (/)
+// Ela irá redirecionar o usuário para a sua Landing Page em /home
 
-import Head from 'next/head';
-import HeroSection from '../components/HeroSection/HeroSection';
-import StatisticsSection from '../components/StatisticsSection/StatisticsSection';
-import QualityTechnologySection from '../components/QualityTechnologySection/QualityTechnologySection';
-import ExamsSection from '../components/ExamsSection/ExamsSection';
-import FaqSection from '../components/FaqSection/FaqSection';
-import ContactSection from '../components/ContactSection/ContactSection';
+import { redirect } from 'next/navigation';
 
-
-const HomePage: React.FC = () => {
-  return (
-    <>
-      <Head>
-        <title>Lare Laboratório - Sua Saúde, Nossa Missão</title>
-        <meta name="description" content="Lare Laboratório: Cuidado e precisão nos seus exames e análises clínicas." />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-  
-      <HeroSection />
-      <StatisticsSection />
-      <QualityTechnologySection />
-      <ExamsSection />
-      <FaqSection />
-      <ContactSection />
-
-      <div className="bg-[#E6F3EB] py-3 text-center text-[#3CB371] text-sm font-medium">
-        Mais que resultados, oferecemos cuidado!
-      </div>
-    </>
-  );
-};
-
-export default HomePage;
+export default function RootRedirectPage() {
+  // Redireciona o usuário da rota raiz para /home
+  redirect('/home');
+}

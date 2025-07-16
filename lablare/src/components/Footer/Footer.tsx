@@ -1,13 +1,10 @@
-// components/Footer/Footer.tsx
-"use client"; // Este componente é um Client Component pois usa MapComponent (que é client)
+// src/components/Footer/Footer.tsx
+'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
-// Importe o LogoLab do caminho correto
-import LogoLab from '../../../public/assets/img/Logo.png'; 
-
-// Importe o MapComponent que renderiza o mapa interativo via API
-import MapComponent from '../MapComponent/MapComponent'; // Ajuste o caminho se necessário
+import LogoLab from '../../../public/assets/img/Logo.png'; // Verifique o caminho real do seu logo
+import MapComponent from '../MapComponent/MapComponent'; // Importe o componente do mapa
 
 const Footer: React.FC = () => {
   return (
@@ -17,7 +14,7 @@ const Footer: React.FC = () => {
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {/* Coluna 1: Logo e Descrição */}
           <div className="col-span-1">
-            <Link href="/"> {/* Adicionado Link ao logo no footer */}
+            <Link href="/">
               <Image
                 src={LogoLab}
                 alt="Lare Laboratório Logo"
@@ -57,7 +54,6 @@ const Footer: React.FC = () => {
           {/* Coluna 4: Mapa de Localização (mini - AGORA INTERATIVO) */}
           <div className="col-span-1">
             <h3 className="text-white font-semibold mb-4 text-lg">Nossa Localização</h3>
-            {/* Usando o MapComponent para renderizar um mapa interativo */}
             {/* Substitua latitude e longitude pelas coordenadas exatas da sua localização */}
             <MapComponent latitude={-23.550520} longitude={-46.633308} zoom={16} />
           </div>
@@ -68,11 +64,6 @@ const Footer: React.FC = () => {
           <p>&copy; {new Date().getFullYear()} Lare Laboratório. Todos os direitos reservados.</p>
         </div>
       </footer>
-
-      {/* Barra inferior fixa (verde clara) */}
-      <div className="bg-[#E6F3EB] py-3 text-center text-[#3CB371] text-sm font-medium">
-        Mais que resultados, oferecemos cuidado!
-      </div>
     </>
   );
 };
