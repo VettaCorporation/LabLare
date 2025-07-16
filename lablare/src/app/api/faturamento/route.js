@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; 
+import { PrismaClient, Decimal } from '../../../generated/prisma/index.js';
 
 const prisma = new PrismaClient();
 
@@ -13,8 +13,8 @@ export async function POST(req) {
       id_usuario_pagador, 
     } = await req.json();
 
-    if (!id_solicitacao || !tipo_atendimento || !valor_total_informado || !id_usuario_pagador) {
-      return NextResponse.json({ message: 'Dados de faturamento obrigatórios ausentes.' }, { status: 400 });
+    if (!id_solicitacao || !tipo_atendimento || valor_total_informado === undefined || valor_total_informado === null || !id_usuario_pagador || isNaN(Number(valor_total_informado))) {
+      return NextResponse.json({ message: 'Dados de faturamento obrigatórios ausentes ou inválidos.' }, { status: 400 });
     }
 
     if (tipo_atendimento === 'PARTICULAR' && !forma_pagamento) {
@@ -38,10 +38,10 @@ export async function POST(req) {
       }
 
       const valorCalculadoBackend = solicitacao.itens_solicitacao.reduce((sum, item) => {
-        return sum + parseFloat(item.exame_catalogo.preco);
+        return sum + parseFloat(item.exame_catalogo.preco.toString());
       }, 0);
 
-      if (Math.abs(valorCalculadoBackend - valor_total_informado) > 0.01) {
+      if (Math.abs(valorCalculadoBackend - Number(valor_total_informado)) > 0.01) {
         console.warn(`Discrepância de valor para solicitação ${id_solicitacao}: Frontend ${valor_total_informado}, Backend ${valorCalculadoBackend}`);
       }
 
@@ -49,8 +49,8 @@ export async function POST(req) {
         data: {
           id_solicitacao: id_solicitacao,
           tipo_atendimento: tipo_atendimento,
-          forma_pagamento: tipo_atendimento === 'PARTICULAR' ? forma_pagamento : null, 
-          valor_pago: new prisma.Decimal(valor_total_informado), 
+          forma_pagamento: tipo_atendimento === 'PARTICULAR' ? forma_pagamento : null,
+          valor_pago: new Decimal(Number(valor_total_informado).toFixed(2)),
         },
       });
 

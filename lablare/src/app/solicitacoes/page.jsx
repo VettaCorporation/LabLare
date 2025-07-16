@@ -2,37 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-// Importa o hook useSearchParams para ler os parâmetros da URL
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SolicitacoesPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status: sessionStatus } = useSession(); 
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Hook para acessar os parâmetros da URL
-  const searchParams = useSearchParams();
-  const pacienteId = searchParams.get('pacienteId');
-
+  
   const canViewSolicitacoes = session?.user?.nome_perfil === 'Recepcionista' ||
                               session?.user?.nome_perfil === 'Administrador' ||
                               session?.user?.nome_perfil === 'Técnico de Laboratório' ||
                               session?.user?.nome_perfil === 'Biomédico';
 
-
   useEffect(() => {
-    if (status === 'authenticated' && canViewSolicitacoes) {
+    if (sessionStatus === 'authenticated' && canViewSolicitacoes) {
       const fetchSolicitacoes = async () => {
         try {
-          // Constrói a URL da API, adicionando o pacienteId se ele existir
-          let apiUrl = '/api/solicitacoes';
-          if (pacienteId) {
-            apiUrl += `?pacienteId=${pacienteId}`;
-          }
-
-          const response = await fetch(apiUrl);
+          const response = await fetch('/api/solicitacoes');
           if (!response.ok) {
             throw new Error('Falha ao buscar solicitações.');
           }
@@ -46,17 +34,16 @@ export default function SolicitacoesPage() {
         }
       };
       fetchSolicitacoes();
-    } else if (status !== 'loading') {
+    } else if (sessionStatus !== 'loading') {
       setLoading(false);
     }
-  }, [status, canViewSolicitacoes, pacienteId]); // Adiciona pacienteId como dependência
+  }, [sessionStatus, canViewSolicitacoes]);
 
-
-  if (status === 'loading' || loading) {
+  if (sessionStatus === 'loading' || loading) {
     return <div className="text-center text-xl mt-10">Carregando solicitações...</div>;
   }
 
-  if (status === 'unauthenticated') {
+  if (sessionStatus === 'unauthenticated') {
     return (
       <div className="text-center text-xl mt-10 p-5 bg-red-100 text-red-700 rounded-md">
         Você precisa estar logado para acessar esta página. Por favor, faça <Link href="/login" className="text-blue-600 hover:underline">login</Link>.
@@ -75,6 +62,40 @@ export default function SolicitacoesPage() {
   if (error) {
     return <div className="text-center text-red-500">{error}</div>;
   }
+
+  const getStatusBadge = (status) => {
+    let bgColor = 'bg-gray-200';
+    let textColor = 'text-gray-800';
+    switch (status) {
+      case 'AGUARDANDO_PAGAMENTO':
+        bgColor = 'bg-yellow-100';
+        textColor = 'text-yellow-800';
+        break;
+      case 'PAGA':
+        bgColor = 'bg-green-100';
+        textColor = 'text-green-800';
+        break;
+      case 'COLETADA':
+        bgColor = 'bg-blue-100';
+        textColor = 'text-blue-800';
+        break;
+      case 'VALIDADA':
+        bgColor = 'bg-purple-100';
+        textColor = 'text-purple-800';
+        break;
+      case 'LIBERADA':
+        bgColor = 'bg-indigo-100';
+        textColor = 'text-indigo-800';
+        break;
+      default:
+        break;
+    }
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bgColor} ${textColor}`}>
+        {status.replace(/_/g, ' ')} 
+      </span>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -95,7 +116,7 @@ export default function SolicitacoesPage() {
                 <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Recepcionista</th>
                 <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Médico Solicitante</th>
                 <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Exames</th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Status</th>
+                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Status</th> 
               </tr>
             </thead>
             <tbody>
@@ -125,9 +146,7 @@ export default function SolicitacoesPage() {
                     </ul>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-800">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                      Aguardando Coleta 
-                    </span>
+                    {getStatusBadge(solicitacao.status)}
                   </td>
                 </tr>
               ))}

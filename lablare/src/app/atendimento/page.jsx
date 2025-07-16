@@ -1,4 +1,3 @@
-// lablare/src/app/atendimento/page.jsx
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
