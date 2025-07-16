@@ -1,8 +1,9 @@
-
+// src/app/layout.tsx
 'use client';
 
 import './globals.css'; 
 import { SessionProvider } from 'next-auth/react'; 
+import Script from 'next/script';
 
 export default function RootLayout({
   children,
@@ -12,11 +13,19 @@ export default function RootLayout({
   return (
     <html lang="pt-br">
       <body>
-        <div>
-          <SessionProvider>
-            {children}
-          </SessionProvider>
-        </div>
+        {/*
+          precisamos colocar a chave da api do Google Maps aqui
+        */}
+        <Script
+          src={`https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_API_Maps&libraries=places`}
+          async
+          defer
+        />
+
+       
+        <SessionProvider>
+          {children} 
+        </SessionProvider>
       </body>
     </html>
   );
