@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
+    "@heroicons/react": "^2.2.0",
     "bcrypt": "^6.0.0",
     "next": "15.3.5",
     "next-auth": "^4.24.11",
