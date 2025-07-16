@@ -1,11 +1,11 @@
-// src/app/api/auth/[...nextauth]/route.ts
+// lablare/src/app/api/auth/[...nextauth]/route.ts
+
 import * as NextAuthModule from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaClient } from '../../../../generated/prisma'; // Caminho ajustado
+// Caminho ajustado: Adicionado '/index.js' para importar o arquivo principal do Prisma Client
+import { PrismaClient } from '../../../../generated/prisma/index.js';
 import bcrypt from 'bcrypt';
-import { NextAuthOptions } from 'next-auth'; // Mantenha esta importação
-
-// O BLOCO declare module FOI REMOVIDO DAQUI E MOVIDO PARA types/next-auth.d.ts
+import { NextAuthOptions } from 'next-auth';
 
 const prisma = new PrismaClient();
 
@@ -15,12 +15,10 @@ export const authOptions: NextAuthOptions = {
       name: 'Credentials',
       credentials: {
         email: { label: 'Email', type: 'text' },
-        senha: { label: 'Senha', type: 'password' }, // <--- MUDANÇA AQUI: de 'password' para 'senha'
+        senha: { label: 'Senha', type: 'password' },
       },
       async authorize(credentials) {
-        // ...
-        // if (!credentials?.email || !credentials?.password) { // Linha antiga
-        if (!credentials?.email || !credentials?.senha) { // <--- MUDANÇA AQUI: de 'password' para 'senha'
+        if (!credentials?.email || !credentials?.senha) {
           return null;
         }
 
@@ -29,13 +27,13 @@ export const authOptions: NextAuthOptions = {
           include: { perfil: true },
         });
 
-        // if (!user || !(await bcrypt.compare(credentials.password, user.hash_senha))) { // Linha antiga
-        if (!user || !(await bcrypt.compare(credentials.senha, user.hash_senha))) { // <--- MUDANÇA CRÍTICA AQUI: de 'password' para 'senha'
+        if (!user || !(await bcrypt.compare(credentials.senha, user.hash_senha))) {
           return null;
         }
 
+        // Retorna o objeto do usuário. O 'id' é crucial e deve ser uma string.
         return {
-          id: user.id_usuario.toString(),
+          id: user.id_usuario.toString(), // ID do usuário como string
           name: user.nome_completo,
           email: user.email,
           id_perfil: user.id_perfil,
@@ -47,6 +45,8 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Copia o ID do usuário e os dados do perfil para o token JWT
+        token.id = user.id; // <--- ADIÇÃO CRÍTICA: Copia o ID do usuário para o token
         token.id_perfil = user.id_perfil;
         token.nome_perfil = user.nome_perfil;
       }
@@ -54,6 +54,8 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token) {
+        // Copia o ID do usuário e os dados do perfil do token para o objeto de sessão
+        session.user.id = token.id; // <--- ADIÇÃO CRÍTICA: Define o ID do usuário na sessão
         session.user.id_perfil = token.id_perfil;
         session.user.nome_perfil = token.nome_perfil;
       }
@@ -61,7 +63,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/',
+    signIn: '/login', // Certifique-se que esta é a sua página de login
   },
   session: {
     strategy: 'jwt',

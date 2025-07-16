@@ -21,7 +21,6 @@ export default function RootLayout({
           async
           defer
         />
-
        
         <SessionProvider>
           {children} 
