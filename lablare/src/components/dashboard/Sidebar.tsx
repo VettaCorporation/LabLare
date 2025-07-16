@@ -1,4 +1,3 @@
-// src/components/dashboard/Sidebar.tsx
 'use client';
 
 import Image from 'next/image';
@@ -17,7 +16,7 @@ import {
 
 const navigation = [
   { name: 'Painel', href: '/dashboard', icon: HomeIcon },
-  { name: 'Pacientes', href: '/atendimento', icon: UsersIcon }, // Link para a página já existente
+  { name: 'Pacientes', href: '/atendimento', icon: UsersIcon },
   { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon },
   { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
   { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon },
@@ -33,7 +32,8 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r border-gray-200 w-64">
+    // A ALTERAÇÃO ESTÁ NESTA LINHA: removemos 'grow' e adicionamos 'flex-shrink-0'
+    <div className="flex flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r border-gray-200 w-64 flex-shrink-0">
       <div className="flex h-16 shrink-0 items-center">
         <Image
           src={LogoLab}
