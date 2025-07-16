@@ -17,7 +17,7 @@ import {
 
 const navigation = [
   { name: 'Painel', href: '/dashboard', icon: HomeIcon },
-  { name: 'Pacientes', href: '/atendimento', icon: UsersIcon },
+  { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
   { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },
   { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon },
   { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
