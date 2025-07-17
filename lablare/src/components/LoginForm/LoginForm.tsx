@@ -10,15 +10,17 @@ interface LoginFormProps {
   userLabel?: 'CPF' | 'LOGIN' | 'Usuário';
   loginBtnBgColor?: string;
   loginBtnHoverBgColor?: string;
+  providerId: 'credentials-admin-recep' | 'credentials-paciente'; 
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({
   userLabel = 'Usuário',
   loginBtnBgColor = 'bg-blue-500', 
   loginBtnHoverBgColor = 'hover:bg-blue-700', 
+  providerId, 
 }) => {
-  const [usuario, setUsuario] = useState('');
-  const [senha, setSenha] = useState('');
+  const [usuario, setUsuario] = useState(''); 
+  const [senha, setSenha] = useState(''); 
   const [erro, setErro] = useState('');
   const router = useRouter();
 
@@ -31,40 +33,63 @@ const LoginForm: React.FC<LoginFormProps> = ({
       return;
     }
 
+    // --- FIM DA NOVA VALIDAÇÃO ---
+
+
+    let credentials: { [key: string]: string } = {};
+    if (providerId === 'credentials-admin-recep') {
+      credentials = { email: usuario, senha: senha };
+    } else if (providerId === 'credentials-paciente') {
+      credentials = { cpf: usuario, data_nascimento: senha }; 
+    } else {
+      setErro('Provedor de login inválido.');
+      return;
+    }
+
     try {
-      const result = await signIn('credentials', {
-        email: usuario,
-        senha: senha,
-        redirect: false,
+      const result = await signIn(providerId, { 
+        ...credentials, 
+        redirect: false, 
       });
 
       if (result?.error) {
-        setErro('Usuário ou senha inválidos.');
-        console.error('Erro de login:', result.error);
+        if (providerId === 'credentials-admin-recep') {
+          setErro('Credencial ou senha incorreta.'); 
+        } else if (providerId === 'credentials-paciente') {
+          setErro('CPF ou senha incorreta.'); 
+        } else {
+          setErro('Erro de login. Tente novamente.'); 
+        }
       } else if (result?.ok) {
-        console.log('Login bem-sucedido!');
-        router.push('/dashboard');
+        if (providerId === 'credentials-admin-recep') {
+          router.push('/dashboard'); 
+        } else if (providerId === 'credentials-paciente') {
+          router.push('/portal-paciente'); 
+        } else {
+          router.push('/'); 
+        }
       }
     } catch (apiError) {
-      console.error('Erro inesperado durante o login:', apiError);
       setErro('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-80 md:w-96 p-8 bg-white rounded-lg shadow-md">
-      {/* Ícone de Usuário */}
+      {/* Campo de Usuário (CPF ou Email) */}
       <div className="relative">
         <label htmlFor="usuario" className="sr-only">
           {userLabel}
         </label>
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
+          {userLabel === 'CPF' ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+          )}
         </div>
         <input
-          type="text"
+          type="text" 
           id="usuario"
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
@@ -73,24 +98,29 @@ const LoginForm: React.FC<LoginFormProps> = ({
         />
       </div>
 
-      {/* Ícone de Senha */}
+      {/* Campo de Senha (ou Data de Nascimento oculta) */}
       <div className="relative">
         <label htmlFor="senha" className="sr-only">
           Senha
         </label>
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 11V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2"></path>
-          </svg>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 11V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2"></path></svg>
         </div>
         <input
-          type="password"
+          type="password" 
           id="senha"
           value={senha}
-          onChange={(e) => setSenha(e.target.value)}
+          onChange={(e) => {
+            if (userLabel === 'CPF') {
+              const numericValue = e.target.value.replace(/\D/g, ''); 
+              setSenha(numericValue.slice(0, 8)); 
+            } else {
+              setSenha(e.target.value);
+            }
+          }}
           className="shadow appearance-none border rounded w-full py-3 px-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          placeholder="********"
+          placeholder="********" 
+          maxLength={userLabel === 'CPF' ? 8 : undefined} 
         />
       </div>
 

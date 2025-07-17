@@ -23,30 +23,33 @@ model Perfil {
 
 // Tabela de usuários do sistema
 model Usuario {
-  id_usuario            Int         @id @default(autoincrement())
-  nome_completo         String      @db.VarChar(255)
-  email                 String      @unique @db.VarChar(255)
-  hash_senha            String      @db.VarChar(255)
+  id_usuario            Int           @id @default(autoincrement())
+  nome_completo         String        @db.VarChar(255)
+  email                 String        @unique @db.VarChar(255)
+  hash_senha            String        @db.VarChar(255)
   id_perfil             Int
-  data_criacao          DateTime    @default(now()) @db.Timestamp(0)
-  ativo                 Boolean     @default(true)
+  data_criacao          DateTime      @default(now()) @db.Timestamp(0)
+  ativo                 Boolean       @default(true)
+  primeiro_login        Boolean       @default(false) // NOVO: Campo para controlar o primeiro login do paciente
+
   // Relações
-  perfil                Perfil      @relation(fields: [id_perfil], references: [id_perfil])
+  perfil                Perfil        @relation(fields: [id_perfil], references: [id_perfil])
   solicitacoes_recepcionadas Solicitacao[] @relation("RecepcionistaSolicitacoes")
-  laudos_tecnicos       Laudo[]     @relation("TecnicoLaudos")
-  laudos_validados      Laudo[]     @relation("BiomedicoLaudos")
+  laudos_tecnicos       Laudo[]       @relation("TecnicoLaudos")
+  laudos_validados      Laudo[]       @relation("BiomedicoLaudos")
 }
 
 // Tabela de pacientes
 model Paciente {
-  id_paciente   Int           @id @default(autoincrement())
-  nome_completo String        @db.VarChar(255)
-  cpf           String        @unique @db.VarChar(14)
-  data_nascimento DateTime    @db.Date
-  sexo          String?       @db.VarChar(20)
-  data_cadastro DateTime      @default(now()) @db.Timestamp(0)
+  id_paciente     Int             @id @default(autoincrement())
+  nome_completo   String          @db.VarChar(255)
+  cpf             String          @unique @db.VarChar(14)
+  data_nascimento DateTime        @db.Date
+  sexo            String?         @db.VarChar(20)
+  data_cadastro   DateTime        @default(now()) @db.Timestamp(0)
+  email           String?         @unique @db.VarChar(255) // NOVO: Campo de email adicionado
   // Relações
-  solicitacoes  Solicitacao[]
+  solicitacoes    Solicitacao[]
 
   @@index([nome_completo])
 }
