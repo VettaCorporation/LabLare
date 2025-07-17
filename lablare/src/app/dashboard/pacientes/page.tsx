@@ -1,11 +1,10 @@
-// src/app/dashboard/pacientes/page.tsx
-'use client';
+// lablare/src/app/dashboard/pacientes/page.tsx
+'use client'; // Marca como Client Component para usar hooks como useSession
 
 import { useState, useEffect, useCallback } from 'react';
-import { PlusIcon, MagnifyingGlassIcon, EyeIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon, EyeIcon, ArrowUturnLeftIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import PacienteCadastroForm from '@/components/PacienteCadastroForm/PacienteCadastroForm';
-
-// Importar useSession e useRouter para proteção de rota
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
@@ -15,9 +14,9 @@ interface Paciente {
   cpf: string;
   data_nascimento: string;
   sexo: string | null;
+  email?: string;
 }
 
-// Componente para exibir a lista de solicitações de um paciente
 function SolicitacoesDoPaciente({
   paciente,
   onBack,
@@ -29,10 +28,6 @@ function SolicitacoesDoPaciente({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Adicionar proteção de rota para SolicitacoesDoPaciente também,
-  // se ele puder ser acessado por uma rota direta (ex: /dashboard/pacientes/solicitacoes?pacienteId=X)
-  // Atualmente ele é um sub-componente da PacientesPage, então a proteção da PacientesPage já o cobre.
-  // Mas se for transformar em rota, precisará de useSession aqui.
   interface Solicitacao {
     id_solicitacao: number;
     data_hora_solicitacao: string;
@@ -53,7 +48,7 @@ function SolicitacoesDoPaciente({
         if (!response.ok) {
           throw new Error('Falha ao buscar as solicitações do paciente.');
         }
-        const data = await response.json();
+        const data: Solicitacao[] = await response.json();
         setSolicitacoes(data);
       } catch (err: any) {
         console.error('Erro ao buscar solicitações:', err);
@@ -138,26 +133,17 @@ export default function PacientesPage() {
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [viewingPatient, setViewingPatient] = useState<Paciente | null>(null);
 
-  // Hooks para proteção de rota
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Lógica de proteção de rota: TODOS logados têm acesso.
-  // Apenas as páginas EXCLUSIVAS de Admin terão verificação extra.
   useEffect(() => {
     if (status === 'loading') return; 
 
-    // Se NÃO há sessão, redireciona para o login.
     if (!session) {
       console.warn('Sessão NÃO encontrada na página de Pacientes. Redirecionando para /login.');
-      router.push('/login'); // Redireciona para a página de login
+      router.push('/login');
       return; 
     }
-
-    // Se há sessão, o usuário está logado e pode acessar esta página.
-    // Agora pode carregar os pacientes.
-    // A chamada real a fetchPacientes é feita no useEffect de searchTerm/isAdding/viewingPatient
-    // para evitar chamadas duplicadas ou inoportunas.
   }, [session, status, router]); 
 
   const fetchPacientes = useCallback(async () => {
@@ -182,16 +168,14 @@ export default function PacientesPage() {
   }, [searchTerm]);
 
   useEffect(() => {
-    // Apenas busca pacientes se não estiver nos modos de adicionar ou visualizar
-    // E se a sessão está autenticada (garantido pelo useEffect de cima).
     if (!isAdding && !viewingPatient && status === 'authenticated') {
-      const debounce = setTimeout(() => {
+      const debounceTimeout = setTimeout(() => {
         fetchPacientes();
       }, 300);
 
-      return () => clearTimeout(debounce);
+      return () => clearTimeout(debounceTimeout);
     }
-  }, [searchTerm, isAdding, viewingPatient, fetchPacientes, status]); // Adicionado 'status' aqui
+  }, [searchTerm, isAdding, viewingPatient, fetchPacientes, status]);
 
   const handlePatientSaved = () => {
     setSearchTerm('');
@@ -204,7 +188,6 @@ export default function PacientesPage() {
     return new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   };
   
-  // Mensagem de carregamento da página principal, ou nulo se não autorizado (e redirecionando)
   if (status === 'loading') {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -213,23 +196,15 @@ export default function PacientesPage() {
     );
   }
 
-  // Se o usuário NÃO está autenticado (já tratado pelo useEffect que redireciona),
-  // ou se não há sessão, não renderiza nada.
   if (status !== 'authenticated') {
     return null; 
   }
 
-  // Permissões para botões e UI condicional
   const userProfile = session?.user?.nome_perfil;
   const isAdmin = userProfile === 'Administrador';
   const isRecepcionista = userProfile === 'Recepcionista';
-  // const isTecnico = userProfile === 'Técnico de Laboratório'; // Exemplo para outros perfis
-  // const isBiomedico = userProfile === 'Biomédico';
-  // const isFinanceiro = userProfile === 'Responsável Financeira'; // Nome completo do perfil
 
-  // Condicional principal para renderização do conteúdo da página
   if (isAdding) {
-    // Verifique se o perfil tem permissão para adicionar (Recepcionista e Admin)
     if (!isAdmin && !isRecepcionista) {
       return (
         <div className="flex h-screen items-center justify-center">
@@ -264,16 +239,31 @@ export default function PacientesPage() {
           />
         </div>
 
-        {/* Botão "Adicionar Paciente" visível apenas para Administrador e Recepcionista */}
-        {(isAdmin || isRecepcionista) && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Adicionar Paciente
-          </button>
-        )}
+        <div className="flex gap-3">
+          {/* Botão "Adicionar Paciente" com link para /atendimento?action=add */}
+          {(isAdmin || isRecepcionista) && (
+            <Link href="/atendimento?action=add">
+              <button
+                className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+              >
+                <PlusIcon className="h-5 w-5" />
+                Adicionar Paciente
+              </button>
+            </Link>
+          )}
+
+          {/* Botão "Solicitar Exame" com link para /atendimento?action=solicitate */}
+          {(isAdmin || isRecepcionista) && (
+            <Link href="/atendimento?action=solicitate">
+              <button
+                className="flex items-center gap-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+              >
+                <DocumentTextIcon className="h-5 w-5" />
+                Solicitar Exame
+              </button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -291,6 +281,7 @@ export default function PacientesPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Nasc.</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sexo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-MAIL</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -301,8 +292,8 @@ export default function PacientesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.cpf}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(paciente.data_nascimento)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.sexo || 'Não informado'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.email || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        {/* Botão Visualizar Solicitações - Visível para todos os perfis permitidos nesta página */}
                         <button
                             onClick={() => setViewingPatient(paciente)}
                             className="text-blue-600 hover:text-blue-900 mx-2 p-1 rounded-full hover:bg-blue-50" 
@@ -310,7 +301,6 @@ export default function PacientesPage() {
                         >
                             <EyeIcon className="h-5 w-5" />
                         </button>
-                        {/* Botão de Edição - Visível para Administrador e Recepcionista */}
                         {(isAdmin || isRecepcionista) && (
                             <button
                                 onClick={() => console.log('Editar Paciente:', paciente.id_paciente)}
@@ -320,7 +310,6 @@ export default function PacientesPage() {
                                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.232z"></path></svg>
                             </button>
                         )}
-                        {/* Botão de Excluir - Visível APENAS para Administrador */}
                         {isAdmin && (
                             <button
                                 onClick={() => console.log('Excluir Paciente:', paciente.id_paciente)}

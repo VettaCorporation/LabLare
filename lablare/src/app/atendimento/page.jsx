@@ -1,3 +1,4 @@
+// lablare/src/app/atendimento/page.jsx
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -5,6 +6,7 @@ import PacienteCadastroForm from '../../components/PacienteCadastroForm/Paciente
 import ExameSelection from '../../components/ExameSelection/ExameSelection';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation'; // Importa useSearchParams
 
 const debounce = (func, delay) => {
   let timeoutId;
@@ -20,20 +22,25 @@ const debounce = (func, delay) => {
 
 export default function AtendimentoPage() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams(); // Hook para ler os parâmetros da URL
+  const initialAction = searchParams.get('action'); // Lê o parâmetro 'action'
+
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedPaciente, setSelectedPaciente] = useState(null);
 
+  // Estados para a História 5: Registro de Solicitação de Exames
   const [medicoSolicitante, setMedicoSolicitante] = useState('');
   const [observacoesMedicas, setObservacoesMedicas] = useState('');
   const [examesSelecionados, setExamesSelecionados] = useState([]);
   const [solicitacaoMessage, setSolicitacaoMessage] = useState('');
-  const [currentSolicitacaoId, setCurrentSolicitacaoId] = useState(null); 
+  const [currentSolicitacaoId, setCurrentSolicitacaoId] = useState(null);
 
-  const [tipoAtendimento, setTipoAtendimento] = useState(''); 
-  const [formaPagamento, setFormaPagamento] = useState(''); 
+  // Estados para a História 6: Faturamento e Pagamento
+  const [tipoAtendimento, setTipoAtendimento] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState('');
   const [faturamentoMessage, setFaturamentoMessage] = useState('');
-  const [pagamentoConfirmado, setPagamentoConfirmado] = useState(false); 
+  const [pagamentoConfirmado, setPagamentoConfirmado] = useState(false);
 
   const canRegisterSolicitacao = session?.user?.nome_perfil === 'Recepcionista' ||
                                  session?.user?.nome_perfil === 'Administrador';
@@ -75,14 +82,14 @@ export default function AtendimentoPage() {
     setSelectedPaciente(paciente);
     setSearchTerm(paciente.nome_completo);
     setSearchResults([]);
-    resetSolicitacaoAndFaturamentoStates(); 
+    resetSolicitacaoAndFaturamentoStates();
   };
 
   const handleNewPatientSaved = (newPatient) => {
     setSelectedPaciente(newPatient);
     setSearchTerm(newPatient.nome_completo);
     setSolicitacaoMessage('Novo paciente cadastrado e selecionado para atendimento!');
-    resetSolicitacaoAndFaturamentoStates(); 
+    resetSolicitacaoAndFaturamentoStates();
   };
 
   const handleExamesSelected = useCallback((exames) => {
@@ -91,8 +98,8 @@ export default function AtendimentoPage() {
 
   const handleRegisterSolicitacao = async () => {
     setSolicitacaoMessage('');
-    setFaturamentoMessage(''); 
-    setPagamentoConfirmado(false); 
+    setFaturamentoMessage('');
+    setPagamentoConfirmado(false);
 
     if (status !== 'authenticated' || !canRegisterSolicitacao) {
       setSolicitacaoMessage('Você não tem permissão para registrar solicitações. Faça login com um perfil autorizado.');
@@ -139,7 +146,7 @@ export default function AtendimentoPage() {
 
       if (response.ok) {
         setSolicitacaoMessage(data.message || 'Solicitação registrada com sucesso! Prossiga para o faturamento.');
-        setCurrentSolicitacaoId(data.solicitacao.id_solicitacao); 
+        setCurrentSolicitacaoId(data.solicitacao.id_solicitacao);
       } else {
         setSolicitacaoMessage(data.message || data.error || 'Erro ao registrar solicitação. Tente novamente.');
       }
@@ -181,7 +188,7 @@ export default function AtendimentoPage() {
           id_solicitacao: currentSolicitacaoId,
           tipo_atendimento: tipoAtendimento,
           forma_pagamento: formaPagamento,
-          valor_total_informado: valorTotalExames, 
+          valor_total_informado: valorTotalExames,
           id_usuario_pagador: idUsuarioPagador,
         }),
       });
@@ -190,7 +197,7 @@ export default function AtendimentoPage() {
 
       if (response.ok) {
         setFaturamentoMessage(data.message || 'Pagamento registrado com sucesso!');
-        setPagamentoConfirmado(true); 
+        setPagamentoConfirmado(true);
       } else {
         setFaturamentoMessage(data.message || data.error || 'Erro ao registrar pagamento. Tente novamente.');
       }
@@ -212,6 +219,25 @@ export default function AtendimentoPage() {
     setPagamentoConfirmado(false);
   };
 
+  // Efeito para lidar com os parâmetros da URL na montagem do componente
+  useEffect(() => {
+    if (status === 'authenticated') {
+      const action = searchParams.get('action');
+      if (action === 'add') {
+        // Se a ação é 'add', limpa a seleção de paciente para mostrar o formulário de cadastro
+        setSelectedPaciente(null);
+        setSearchTerm('');
+        setSearchResults([]);
+      } else if (action === 'solicitate') {
+        // Se a ação é 'solicitate', foca na busca de paciente
+        // (Não faz nada aqui, pois o estado inicial já é de busca)
+        // Poderíamos pré-selecionar um paciente se o ID viesse na URL, por exemplo:
+        // const patientId = searchParams.get('patientId');
+        // if (patientId) { /* buscar paciente e setar selectedPaciente */ }
+      }
+    }
+  }, [searchParams, status]); // Dependências: searchParams e status
+
   if (status === 'loading') {
     return <div className="text-center text-xl mt-10">Carregando informações do usuário...</div>;
   }
@@ -225,9 +251,11 @@ export default function AtendimentoPage() {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+    <div className="space-y-6 p-8">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Atendimento ao Paciente</h1>
-      <div className="mb-8 p-6 bg-white rounded-lg shadow-md border border-gray-200">
+
+      {/* Seção de Busca Rápida de Paciente - Aplicando o padrão de estilo */}
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700">Busca Rápida de Paciente</h2>
         <label htmlFor="searchPaciente" className="block text-gray-700 text-sm font-bold mb-2">
           Buscar Paciente por Nome Completo ou CPF:
@@ -266,7 +294,9 @@ export default function AtendimentoPage() {
             <p className="text-gray-600 text-sm mt-2">Nenhum paciente encontrado com este termo. Considere cadastrar um novo.</p>
         )}
       </div>
-      <div className="p-6 bg-white rounded-lg shadow-md border border-gray-200">
+
+      {/* Seção de Informações do Paciente Selecionado / Cadastro de Novo Paciente - Aplicando o padrão de estilo */}
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
         {selectedPaciente ? (
           <div>
             <h2 className="text-2xl font-semibold mb-4 text-gray-700">Paciente Ativo: <span className="text-blue-700">{selectedPaciente.nome_completo}</span></h2>
@@ -281,7 +311,7 @@ export default function AtendimentoPage() {
                   setSelectedPaciente(null);
                   setSearchTerm('');
                   setSearchResults([]);
-                  resetSolicitacaoAndFaturamentoStates(); 
+                  resetSolicitacaoAndFaturamentoStates(); // Reseta todos os estados
                 }}
                 className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out"
               >
@@ -291,6 +321,7 @@ export default function AtendimentoPage() {
 
             {canRegisterSolicitacao ? (
               <>
+                {/* FORMULÁRIO DE SOLICITAÇÃO DE EXAMES (HISTÓRIA 5) - Aplicando o padrão de estilo */}
                 <div className="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
                   <h3 className="text-2xl font-semibold mb-4 text-gray-700">Registrar Solicitação de Exames</h3>
 
@@ -309,6 +340,7 @@ export default function AtendimentoPage() {
                       placeholder="Nome do médico ou CRM"
                     />
                   </div>
+
                   <div className="mt-4">
                     <label htmlFor="observacoesMedicas" className="block text-gray-700 text-sm font-bold mb-2">
                       Observações Médicas:
@@ -322,22 +354,25 @@ export default function AtendimentoPage() {
                       placeholder="Informações adicionais para o laboratório ou médico"
                     ></textarea>
                   </div>
+
                   {solicitacaoMessage && (
                     <div className={`mt-4 p-3 rounded-md ${solicitacaoMessage.includes('sucesso') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {solicitacaoMessage}
                     </div>
                   )}
+
                   <button
                     type="button"
                     onClick={handleRegisterSolicitacao}
-                    disabled={examesSelecionados.length === 0 || !medicoSolicitante.trim() || currentSolicitacaoId !== null} 
+                    disabled={examesSelecionados.length === 0 || !medicoSolicitante.trim() || currentSolicitacaoId !== null} // Desabilita se já registrou
                     className="mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {currentSolicitacaoId ? 'Solicitação Registrada' : 'Gerar Orçamento (Registrar Solicitação)'}
                   </button>
                 </div>
 
-                {currentSolicitacaoId && ( 
+                {/* SEÇÃO DE FATURAMENTO E PAGAMENTO (HISTÓRIA 6) - Aplicando o padrão de estilo */}
+                {currentSolicitacaoId && ( // Só mostra se a solicitação foi registrada
                   <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
                     <h3 className="text-2xl font-semibold mb-4 text-blue-800">Faturamento e Pagamento</h3>
 
@@ -347,6 +382,8 @@ export default function AtendimentoPage() {
                         Valor Total: {valorTotalExames.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     </div>
+
+                    {/* Tipo de Atendimento */}
                     <div className="mb-4">
                       <label className="block text-gray-700 text-sm font-bold mb-2">Tipo de Atendimento:</label>
                       <div className="flex gap-4">
@@ -375,6 +412,7 @@ export default function AtendimentoPage() {
                       </div>
                     </div>
 
+                    {/* Forma de Pagamento (apenas para Particular) */}
                     {tipoAtendimento === 'PARTICULAR' && (
                       <div className="mb-4">
                         <label className="block text-gray-700 text-sm font-bold mb-2">Forma de Pagamento:</label>
@@ -434,6 +472,7 @@ export default function AtendimentoPage() {
                     {pagamentoConfirmado && (
                       <button
                         type="button"
+                        // onClick={handleGerarRecibo} // Implementar a História 7 aqui
                         className="ml-4 mt-6 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-200 ease-in-out"
                       >
                         Gerar Recibo
@@ -450,7 +489,8 @@ export default function AtendimentoPage() {
 
           </div>
         ) : (
-          <div>
+          // Se nenhum paciente foi selecionado, exibe o formulário de novo cadastro - Aplicando o padrão de estilo
+          <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h2 className="text-2xl font-semibold mb-4 text-gray-700">Cadastrar Novo Paciente</h2>
             <PacienteCadastroForm onPatientSaved={handleNewPatientSaved} />
           </div>
