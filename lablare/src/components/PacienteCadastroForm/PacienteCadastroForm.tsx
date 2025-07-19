@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { isValidCPF } from '@/utils/cpfValidator';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter'; // Importar para a máscara de CPF
 
 interface Paciente {
   id_paciente: number;
@@ -10,7 +11,7 @@ interface Paciente {
   cpf: string;
   data_nascimento: string;
   sexo?: string;
-  email?: string; 
+  email: string; 
 }
 
 interface PacienteCadastroFormProps {
@@ -54,6 +55,12 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel }: Pacie
     
     if (!formData.sexo) { 
       newErrors.sexo = 'Sexo é obrigatório.';
+    }
+
+    if (!formData.email.trim()) { 
+      newErrors.email = 'Email é obrigatório.';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) { 
+      newErrors.email = 'Formato de email inválido.';
     }
 
     setErrors(newErrors);
@@ -102,7 +109,7 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel }: Pacie
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Erro ao cadastrar paciente.');
+        throw new Error(result.error || result.message || 'Erro desconhecido ao cadastrar paciente.');
       }
       
       setMessage('Paciente cadastrado com sucesso!');
@@ -168,8 +175,9 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel }: Pacie
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email (Opcional)</label>
-            <input type="email" name="email" id="email" value={formData.email} onChange={handleGenericChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email *</label> 
+            <input type="email" name="email" id="email" value={formData.email} onChange={handleGenericChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required/> 
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
         </div>
 

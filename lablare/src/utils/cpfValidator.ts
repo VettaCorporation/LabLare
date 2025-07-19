@@ -45,5 +45,8 @@ export function isValidCPF(cpf: string | null | undefined): boolean {
     return false;
   }
 
+  
+
   return true; // Se passou por todas as verificações, o CPF é válido
 }
+

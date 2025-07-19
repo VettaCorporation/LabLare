@@ -21,16 +21,22 @@ model Perfil {
   usuarios    Usuario[] // Relação: Um perfil pode ter vários usuários
 }
 
+// schema.prisma
+
 // Tabela de usuários do sistema
 model Usuario {
   id_usuario            Int           @id @default(autoincrement())
   nome_completo         String        @db.VarChar(255)
-  email                 String        @unique @db.VarChar(255)
+  email                 String        @unique @db.VarChar(255) // AGORA É OBRIGATÓRIO E ÚNICO PARA TODOS OS USUÁRIOS
+  cpf_login             String?       @unique @db.VarChar(11) // CPF para login de pacientes (pode ser nulo para internos)
   hash_senha            String        @db.VarChar(255)
   id_perfil             Int
   data_criacao          DateTime      @default(now()) @db.Timestamp(0)
   ativo                 Boolean       @default(true)
-  primeiro_login        Boolean       @default(false) // NOVO: Campo para controlar o primeiro login do paciente
+  primeiro_login        Boolean       @default(false) 
+
+  reset_password_token  String?       @unique @db.VarChar(255) 
+  reset_password_expires DateTime?    
 
   // Relações
   perfil                Perfil        @relation(fields: [id_perfil], references: [id_perfil])
@@ -38,6 +44,8 @@ model Usuario {
   laudos_tecnicos       Laudo[]       @relation("TecnicoLaudos")
   laudos_validados      Laudo[]       @relation("BiomedicoLaudos")
 }
+
+// ... seus outros modelos (Paciente, Perfil, etc.)
 
 // Tabela de pacientes
 model Paciente {

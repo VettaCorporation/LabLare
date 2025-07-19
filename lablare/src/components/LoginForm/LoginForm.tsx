@@ -5,6 +5,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter'; 
+import { isValidCPF } from '@/utils/cpfValidator'; 
 
 interface LoginFormProps {
   userLabel?: 'CPF' | 'LOGIN' | 'Usuário';
@@ -33,14 +35,26 @@ const LoginForm: React.FC<LoginFormProps> = ({
       return;
     }
 
-    // --- FIM DA NOVA VALIDAÇÃO ---
-
+    if (providerId === 'credentials-paciente') {
+      if (usuario.length !== 11) { 
+        setErro('O CPF deve ter 11 dígitos.');
+        return;
+      }
+      if (!isValidCPF(usuario)) { // Usa isValidCPF do cpfValidator
+        setErro('Por favor, insira um CPF válido.');
+        return;
+      }
+      if (senha.length !== 8) { 
+        setErro('A data de nascimento deve ter 8 dígitos (DDMMYYYY).');
+        return;
+      }
+    }
 
     let credentials: { [key: string]: string } = {};
     if (providerId === 'credentials-admin-recep') {
-      credentials = { email: usuario, senha: senha };
+      credentials = { email: usuario, senha: senha }; 
     } else if (providerId === 'credentials-paciente') {
-      credentials = { cpf: usuario, data_nascimento: senha }; 
+      credentials = { cpf_login: usuario, data_nascimento: senha }; 
     } else {
       setErro('Provedor de login inválido.');
       return;
@@ -56,7 +70,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
         if (providerId === 'credentials-admin-recep') {
           setErro('Credencial ou senha incorreta.'); 
         } else if (providerId === 'credentials-paciente') {
-          setErro('CPF ou senha incorreta.'); 
+          setErro('CPF ou data de nascimento incorretos.'); 
         } else {
           setErro('Erro de login. Tente novamente.'); 
         }
@@ -72,6 +86,17 @@ const LoginForm: React.FC<LoginFormProps> = ({
     } catch (apiError) {
       setErro('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
+  };
+
+  const handleUsuarioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    if (userLabel === 'CPF') {
+      const numericValue = inputValue.replace(/\D/g, ''); 
+      setUsuario(numericValue.slice(0, 11)); 
+    } else {
+      setUsuario(inputValue);
+    }
+    setErro(''); 
   };
 
   return (
@@ -91,10 +116,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
         <input
           type="text" 
           id="usuario"
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
+          // Aplica a máscara APENAS para exibição se for CPF, senão usa o valor bruto
+          value={userLabel === 'CPF' ? formatCpfForDisplay(usuario) : usuario} 
+          onChange={handleUsuarioChange} // Novo handler para o campo de usuário
           className="shadow appearance-none border rounded w-full py-3 px-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          placeholder={`Seu ${userLabel.toLowerCase()}`}
+          // Placeholder e maxLength adaptados
+          placeholder={userLabel === 'CPF' ? '000.000.000-00' : `Seu ${userLabel.toLowerCase()}`} 
+          maxLength={userLabel === 'CPF' ? 14 : undefined} // 14 para CPF formatado
         />
       </div>
 

@@ -1,10 +1,9 @@
 // lablare/src/app/api/auth/[...nextauth]/route.ts
 
-import * as NextAuthModule from 'next-auth';
+import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaClient } from '../../../../generated/prisma/index.js';
+import { PrismaClient } from '../../../../generated/prisma';
 import bcrypt from 'bcrypt';
-import { NextAuthOptions } from 'next-auth';
 
 const prisma = new PrismaClient();
 
@@ -12,17 +11,16 @@ export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       id: 'credentials-admin-recep',
-      name: 'Credenciais Internas',
+      name: 'Credentials Admin/Recep',
       credentials: {
         email: { label: 'Email', type: 'text' },
         senha: { label: 'Senha', type: 'password' },
       },
       async authorize(credentials) {
-        console.log('Authorize [credentials-admin-recep]: Credenciais recebidas:', credentials); // DEBUG LOG
-
+        console.log('AUTH DEBUG: Tentativa de login Admin/Recep.');
         if (!credentials?.email || !credentials?.senha) {
-          console.log('Authorize [credentials-admin-recep]: Credenciais incompletas.'); // DEBUG LOG
-          return null;
+          console.log('AUTH DEBUG: Credenciais Admin/Recep incompletas.');
+          throw new Error('Por favor, insira email e senha.');
         }
 
         const user = await prisma.usuario.findUnique({
@@ -31,107 +29,114 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
-          console.log('Authorize [credentials-admin-recep]: Usuário não encontrado no DB.'); // DEBUG LOG
-          return null;
+          console.log('AUTH DEBUG: Usuário Admin/Recep não encontrado pelo email.');
+          throw new Error('Credencial ou senha incorreta.');
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.senha, user.hash_senha);
-        if (!isPasswordValid) {
-          console.log('Authorize [credentials-admin-recep]: Senha inválida.'); // DEBUG LOG
-          return null;
+        if (user.cpf_login || user.perfil?.nome_perfil === 'Paciente') {
+          console.log('AUTH DEBUG: Usuário encontrado é um paciente ou tem cpf_login. Bloqueando login por este provedor.');
+          throw new Error('Credencial ou senha incorreta.'); 
         }
 
-        console.log('Authorize [credentials-admin-recep]: Login interno bem-sucedido para:', user.email, 'Perfil:', user.perfil?.nome_perfil); // DEBUG LOG
+        const isValidPassword = await bcrypt.compare(credentials.senha, user.hash_senha);
 
-        const returnedUser = { 
+        if (!isValidPassword) {
+          console.log('AUTH DEBUG: Senha Admin/Recep incorreta.');
+          throw new Error('Credencial ou senha incorreta.');
+        }
+
+        console.log('AUTH DEBUG: Login Admin/Recep bem-sucedido.');
+        return {
           id: user.id_usuario.toString(),
           name: user.nome_completo,
           email: user.email,
           id_perfil: user.id_perfil,
           nome_perfil: user.perfil?.nome_perfil,
-          isInternalUser: true, 
+          isInternalUser: true,
         };
-        console.log('Authorize [credentials-admin-recep]: Usuário retornado:', returnedUser); // DEBUG LOG
-        return returnedUser;
       },
     }),
     CredentialsProvider({
       id: 'credentials-paciente',
-      name: 'Credenciais Paciente',
+      name: 'Credentials Paciente',
       credentials: {
-        cpf: { label: 'CPF', type: 'text' },
-        data_nascimento: { label: 'Data de Nascimento', type: 'text' }, 
+        cpf_login: { label: 'CPF', type: 'text' },
+        data_nascimento: { label: 'Data de Nascimento', type: 'password' },
       },
       async authorize(credentials) {
-        console.log('Authorize [credentials-paciente]: Credenciais recebidas:', credentials); // DEBUG LOG
 
-        if (!credentials?.cpf || !credentials?.data_nascimento) {
-          console.log('Authorize [credentials-paciente]: Credenciais de paciente incompletas.'); // DEBUG LOG
-          return null;
+
+        if (!credentials?.cpf_login || !credentials?.data_nascimento) {
+          throw new Error('Por favor, preencha CPF e Data de Nascimento.');
         }
 
-        const dobString = credentials.data_nascimento; 
-        if (dobString.length !== 8 || isNaN(Number(dobString))) {
-            console.error("Authorize [credentials-paciente]: Data de nascimento inválida (formato DDMMYYYY esperado):", dobString); // DEBUG LOG
-            return null;
-        }
-        const day = parseInt(dobString.substring(0, 2), 10);
-        const month = parseInt(dobString.substring(2, 4), 10);
-        const year = parseInt(dobString.substring(4, 8), 10);
+        const cleanCpf = credentials.cpf_login.replace(/\D/g, '');
 
-        const parsedDate = new Date(Date.UTC(year, month - 1, day));
+        const user = await prisma.usuario.findUnique({
+          where: { cpf_login: cleanCpf },
+          include: { perfil: true },
+        });
 
-        if (parsedDate.getUTCFullYear() !== year || parsedDate.getUTCMonth() !== month - 1 || parsedDate.getUTCDate() !== day) {
-            console.error("Authorize [credentials-paciente]: Data de nascimento inválida (data inexistente):", credentials.data_nascimento); // DEBUG LOG
-            return null;
+        if (!user) {
+          throw new Error('CPF ou data de nascimento incorretos.');
         }
+
+        if (user.perfil?.nome_perfil !== 'Paciente') {
+          throw new Error('CPF ou data de nascimento incorretos.');
+        }
+
+
 
         const patient = await prisma.paciente.findUnique({
-          where: { 
-            cpf: credentials.cpf,
-            data_nascimento: parsedDate, 
-          },
+            where: { cpf: cleanCpf },
         });
 
         if (!patient) {
-          console.log('Authorize [credentials-paciente]: Paciente não encontrado no DB com CPF e Data de Nasc. fornecidos.'); // DEBUG LOG
-          return null;
+            throw new Error('CPF ou data de nascimento incorretos.');
         }
 
-        const patientProfileName = 'Paciente'; 
-        console.log('Authorize [credentials-paciente]: Login de paciente bem-sucedido para:', patient.nome_completo); // DEBUG LOG
+        const providedDataNascimento = credentials.data_nascimento; 
 
-        const returnedUser = { 
-          id: patient.id_paciente.toString(),
+        const dbDate = new Date(patient.data_nascimento);
+        const dbDay = String(dbDate.getUTCDate()).padStart(2, '0');
+        const dbMonth = String(dbDate.getUTCMonth() + 1).padStart(2, '0');
+        const dbYear = dbDate.getUTCFullYear();
+        const dbDataNascimentoFormatted = `${dbDay}${dbMonth}${dbYear}`;
+
+
+        const isValidPassword = await bcrypt.compare(providedDataNascimento, user.hash_senha);
+
+        if (!isValidPassword) {
+          console.log('AUTH DEBUG: Data de nascimento Paciente incorreta ou hash não corresponde.');
+          throw new Error('CPF ou data de nascimento incorretos.');
+        }
+
+        console.log('AUTH DEBUG: Login Paciente bem-sucedido.');
+        return {
+          id: user.id_usuario.toString(),
           name: patient.nome_completo,
           email: patient.email || null,
+          id_perfil: user.id_perfil,
+          nome_perfil: user.perfil?.nome_perfil,
+          isInternalUser: false, 
           cpf: patient.cpf,
+          cpf_login: user.cpf_login,
           data_nascimento: patient.data_nascimento.toISOString(),
-          nome_perfil: patientProfileName,
-          isInternalUser: false, // Definido como 'false' para pacientes
         };
-        console.log('Authorize [credentials-paciente]: Usuário retornado:', returnedUser); // DEBUG LOG
-        return returnedUser;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      console.log('JWT Callback: INÍCIO. Recebido user object (de authorize):', user); // DEBUG LOG
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.nome_perfil = user.nome_perfil;
-        
-        // Forçar isInternalUser baseado no nome_perfil
-        if (user.nome_perfil === 'Paciente') {
-          token.isInternalUser = false; 
-          token.cpf = user.cpf;
-          token.data_nascimento = user.data_nascimento;
-        } else {
-          token.isInternalUser = true; 
-        }
+        token.isInternalUser = user.isInternalUser;
+        token.cpf = user.cpf;
+        token.cpf_login = user.cpf_login;
+        token.data_nascimento = user.data_nascimento;
       }
       console.log('JWT Callback: FIM. Token final ANTES de retornar:', token); // DEBUG LOG
       return token;
@@ -144,11 +149,9 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email;
         session.user.nome_perfil = token.nome_perfil;
         session.user.isInternalUser = token.isInternalUser;
-
-        if (token.nome_perfil === 'Paciente') {
-          session.user.cpf = token.cpf;
-          session.user.data_nascimento = token.data_nascimento;
-        }
+        session.user.cpf = token.cpf;
+        session.user.cpf_login = token.cpf_login;
+        session.user.data_nascimento = token.data_nascimento;
       }
       console.log('Session Callback: FIM. Sessão final ANTES de retornar:', session); // DEBUG LOG
       return session;
@@ -163,6 +166,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuthModule.default(authOptions);
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
