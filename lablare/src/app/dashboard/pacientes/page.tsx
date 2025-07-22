@@ -1,8 +1,8 @@
-// lablare/src/app/dashboard/pacientes/page.tsx
-'use client'; // Marca como Client Component para usar hooks como useSession
+// src/app/dashboard/pacientes/page.tsx (COM VISUALIZAÇÃO DE SOLICITAÇÕES INTEGRADA)
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { PlusIcon, MagnifyingGlassIcon, EyeIcon, ArrowUturnLeftIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, EyeIcon, ArrowUturnLeftIcon, DocumentTextIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import PacienteCadastroForm from '@/components/PacienteCadastroForm/PacienteCadastroForm';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -14,104 +14,105 @@ interface Paciente {
   cpf: string;
   data_nascimento: string;
   sexo: string | null;
-  email?: string;
+  email?: string | null;
 }
 
-function SolicitacoesDoPaciente({
-  paciente,
-  onBack,
-}: {
-  paciente: Paciente;
-  onBack: () => void;
-}) {
-  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+// Função auxiliar para o status, copiada de solicitacoes/page.jsx
+const getStatusBadge = (status: string) => {
+    let bgColor = 'bg-gray-200';
+    let textColor = 'text-gray-800';
+    switch (status) {
+      case 'AGUARDANDO_PAGAMENTO':
+        bgColor = 'bg-yellow-100';
+        textColor = 'text-yellow-800';
+        break;
+      case 'PAGA':
+        bgColor = 'bg-green-100';
+        textColor = 'text-green-800';
+        break;
+      // Adicione outros casos conforme necessário
+    }
+    return (
+      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor} ${textColor}`}>
+        {status.replace(/_/g, ' ')}
+      </span>
+    );
+};
+
+function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBack: () => void; }) {
+  const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  interface Solicitacao {
-    id_solicitacao: number;
-    data_hora_solicitacao: string;
-    medico_solicitante: string;
-    status: string;
-    itens_solicitacao: Array<{
-      exame_catalogo: {
-        nome_exame: string;
-        preco: number;
-      };
-    }>;
-  }
-
   useEffect(() => {
     const fetchSolicitacoes = async () => {
-      try {
-        const response = await fetch(`/api/solicitacoes?pacienteId=${paciente.id_paciente}`);
-        if (!response.ok) {
-          throw new Error('Falha ao buscar as solicitações do paciente.');
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/solicitacoes?pacienteId=${paciente.id_paciente}`);
+            if (!response.ok) {
+                throw new Error('Falha ao buscar as solicitações do paciente.');
+            }
+            const data = await response.json();
+            setSolicitacoes(data);
+        } catch (err: any) {
+            console.error("Erro ao carregar solicitações:", err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-        const data: Solicitacao[] = await response.json();
-        setSolicitacoes(data);
-      } catch (err: any) {
-        console.error('Erro ao buscar solicitações:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
     };
-
     fetchSolicitacoes();
-  }, [paciente.id_paciente]);
+  }, [paciente]);
+
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">
           Solicitações de: <span className="text-blue-600">{paciente.nome_completo}</span>
         </h2>
         <button
           onClick={onBack}
-          className="flex items-center gap-x-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+          className="flex items-center gap-x-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
         >
           <ArrowUturnLeftIcon className="h-5 w-5" />
           Voltar
         </button>
       </div>
 
-      {loading && <p className="text-gray-500">Carregando solicitações...</p>}
+      {loading && <p>Carregando solicitações...</p>}
       {error && <p className="text-red-500">Erro: {error}</p>}
-      {!loading && solicitacoes.length === 0 && (
-        <p className="text-gray-600">Nenhuma solicitação de exame encontrada para este paciente.</p>
+      
+      {!loading && !error && solicitacoes.length === 0 && (
+        <p className="text-center text-gray-600 p-4 border rounded-md bg-gray-50">Nenhuma solicitação de exame encontrada para este paciente.</p>
       )}
 
-      {!loading && solicitacoes.length > 0 && (
+      {!loading && !error && solicitacoes.length > 0 && (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médico</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exames</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data/Hora</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Médico</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exames</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {solicitacoes.map((sol) => (
                 <tr key={sol.id_solicitacao}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sol.id_solicitacao}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(sol.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sol.medico_solicitante}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${sol.status === 'PAGA' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {sol.status.replace('_', ' ')}
-                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{sol.id_solicitacao}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{new Date(sol.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{sol.medico_solicitante || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm">
                     <ul className="list-disc list-inside">
-                        {sol.itens_solicitacao.map((item, index) => (
-                            <li key={index}>{item.exame_catalogo?.nome_exame || 'Exame desconhecido'}</li>
-                        ))}
+                      {sol.itens_solicitacao?.map((item: any, index: number) => (
+                        <li key={index}>{item.exame_catalogo?.nome_exame || 'Exame desconhecido'}</li>
+                      ))}
                     </ul>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{getStatusBadge(sol.status)}</td>
                 </tr>
               ))}
             </tbody>
@@ -122,167 +123,177 @@ function SolicitacoesDoPaciente({
   );
 }
 
-// =============================================================================
-// PacientesPage (Componente Principal da Página)
-// =============================================================================
+
+function DeleteConfirmationModal({ paciente, onClose, onConfirm, message }: { paciente: Paciente, onClose: () => void, onConfirm: () => void, message: string }) {
+  // ...código do modal...
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h2>
+        <p className="text-gray-700 mb-6">
+          Tem certeza que deseja excluir o paciente <span className="font-bold">{paciente.nome_completo}</span>?
+          <br/>
+          <span className="font-bold text-red-600">Esta ação não pode ser desfeita.</span>
+        </p>
+        {message && <p className="mb-4 text-red-600">{message}</p>}
+        <div className="flex justify-center gap-4">
+          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">
+            Cancelar
+          </button>
+          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">
+            Confirmar Exclusão
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function PacientesPage() {
-  const [isAdding, setIsAdding] = useState(false);
+  // ...código da página principal...
+  const [view, setView] = useState<'list' | 'edit' | 'solicitacoes'>('list');
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingList, setIsLoadingList] = useState(true);
-  const [viewingPatient, setViewingPatient] = useState<Paciente | null>(null);
+  const [currentPatient, setCurrentPatient] = useState<Paciente | null>(null);
+
+  const [patientToDelete, setPatientToDelete] = useState<Paciente | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState('');
 
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  useEffect(() => {
-    if (status === 'loading') return; 
-
-    if (!session) {
-      console.warn('Sessão NÃO encontrada na página de Pacientes. Redirecionando para /login.');
-      router.push('/login');
-      return; 
-    }
-  }, [session, status, router]); 
-
   const fetchPacientes = useCallback(async () => {
     setIsLoadingList(true);
     try {
-      let url = '/api/pacientes'; 
-      if (searchTerm.length >= 3) {
-        url = `/api/pacientes/search?nome=${encodeURIComponent(searchTerm)}`; 
-      }
+      const url = searchTerm.length >= 3 ? `/api/pacientes?nome=${encodeURIComponent(searchTerm)}` : '/api/pacientes';
       const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Falha ao buscar dados dos pacientes.');
-      }
+      if (!response.ok) throw new Error('Falha ao buscar pacientes.');
       const data = await response.json();
       setPacientes(data);
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
-      setPacientes([]);
     } finally {
       setIsLoadingList(false);
     }
   }, [searchTerm]);
 
   useEffect(() => {
-    if (!isAdding && !viewingPatient && status === 'authenticated') {
+    if (status === 'authenticated' && view === 'list') {
       const debounceTimeout = setTimeout(() => {
         fetchPacientes();
       }, 300);
-
       return () => clearTimeout(debounceTimeout);
     }
-  }, [searchTerm, isAdding, viewingPatient, fetchPacientes, status]);
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, view, fetchPacientes, router]);
 
   const handlePatientSaved = () => {
-    setSearchTerm('');
-    setIsAdding(false);
-    setViewingPatient(null);
-    fetchPacientes();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    setView('list');
   };
   
+  const handleOpenDeleteModal = (paciente: Paciente) => {
+    setPatientToDelete(paciente);
+    setDeleteMessage('');
+  };
+  
+  const handleCloseDeleteModal = () => {
+    setPatientToDelete(null);
+  };
+  
+  const handleConfirmDelete = async () => {
+    if (!patientToDelete) return;
+    try {
+      const response = await fetch(`/api/pacientes/${patientToDelete.id_paciente}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+      handleCloseDeleteModal();
+      fetchPacientes();
+    } catch (error: any) {
+      setDeleteMessage(error.message);
+    }
+  };
+
+  const handleStartEdit = (paciente: Paciente) => {
+    setCurrentPatient(paciente);
+    setView('edit');
+  };
+
   if (status === 'loading') {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-lg text-gray-700">Verificando autenticação...</p>
-      </div>
-    );
+    return <div className="p-8">Carregando...</div>;
   }
-
-  if (status !== 'authenticated') {
-    return null; 
-  }
-
+  
   const userProfile = session?.user?.nome_perfil;
   const isAdmin = userProfile === 'Administrador';
   const isRecepcionista = userProfile === 'Recepcionista';
 
-  if (isAdding) {
-    if (!isAdmin && !isRecepcionista) {
-      return (
-        <div className="flex h-screen items-center justify-center">
-          <p className="text-lg text-red-700">Você não tem permissão para adicionar pacientes.</p>
-        </div>
-      );
-    }
-    return <PacienteCadastroForm onPatientSaved={handlePatientSaved} onCancel={() => setIsAdding(false)} />;
+  if (view === 'edit') {
+    return (
+      <PacienteCadastroForm
+        onPatientSaved={handlePatientSaved}
+        onCancel={() => setView('list')}
+        initialData={currentPatient}
+      />
+    );
   }
 
-  if (viewingPatient) {
-    return <SolicitacoesDoPaciente paciente={viewingPatient} onBack={() => setViewingPatient(null)} />;
+  if (view === 'solicitacoes' && currentPatient) {
+    return <SolicitacoesDoPaciente paciente={currentPatient} onBack={() => setView('list')} />;
   }
 
   return (
     <div className="space-y-6 p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">Gestão de Pacientes</h1>
+      {patientToDelete && (
+        <DeleteConfirmationModal 
+          paciente={patientToDelete} 
+          onClose={handleCloseDeleteModal} 
+          onConfirm={handleConfirmDelete}
+          message={deleteMessage}
+        />
+      )}
 
+      <h1 className="text-3xl font-bold text-gray-900 mb-4">Gestão de Pacientes</h1>
+      
       <div className="flex justify-between items-center gap-4">
         <div className="relative flex-grow max-w-lg">
-          <label htmlFor="search-paciente" className="sr-only">Buscar Paciente</label>
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-            <MagnifyingGlassIcon className="h-5 w-5" />
-          </div>
-          <input
-            type="text"
-            id="search-paciente"
-            placeholder="Buscar por nome ou CPF..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          <input type="text" placeholder="Buscar por nome ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-4 pr-3 py-2 border border-gray-300 rounded-md"
           />
         </div>
-
         <div className="flex gap-3">
-          {/* Botão "Adicionar Paciente" com link para /atendimento?action=add */}
           {(isAdmin || isRecepcionista) && (
-            <Link href="/atendimento?action=add">
-              <button
-                className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
-              >
-                <PlusIcon className="h-5 w-5" />
-                Adicionar Paciente
-              </button>
+            <Link href="/dashboard/atendimento?action=add" className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+              <PlusIcon className="h-5 w-5" /> Adicionar Paciente
             </Link>
           )}
-
-          {/* Botão "Solicitar Exame" com link para /atendimento?action=solicitate */}
           {(isAdmin || isRecepcionista) && (
-            <Link href="/atendimento?action=solicitate">
-              <button
-                className="flex items-center gap-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
-              >
-                <DocumentTextIcon className="h-5 w-5" />
-                Solicitar Exame
-              </button>
+            <Link href="/dashboard/atendimento?action=solicitate" className="flex items-center gap-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">
+              <DocumentTextIcon className="h-5 w-5" /> Solicitar Exame
             </Link>
           )}
         </div>
       </div>
-
+      
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Pacientes Cadastrados</h2>
         {isLoadingList ? (
-          <p className="text-gray-500">Carregando dados dos pacientes...</p>
-        ) : pacientes.length === 0 ? (
-          <p className="text-gray-500">Nenhum paciente encontrado. Tente ajustar o filtro.</p>
+          <p>Carregando...</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome Completo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Nasc.</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sexo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-MAIL</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome Completo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CPF</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data de Nasc.</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sexo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -290,33 +301,21 @@ export default function PacientesPage() {
                   <tr key={paciente.id_paciente}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{paciente.nome_completo}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.cpf}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(paciente.data_nascimento)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.sexo || 'Não informado'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(paciente.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.sexo || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{paciente.email || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        <button
-                            onClick={() => setViewingPatient(paciente)}
-                            className="text-blue-600 hover:text-blue-900 mx-2 p-1 rounded-full hover:bg-blue-50" 
-                            title="Visualizar Solicitações"
-                        >
-                            <EyeIcon className="h-5 w-5" />
+                        <button onClick={() => { setCurrentPatient(paciente); setView('solicitacoes'); }} className="text-blue-600 hover:text-blue-900 mx-2" title="Visualizar Solicitações">
+                            <EyeIcon className="h-5 w-5 inline" />
                         </button>
                         {(isAdmin || isRecepcionista) && (
-                            <button
-                                onClick={() => console.log('Editar Paciente:', paciente.id_paciente)}
-                                className="text-indigo-600 hover:text-indigo-900 mx-2 p-1 rounded-full hover:bg-indigo-50"
-                                title="Editar Paciente"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.232z"></path></svg>
+                            <button onClick={() => handleStartEdit(paciente)} className="text-indigo-600 hover:text-indigo-900 mx-2" title="Editar Paciente">
+                                <PencilIcon className="h-5 w-5 inline" />
                             </button>
                         )}
                         {isAdmin && (
-                            <button
-                                onClick={() => console.log('Excluir Paciente:', paciente.id_paciente)}
-                                className="text-red-600 hover:text-red-900 mx-2 p-1 rounded-full hover:bg-red-50"
-                                title="Excluir Paciente"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <button onClick={() => handleOpenDeleteModal(paciente)} className="text-red-600 hover:text-red-900 mx-2" title="Excluir Paciente">
+                                <TrashIcon className="h-5 w-5 inline" />
                             </button>
                         )}
                     </td>
