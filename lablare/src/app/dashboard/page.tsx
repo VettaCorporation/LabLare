@@ -95,9 +95,9 @@ export default function DashboardPage() {
         <KpiCard title="Entrega de Laudos (Média)" value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`} icon={ClockIcon} colorClass="bg-orange-500" />
       </div>
       
-      {/* Seção principal com gráfico e tabelas */}
+      {/* Seção principal com gráfico de faturamento */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-3"> {/* Alterado para col-span-3 para ocupar a linha toda */}
+        <div className="lg:col-span-3">
             <MonthlyRevenueLineChart 
                 data={stats.chartData.monthlyRevenue}
                 selectedYear={selectedYear}
@@ -111,16 +111,16 @@ export default function DashboardPage() {
         </div>
       </div>
       
-      {/* Nova seção com os gráficos de pizza e solicitações recentes */}
+      {/* Seção com os gráficos de pizza e a tabela de PACIENTES */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <InfoPieChart title="Top 5 Exames Mais Solicitados" data={stats.chartData.topExams} />
         <InfoPieChart title="Faturamento por Tipo de Atendimento" data={stats.chartData.revenueByType} />
-        <RecentRequests requests={stats.recentRequests} />
+        {/* ▼▼▼ ALTERAÇÃO FEITA AQUI ▼▼▼ */}
+        <RecentPatients patients={stats.recentPatients} />
       </div>
 
-      {/* Seção inferior para a tabela de pacientes recentes */}
       <div>
-        <RecentPatients patients={stats.recentPatients} />
+        <RecentRequests requests={stats.recentRequests} />
       </div>
     </div>
   );
