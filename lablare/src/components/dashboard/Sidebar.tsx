@@ -1,4 +1,4 @@
-// src/components/Sidebar/Sidebar.tsx
+// src/components/dashboard/Sidebar.tsx
 'use client';
 
 import Image from 'next/image';
@@ -15,14 +15,15 @@ import {
   KeyIcon, // Senha
   TicketIcon, // Etiqueta
   Cog6ToothIcon, // Configurações
-  ShieldCheckIcon, // Privilégios (se for uma seção separada ou dentro de Configurações)
-  // Adicione outros ícones que precisar
+  ShieldCheckIcon, // Privilégios
+  BeakerIcon, // ADICIONADO: Ícone para Recebimento de Amostras
 } from '@heroicons/react/24/outline'; 
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ElementType; 
+  allowedProfiles: string[]; // Adicionado: Perfis permitidos para este item
 }
 
 function classNames(...classes: string[]) {
@@ -31,7 +32,7 @@ function classNames(...classes: string[]) {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession() as any;
+  const { data: session, status } = useSession(); // Removido 'as any' para melhor tipagem
 
   if (status === 'loading') {
     return (
@@ -42,94 +43,42 @@ export default function Sidebar() {
   }
 
   const userProfile = session?.user?.nome_perfil;
-  const isAdmin = userProfile === 'Administrador'; // Variável para verificar se é Admin
+  const isAdmin = userProfile === 'Administrador';
+  const isRecepcionista = userProfile === 'Recepcionista';
+  const isTecnicoLaboratorio = userProfile === 'Técnico de Laboratório';
+  const isBiomedico = userProfile === 'Biomédico';
+  const isResponsavelFinanceira = userProfile === 'Responsável Financeira';
+  const isPaciente = userProfile === 'Paciente';
 
-  let filteredNavigation: NavItem[] = [];
 
-  if (session) { // Apenas se houver uma sessão ativa
-    // Itens que TODOS os perfis logados (exceto Admin) podem ver.
-    // Administrador verá tudo que está aqui MAIS os itens exclusivos dele.
-    const commonItems: NavItem[] = [
-      { name: 'Painel', href: '/dashboard', icon: HomeIcon },
-      { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
-      // O anexo 1 para Recepcionista não mostra Colaboradores e Resultados.
-      // Então, se Colaboradores e Resultados são APENAS para Admin, coloque-os no bloco do Admin.
-      // { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon }, // Mover para o Admin
-      // { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon }, // Mover para o Admin ou perfis específicos
-      { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
-      { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon },
-      { name: 'Etiqueta', href: '/dashboard/etiqueta', icon: TicketIcon },
-      { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon },
-    ];
+  // Lista completa de navegação com permissões definidas para cada item
+  const allNavItems: NavItem[] = [
+    { name: 'Painel', href: '/dashboard', icon: HomeIcon, 
+      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
+    { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon, 
+      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico'] },
+    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
+      allowedProfiles: ['Administrador'] }, // Exclusivo do Admin
+    { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon, 
+      allowedProfiles: ['Administrador', 'Técnico de Laboratório'] }, // Admin e Técnico de Laboratório
+    { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon, 
+      allowedProfiles: ['Administrador', 'Biomedico'] }, // Resultados para Admin e Biomédico
+    { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon, 
+      allowedProfiles: ['Administrador', 'Recepcionista', 'Responsável Financeira'] },
+    { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon, 
+      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
+    { name: 'Etiqueta', href: '/dashboard/etiqueta', icon: TicketIcon, 
+      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório'] }, // Recepcionista e Técnico podem ver
+    { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon, 
+      allowedProfiles: ['Administrador'] }, // Exclusivo do Admin
+    { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon, 
+      allowedProfiles: ['Administrador', 'Recepcionista'] }, // Admin e Recepcionista podem ver
+  ];
 
-    // Adicione os itens comuns
-    filteredNavigation.push(...commonItems);
-
-    // Itens específicos do Administrador (conforme Anexo 1 e sua descrição)
-    if (isAdmin) {
-      filteredNavigation.push(
-        { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },
-        { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon },
-        // Se 'Privilégios' for uma tela que SÓ Administrador tem acesso total para gerenciar, coloque aqui.
-        // Se Recepcionista tem uma versão simplificada de "Privilégios", o link pode ser comum e a UI interna ser condicional.
-        // No anexo 1, Recepcionista tem 'Privilégios'. Então, é um item comum ou uma versão diferente?
-        // Vou assumir que 'Privilégios' é para todos, mas a tela em si tem conteúdo condicional.
-        // Por isso, se for item comum, ele já estaria em 'commonItems'.
-        // Se o Administrador tem uma tela de privilégios diferente/mais completa:
-        // { name: 'Gestão de Privilégios', href: '/dashboard/admin-privilegios', icon: ShieldCheckIcon },
-        // Ou, se a tela '/dashboard/privilegios' tem UI condicional, o link já estaria em commonItems.
-      );
-    }
-    
-    // Se "Privilégios" na imagem do Recepcionista é uma tela à parte e exclusiva do Recepcionista (e talvez Admin),
-    // você pode gerenciar isso de forma mais granular ou deixá-la como uma rota comum com UI condicional.
-    // Pelo que entendi, você quer que todos os 4 perfis tenham "quase tudo", exceto o que é **EXCLUSIVO** do Admin.
-    // Então, "Colaboradores" e "Resultados" são os candidatos a serem exclusivos do Admin no menu.
-    // Vamos revisar os `commonItems` para ter certeza.
-
-    // Ajuste fino dos commonItems:
-    // Painel, Pacientes, Orçamento, Senha, Etiqueta, Configurações.
-    // E, se "Privilégios" for comum a Recepcionista e Admin (Anexo 1 e 2), ele também seria comum.
-    // No seu código original de Sidebar.tsx, você tinha:
-    // if (userProfile === 'Recepcionista') { navItems.push({ href: '/privilegios', icon: ShieldCheckIcon, label: 'Privilégios' }); }
-    // Isso sugere que Privilégios não é comum a TODOS, mas é um item para Recepcionista e Administrador.
-    // Melhor gerenciar isso com um array de permissões por item no sidebar, ou duplicar.
-    
-    // Para simplificar, vamos definir uma lista base para Administrador e depois filtrar para outros.
-    // Isso é mais claro dada a "visão completa" do Administrador.
-
-    // Lista completa de navegação (como se fosse o Admin vendo tudo)
-    const allNavItems: NavItem[] = [
-      { name: 'Painel', href: '/dashboard', icon: HomeIcon },
-      { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
-      { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },
-      { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon },
-      { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
-      { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon },
-      { name: 'Etiqueta', href: '/dashboard/etiqueta', icon: TicketIcon },
-      { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon },
-      { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon }, // Assumindo que é uma página e o link está aqui
-    ];
-
-    // Filtrar com base no perfil
-    if (isAdmin) {
-      filteredNavigation = allNavItems; // Admin vê tudo
-    } else {
-      // Outros perfis (Recepcionista, Biomédico, Técnico de Laboratório, Responsável Financeira)
-      // Eles veem tudo, EXCETO o que é exclusivo do Administrador.
-      // Quais são exclusivos do Administrador? Colaboradores e Resultados, talvez Gestão de Privilégios (total).
-
-      const adminExclusiveItems = ['Colaboradores', 'Resultados']; // Nomes dos itens exclusivos do Admin
-
-      filteredNavigation = allNavItems.filter(item => !adminExclusiveItems.includes(item.name));
-
-      // Se "Privilégios" é visível apenas para Admin e Recepcionista (mas não para Técnico/Biomédico/Financeiro)
-      // você precisaria de uma lógica mais granular ou incluí-lo nos "commonItems" se for universalmente acessível
-      // por todos os 4 perfis não-Admin. Pela imagem do Recepcionista, ele vê Privilégios.
-      // Então, talvez 'Privilégios' não seja exclusivo do Admin, mas sim de Admin E Recepcionista.
-      // Vamos mantê-lo fora dos "exclusiveItems" por enquanto e tratar a proteção na página `/privilegios`.
-    }
-  }
+  // Filtra a navegação com base no perfil do usuário logado
+  const filteredNavigation = allNavItems.filter(item => 
+    item.allowedProfiles.includes(userProfile || '') // Se userProfile for null/undefined, não inclui em nenhum allowedProfiles
+  );
 
   return (
     <div className="flex flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r border-gray-200 w-64 flex-shrink-0">
@@ -138,6 +87,8 @@ export default function Sidebar() {
           src={LogoLab}
           alt="Lare Laboratório Logo"
           width={100}
+          height={32} // Adicionado height para evitar CLS
+          priority // Opcional: para carregar mais rápido o logo
         />
       </div>
       <nav className="flex flex-1 flex-col">
