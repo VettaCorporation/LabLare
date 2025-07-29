@@ -1,3 +1,4 @@
+// src/app/api/dashboard/stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '../../../../generated/prisma';
 import { getServerSession } from 'next-auth';
@@ -12,7 +13,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
-  // Extrai os parâmetros de filtro da URL
   const { searchParams } = new URL(request.url);
   const year = searchParams.get('year');
   const startMonth = searchParams.get('startMonth');
@@ -79,15 +79,6 @@ export async function GET(request: NextRequest) {
         value: Number(item._sum.valor_pago),
     }));
 
-    const recentRequests = await prisma.solicitacao.findMany({
-      take: 5,
-      orderBy: { data_hora_solicitacao: 'desc' },
-      include: {
-        paciente: { select: { nome_completo: true } },
-        itens_solicitacao: { include: { exame_catalogo: { select: { nome_exame: true } } } }
-      }
-    });
-
     const recentPatientsData = await prisma.paciente.findMany({
       take: 5,
       orderBy: { data_cadastro: 'desc' },
@@ -95,11 +86,37 @@ export async function GET(request: NextRequest) {
     });
     const recentPatients = recentPatientsData.map(p => ({ ...p, ultima_solicitacao: p.solicitacoes[0]?.data_hora_solicitacao || null }));
     
-    // --- LÓGICA DO GRÁFICO DE FATURAMENTO ATUALIZADA ---
+    // --- DADOS PARA TABELAS (CORRIGIDO) ---
+    const recentRequestsRaw = await prisma.solicitacao.findMany({
+      take: 5,
+      orderBy: { data_hora_solicitacao: 'desc' },
+      include: {
+        paciente: { select: { nome_completo: true } },
+        itens_solicitacao: { include: { exame_catalogo: { select: { preco: true } } } },
+        pagamentos: { select: { valor_pago: true } }
+      }
+    });
+
+    const recentRequests = recentRequestsRaw.map(req => {
+        let valor = 0; // Inicia como número
+        if (req.pagamentos && req.pagamentos.length > 0) {
+            valor = req.pagamentos.reduce((acc, p) => acc + Number(p.valor_pago), 0);
+        } else {
+            valor = req.itens_solicitacao.reduce((acc, item) => acc + Number(item.exame_catalogo.preco), 0);
+        }
+        return {
+            id_solicitacao: req.id_solicitacao,
+            data_hora_solicitacao: req.data_hora_solicitacao,
+            status: req.status,
+            paciente: req.paciente,
+            valor: valor
+        };
+    });
+    
+    // --- LÓGICA DO GRÁFICO DE FATURAMENTO ---
     let monthlyRevenueData;
 
     if (year && startMonth && endMonth) {
-      // Lógica para quando os filtros são fornecidos
       const yearNum = parseInt(year);
       const startMonthNum = parseInt(startMonth);
       const endMonthNum = parseInt(endMonth);
@@ -111,7 +128,7 @@ export async function GET(request: NextRequest) {
           const monthName = date.toLocaleString('pt-BR', { month: 'short' });
 
           const startOfMonth = new Date(yearNum, currentMonth - 1, 1);
-          const endOfMonth = new Date(yearNum, currentMonth, 0, 23, 59, 59); // Garante pegar o dia todo
+          const endOfMonth = new Date(yearNum, currentMonth, 0, 23, 59, 59);
 
           const revenue = await prisma.pagamento.aggregate({
             _sum: { valor_pago: true },
@@ -125,7 +142,6 @@ export async function GET(request: NextRequest) {
         })
       );
     } else {
-      // Lógica padrão (últimos 6 meses)
       monthlyRevenueData = await Promise.all(
         Array.from({ length: 6 }).map(async (_, i) => {
           const date = new Date();
@@ -146,7 +162,7 @@ export async function GET(request: NextRequest) {
           };
         })
       );
-      monthlyRevenueData.reverse(); // Garante a ordem cronológica
+      monthlyRevenueData.reverse();
     }
 
     // --- JUNÇÃO DE TODOS OS DADOS ---

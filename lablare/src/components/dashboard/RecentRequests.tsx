@@ -2,7 +2,6 @@
 'use client';
 
 import React from 'react';
-import { DocumentTextIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
 // Definindo o tipo para uma solicitação individual
@@ -12,12 +11,8 @@ interface RequestItem {
   paciente: {
     nome_completo: string;
   };
-  itens_solicitacao: {
-    exame_catalogo: {
-      nome_exame: string;
-    };
-  }[];
   status: string;
+  valor: number; // Nova propriedade para o valor
 }
 
 interface RecentRequestsProps {
@@ -58,12 +53,13 @@ const RecentRequests: React.FC<RecentRequestsProps> = ({ requests }) => {
         </Link>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="w-full table-auto divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase ">Valor</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -72,6 +68,9 @@ const RecentRequests: React.FC<RecentRequestsProps> = ({ requests }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.paciente.nome_completo}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(request.data_hora_solicitacao).toLocaleDateString('pt-BR')}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">{getStatusBadge(request.status)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-left font-bold text-gray-700">
+                    {request.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </td>
               </tr>
             ))}
           </tbody>
