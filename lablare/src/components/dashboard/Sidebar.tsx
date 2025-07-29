@@ -10,20 +10,20 @@ import {
   HomeIcon,
   UsersIcon, // Pacientes
   UserGroupIcon, // Colaboradores
-  DocumentTextIcon, // Resultados
   CalculatorIcon, // Orçamento
   KeyIcon, // Senha
   TicketIcon, // Etiqueta
   Cog6ToothIcon, // Configurações
   ShieldCheckIcon, // Privilégios
-  BeakerIcon, // ADICIONADO: Ícone para Recebimento de Amostras
+  BeakerIcon, // Ícone para Recebimento de Amostras
+  ClipboardDocumentCheckIcon, // NOVO: Ícone para Lançamento de Resultados
 } from '@heroicons/react/24/outline'; 
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ElementType; 
-  allowedProfiles: string[]; // Adicionado: Perfis permitidos para este item
+  allowedProfiles: string[];
 }
 
 function classNames(...classes: string[]) {
@@ -32,7 +32,7 @@ function classNames(...classes: string[]) {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession(); // Removido 'as any' para melhor tipagem
+  const { data: session, status } = useSession();
 
   if (status === 'loading') {
     return (
@@ -58,26 +58,26 @@ export default function Sidebar() {
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico'] },
     { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
-      allowedProfiles: ['Administrador'] }, // Exclusivo do Admin
-    { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon, 
-      allowedProfiles: ['Administrador', 'Técnico de Laboratório'] }, // Admin e Técnico de Laboratório
-    { name: 'Resultados', href: '/dashboard/resultados', icon: DocumentTextIcon, 
-      allowedProfiles: ['Administrador', 'Biomedico'] }, // Resultados para Admin e Biomédico
+      allowedProfiles: ['Administrador'] },
     { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Responsável Financeira'] },
     { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
     { name: 'Etiqueta', href: '/dashboard/etiqueta', icon: TicketIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório'] }, // Recepcionista e Técnico podem ver
+      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório'] },
+    { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon, 
+      allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
+    { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon, 
+      allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
     { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon, 
-      allowedProfiles: ['Administrador'] }, // Exclusivo do Admin
+      allowedProfiles: ['Administrador'] },
     { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista'] }, // Admin e Recepcionista podem ver
+      allowedProfiles: ['Administrador', 'Recepcionista'] },
   ];
 
   // Filtra a navegação com base no perfil do usuário logado
   const filteredNavigation = allNavItems.filter(item => 
-    item.allowedProfiles.includes(userProfile || '') // Se userProfile for null/undefined, não inclui em nenhum allowedProfiles
+    item.allowedProfiles.includes(userProfile || '')
   );
 
   return (
@@ -87,8 +87,8 @@ export default function Sidebar() {
           src={LogoLab}
           alt="Lare Laboratório Logo"
           width={100}
-          height={32} // Adicionado height para evitar CLS
-          priority // Opcional: para carregar mais rápido o logo
+          height={32}
+          priority
         />
       </div>
       <nav className="flex flex-1 flex-col">
@@ -113,7 +113,7 @@ export default function Sidebar() {
                       )}
                       aria-hidden="true"
                     />
-                    {item.name}
+                    <p className="hidden md:block">{item.name}</p>
                   </Link>
                 </li>
               ))}
