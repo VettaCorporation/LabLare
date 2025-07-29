@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '../../../generated/prisma/index.js'; 
+// lablare/src/app/api/solicitacoes/route.ts
+
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '../../../generated/prisma/index.js'; // Caminho ajustado e com .js
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route.js'; // Importa as opções de autenticação
 
 const prisma = new PrismaClient();
 
-export async function POST(req) {
+// --- MÉTODO POST --- (Mantido como está)
+export async function POST(req: NextRequest) {
   try {
     const {
       id_paciente,
@@ -61,7 +66,7 @@ export async function POST(req) {
 
     return NextResponse.json({ message: 'Solicitação de exames registrada com sucesso!', solicitacao: result.solicitacao }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao registrar solicitação de exames:', error);
     return NextResponse.json({ message: 'Erro interno do servidor ao registrar solicitação.' }, { status: 500 });
   } finally {
@@ -69,29 +74,43 @@ export async function POST(req) {
   }
 }
 
-export async function GET(req) {
-  // Extrai os parâmetros de busca da URL da requisição
-  const { searchParams } = new URL(req.url);
-  const pacienteId = searchParams.get('pacienteId');
-
+// --- MÉTODO GET (Revisado para incluir dados do paciente completo) ---
+/**
+ * Manipula requisições GET para listar todas as solicitações de exames.
+ * Pode filtrar por pacienteId se o parâmetro for fornecido.
+ * Inclui dados do paciente, recepcionista e os exames solicitados.
+ * @param {NextRequest} req - O objeto de requisição do Next.js.
+ * @returns {NextResponse} Uma resposta JSON contendo a lista de solicitações ou um erro.
+ */
+export async function GET(req: NextRequest) {
   try {
-    // Objeto de condição para a query do Prisma
-    const whereCondition = {};
+    const { searchParams } = new URL(req.url);
+    const pacienteId = searchParams.get('pacienteId'); // Parâmetro para filtrar por paciente
+
+    let whereClause: any = {};
+
     if (pacienteId) {
-      // Se um pacienteId for fornecido, adiciona à condição de busca
-      whereCondition.id_paciente = parseInt(pacienteId, 10);
+      const parsedPacienteId = parseInt(pacienteId);
+      if (isNaN(parsedPacienteId)) {
+        return NextResponse.json({ message: 'ID do paciente inválido.' }, { status: 400 });
+      }
+      whereClause = { id_paciente: parsedPacienteId };
     }
 
     const solicitacoes = await prisma.solicitacao.findMany({
-      where: whereCondition, // Aplica a condição de busca
+      where: whereClause, // Aplica o filtro se houver
       orderBy: {
-        data_hora_solicitacao: 'desc',
+        data_hora_solicitacao: 'desc', // Ordena das mais recentes para as mais antigas
       },
-      include: {
+      include: { // Inclui dados relacionados de outras tabelas
         paciente: {
           select: {
+            id_paciente: true, // Garante que o ID do paciente também é selecionado
             nome_completo: true,
             cpf: true,
+            data_nascimento: true, // ESSENCIAL para calcular a idade
+            email: true,
+            sexo: true,
           },
         },
         recepcionista: {
@@ -104,6 +123,7 @@ export async function GET(req) {
           include: {
             exame_catalogo: {
               select: {
+                id_exame_catalogo: true, // Garante que o ID do exame também é selecionado
                 nome_exame: true,
                 preco: true,
               },
@@ -115,12 +135,8 @@ export async function GET(req) {
 
     return NextResponse.json(solicitacoes, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao buscar solicitações:', error);
-    // Adiciona uma verificação para retornar um erro mais específico caso o ID seja inválido
-    if (error instanceof Error && error.message.includes('Argument `id_paciente`')) {
-      return NextResponse.json({ error: 'ID de paciente inválido.' }, { status: 400 });
-    }
     return NextResponse.json({ error: 'Erro ao buscar solicitações de exames.' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
