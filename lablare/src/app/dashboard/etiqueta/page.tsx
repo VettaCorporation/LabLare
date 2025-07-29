@@ -5,7 +5,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml'; // Caminho ajustado
+// Importe o PrinterIcon para o botão de impressão
+import { PrinterIcon } from '@heroicons/react/24/outline'; // Adicionado PrinterIcon
+import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml'; 
 
 // Tipagens para os dados (revisadas para clareza)
 interface PacienteData {
@@ -33,6 +35,10 @@ interface SolicitacaoData {
   medico_solicitante?: string;
   status: string;
   paciente: PacienteData; // Inclui os dados do paciente diretamente na solicitação
+  recepcionista: { // Inclui dados do recepcionista para a tabela global
+    nome_completo: string;
+    email: string;
+  };
   itens_solicitacao: ItemSolicitacaoData[];
 }
 
@@ -61,6 +67,11 @@ export default function EtiquetaPage() {
   const [loadingSolicitacoes, setLoadingSolicitacoes] = useState(false);
   const [error, setError] = useState('');
 
+  // NOVOS ESTADOS para a lista global de solicitações
+  const [latestGlobalSolicitations, setLatestGlobalSolicitations] = useState<SolicitacaoData[]>([]);
+  const [loadingGlobalSolicitations, setLoadingGlobalSolicitations] = useState(true);
+
+
   // Permissões para acessar esta página
   const canAccessPage = session?.user?.nome_perfil === 'Recepcionista' ||
                         session?.user?.nome_perfil === 'Administrador' ||
@@ -87,10 +98,8 @@ export default function EtiquetaPage() {
     setLoadingPatientSearch(true);
     setError('');
     try {
-      // CORREÇÃO AQUI: Chama a API de pacientes consolidada em /api/pacientes
-      // Passa o termo de busca como 'nome' (a API de pacientes/route.ts lida com isso)
       const queryParam = `nome=${encodeURIComponent(term)}`; 
-      const response = await fetch(`/api/pacientes?${queryParam}`); // CHAMADA CORRIGIDA
+      const response = await fetch(`/api/pacientes?${queryParam}`); 
       if (!response.ok) {
         throw new Error('Falha ao buscar pacientes.');
       }
@@ -118,7 +127,6 @@ export default function EtiquetaPage() {
     setLoadingSolicitacoes(true);
     setError('');
     try {
-      // Esta API já está configurada para filtrar por pacienteId
       const response = await fetch(`/api/solicitacoes?pacienteId=${patientId}`);
       if (!response.ok) {
         const errorData = await response.json();
@@ -134,12 +142,37 @@ export default function EtiquetaPage() {
     }
   }, []);
 
+  // NOVO EFEITO: Buscar as últimas solicitações globais ao carregar a página
+  useEffect(() => {
+    if (status === 'authenticated' && canAccessPage) {
+      const fetchGlobalSolicitations = async () => {
+        setLoadingGlobalSolicitations(true);
+        try {
+          const response = await fetch('/api/solicitacoes'); 
+          if (!response.ok) {
+            throw new Error('Falha ao buscar últimas solicitações.');
+          }
+          const data: SolicitacaoData[] = await response.json();
+          setLatestGlobalSolicitations(data.slice(0, 10)); 
+        } catch (err: any) {
+          console.error('Erro ao carregar últimas solicitações:', err);
+          setError(err.message || 'Erro ao carregar últimas solicitações globais.');
+        } finally {
+          setLoadingGlobalSolicitations(false);
+        }
+      };
+      fetchGlobalSolicitations();
+    } else if (status !== 'loading') {
+      setLoadingGlobalSolicitations(false);
+    }
+  }, [status, canAccessPage]);
+
   // Lida com a seleção de um paciente na lista de busca
   const handleSelectPatient = (patient: PacienteData) => {
     setSelectedPatient(patient);
-    setPatientSearchTerm(patient.nome_completo); // Preenche o campo de busca
-    setPatientSearchResults([]); // Limpa os resultados da busca
-    fetchSolicitacoesByPatient(patient.id_paciente); // Busca as solicitações do paciente selecionado
+    setPatientSearchTerm(patient.nome_completo); 
+    setPatientSearchResults([]);
+    fetchSolicitacoesByPatient(patient.id_paciente);
   };
 
   // Função para imprimir etiquetas (agora recebe a solicitação específica)
@@ -151,7 +184,6 @@ export default function EtiquetaPage() {
 
     const age = calculateAge(solicitacao.paciente.data_nascimento);
 
-    // Usa a função utilitária para gerar o HTML completo das etiquetas
     const printContent = generateLabelHtml(solicitacao.paciente, age, solicitacao.itens_solicitacao.map(item => item.exame_catalogo));
 
     const printWindow = window.open('', '_blank');
@@ -162,6 +194,42 @@ export default function EtiquetaPage() {
       alert('Não foi possível abrir a janela de impressão. Verifique as configurações de pop-up do seu navegador.');
     }
   }, [calculateAge]);
+
+  // Função auxiliar para estilizar o status (reutilizada de solicitacoes/page.jsx)
+  const getStatusBadge = (status: string) => {
+    let bgColor = 'bg-gray-200';
+    let textColor = 'text-gray-800';
+    switch (status) {
+      case 'AGUARDANDO_PAGAMENTO':
+        bgColor = 'bg-yellow-100';
+        textColor = 'text-yellow-800';
+        break;
+      case 'PAGA':
+        bgColor = 'bg-green-100';
+        textColor = 'text-green-800';
+        break;
+      case 'COLETADA':
+        bgColor = 'bg-blue-100';
+        textColor = 'text-blue-800';
+        break;
+      case 'VALIDADA':
+        bgColor = 'bg-purple-100';
+        textColor = 'text-purple-800';
+        break;
+      case 'LIBERADA':
+        bgColor = 'bg-indigo-100';
+        textColor = 'text-indigo-800';
+        break;
+      default:
+        break;
+    }
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bgColor} ${textColor}`}>
+        {status.replace(/_/g, ' ')}
+      </span>
+    );
+  };
+
 
   // Proteção de rota
   if (status === 'loading') {
@@ -250,21 +318,22 @@ export default function EtiquetaPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{solicitacao.medico_solicitante || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${solicitacao.status === 'PAGA' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                          {solicitacao.status.replace('_', ' ')}
-                        </span>
+                        {getStatusBadge(solicitacao.status)}
                       </td>
+                      {/* COLUNA DE EXAMES DETALHADA */}
                       <td className="px-6 py-4 text-sm text-gray-500">
                         <ul className="list-disc list-inside">
                           {solicitacao.itens_solicitacao.map((item) => (
-                            <li key={item.id_item_solicitacao}>{item.exame_catalogo.nome_exame}</li>
+                            <li key={item.id_item_solicitacao}>
+                              {item.exame_catalogo.nome_exame} ({item.exame_catalogo.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                            </li>
                           ))}
                         </ul>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                      <td className="px-6 py-4 text-center text-sm font-medium"> {/* Removido whitespace-nowrap */}
                         <button
                           onClick={() => handlePrintEtiquetas(solicitacao)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out"
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out" // Ajustado padding e tamanho da fonte
                           title="Imprimir Etiquetas"
                         >
                           Imprimir Etiquetas
@@ -278,6 +347,68 @@ export default function EtiquetaPage() {
           )}
         </div>
       )}
+
+      {/* NOVA SEÇÃO: Últimas Solicitações Globais */}
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Últimas Solicitações Globais</h2>
+        {loadingGlobalSolicitations ? (
+          <p className="text-gray-500">Carregando últimas solicitações...</p>
+        ) : latestGlobalSolicitations.length === 0 ? (
+          <p className="text-gray-600">Nenhuma solicitação recente encontrada.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Solicitação</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paciente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recepcionista</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exames</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {latestGlobalSolicitations.map((solicitacao) => (
+                  <tr key={solicitacao.id_solicitacao}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{solicitacao.id_solicitacao}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {solicitacao.paciente.nome_completo} <br />
+                      <span className="text-gray-500 text-xs">CPF: {solicitacao.paciente.cpf}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {solicitacao.recepcionista.nome_completo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {getStatusBadge(solicitacao.status)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <ul className="list-disc list-inside">
+                        {solicitacao.itens_solicitacao.map((item) => (
+                          <li key={item.id_item_solicitacao}>
+                            {item.exame_catalogo.nome_exame} ({item.exame_catalogo.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm font-medium">
+                      <button
+                        onClick={() => handlePrintEtiquetas(solicitacao)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out"
+                        title="Imprimir Etiquetas"
+                      >
+                        Imprimir Etiquetas
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
