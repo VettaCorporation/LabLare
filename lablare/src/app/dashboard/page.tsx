@@ -1,103 +1,127 @@
 // src/app/dashboard/page.tsx
-'use client'; 
+'use client';
 
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation'; 
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ChartBarIcon, UserGroupIcon, CurrencyDollarIcon, ClockIcon } from '@heroicons/react/24/outline';
 
-import AccessDeniedPopup from '@/components/AccessDeniedPopup/AccessDeniedPopup';
+import KpiCard from '@/components/dashboard/KpiCard';
+import MonthlyRevenueLineChart from '@/components/dashboard/MonthlyRevenueLineChart';
+import RecentRequests from '@/components/dashboard/RecentRequests';
+import RecentPatients from '@/components/dashboard/RecentPatients';
+import InfoPieChart from '@/components/dashboard/InfoPieChart';
 
-// Importe seus componentes de conteúdo de dashboard para cada perfil
-// import AdminDashboardContent from '@/components/Dashboard/AdminDashboardContent';
-// import RecepcionistaDashboardContent from '@/components/Dashboard/RecepcionistaDashboardContent';
-// import BiomedicoDashboardContent from '@/components/Dashboard/BiomedicoDashboardContent';
-// import TecnicoDashboardContent from '@/components/Dashboard/TecnicoDashboardContent';
-// import FinanceiroDashboardContent from '@/components/Dashboard/FinanceiroDashboardContent';
+interface DashboardStats {
+  kpis: {
+    revenue: number;
+    newPatients: number;
+    requests: number;
+    avgTurnaroundTime: number;
+  };
+  recentRequests: any[];
+  recentPatients: any[];
+  chartData: {
+    monthlyRevenue: { name: string; Faturamento: number }[];
+    topExams: { name: string; value: number }[];
+    revenueByType: { name: string; value: number }[];
+  };
+}
 
+// Gera uma lista de anos (ex: [2025, 2024, 2023])
+const currentYear = new Date().getFullYear();
+const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const message = searchParams.get('message'); 
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const [showAccessDeniedPopup, setShowAccessDeniedPopup] = useState(false);
+  // Estados para os filtros
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [startMonth, setStartMonth] = useState<number>(1);
+  const [endMonth, setEndMonth] = useState<number>(12);
+
+
+  const fetchDashboardData = useCallback(async () => {
+    // Constrói a URL com os parâmetros de filtro
+    const params = new URLSearchParams({
+        year: selectedYear.toString(),
+        startMonth: startMonth.toString(),
+        endMonth: endMonth.toString(),
+    });
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Falha ao carregar os dados do dashboard.');
+      }
+      const data = await response.json();
+      setStats(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear, startMonth, endMonth]); // A função depende desses estados
 
   useEffect(() => {
-    if (message) {
-      setShowAccessDeniedPopup(true);
-    } else {
-      setShowAccessDeniedPopup(false); 
+    if (status === 'authenticated') {
+      fetchDashboardData();
     }
-
-    if (status === 'loading') {
-      return; 
+    if (status === 'unauthenticated') {
+      router.push('/login');
     }
-    
-    if (!session) {
-      router.push('/login'); 
-      return; 
-    }
+  }, [status, fetchDashboardData, router]);
 
-  }, [session, status, router, searchParams, message]); 
-
-  const handlePopupClose = () => {
-    setShowAccessDeniedPopup(false);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
-    newSearchParams.delete('message');
-    router.replace(`/dashboard?${newSearchParams.toString()}`);
-  };
-
-  if (status === 'loading') {
+  if (status === 'loading' || !stats) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-lg text-gray-700">Carregando dashboard...</p>
       </div>
     );
   }
-
-  if (!session) {
-    return null; 
-  }
-
-  const userProfileName = session.user?.nome_perfil;
-
+  
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md min-h-screen">
-      {showAccessDeniedPopup && message && (
-        <AccessDeniedPopup message={message} onClose={handlePopupClose} />
-      )}
-
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">
-        Bem-vindo(a) ao Dashboard, {session.user?.name}!
-      </h1>
-      <p className="text-gray-600 mb-4">
-        Seu perfil: <span className="font-bold text-purple-600">{userProfileName || 'Não Definido'}</span>
-      </p>
+    <div className="space-y-8 p-8">
+      {/* Seção de KPIs */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Faturamento (30 dias)" value={stats.kpis.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={CurrencyDollarIcon} colorClass="bg-green-500" />
+        <KpiCard title="Novos Pacientes (30 dias)" value={stats.kpis.newPatients} icon={UserGroupIcon} colorClass="bg-blue-500" />
+        <KpiCard title="Solicitações (30 dias)" value={stats.kpis.requests} icon={ChartBarIcon} colorClass="bg-purple-500" />
+        <KpiCard title="Entrega de Laudos (Média)" value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`} icon={ClockIcon} colorClass="bg-orange-500" />
+      </div>
       
-      {userProfileName === 'Administrador' && (
-        <div className="border-t pt-4 mt-4">
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Visão Geral do Administrador</h2>
-          <p>Conteúdo específico para o perfil Administrador no Painel principal.</p>
+      {/* Seção principal com gráfico e tabelas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-3"> {/* Alterado para col-span-3 para ocupar a linha toda */}
+            <MonthlyRevenueLineChart 
+                data={stats.chartData.monthlyRevenue}
+                selectedYear={selectedYear}
+                setSelectedYear={setSelectedYear}
+                startMonth={startMonth}
+                setStartMonth={setStartMonth}
+                endMonth={endMonth}
+                setEndMonth={setEndMonth}
+                availableYears={availableYears}
+            />
         </div>
-      )}
+      </div>
+      
+      {/* Nova seção com os gráficos de pizza e solicitações recentes */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <InfoPieChart title="Top 5 Exames Mais Solicitados" data={stats.chartData.topExams} />
+        <InfoPieChart title="Faturamento por Tipo de Atendimento" data={stats.chartData.revenueByType} />
+        <RecentRequests requests={stats.recentRequests} />
+      </div>
 
-      {(userProfileName === 'Recepcionista' || 
-        userProfileName === 'Biomédico' || 
-        userProfileName === 'Técnico de Laboratório' ||
-        userProfileName === 'Responsável Financeira') && ( 
-        <div className="border-t pt-4 mt-4">
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Visão Geral do {userProfileName}</h2>
-          <p>Este é o conteúdo do Painel para usuários com perfil de {userProfileName}.</p>
-        </div>
-      )}
-
-      {!userProfileName || (!['Administrador', 'Recepcionista', 'Biomédico', 'Técnico de Laboratório', 'Responsável Financeira'].includes(userProfileName) && (
-          <div className="border-t pt-4 mt-4 text-center text-gray-500">
-            <p>Seu perfil não possui uma visualização de dashboard específica neste Painel.</p>
-            <p>Use o menu lateral para navegar pelas funcionalidades disponíveis.</p>
-          </div>
-      ))}
+      {/* Seção inferior para a tabela de pacientes recentes */}
+      <div>
+        <RecentPatients patients={stats.recentPatients} />
+      </div>
     </div>
   );
 }
