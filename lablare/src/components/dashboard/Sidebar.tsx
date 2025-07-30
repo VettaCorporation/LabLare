@@ -17,6 +17,7 @@ import {
   ShieldCheckIcon, // Privilégios
   BeakerIcon, // Ícone para Recebimento de Amostras
   ClipboardDocumentCheckIcon, // NOVO: Ícone para Lançamento de Resultados
+  PlusCircleIcon, // NOVO: Ícone para Cadastro de Exames
 } from '@heroicons/react/24/outline'; 
 
 interface NavItem {
@@ -57,8 +58,6 @@ export default function Sidebar() {
       allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico'] },
-    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
-      allowedProfiles: ['Administrador'] },
     { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Responsável Financeira'] },
     { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon, 
@@ -69,6 +68,10 @@ export default function Sidebar() {
       allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
     { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon, 
       allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
+    { name: 'Cadastro de Exames', href: '/dashboard/cadastrar-exames', icon: PlusCircleIcon, 
+      allowedProfiles: ['Administrador'] }, // Exclusivo do Administrador
+    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
+      allowedProfiles: ['Administrador'] },  
     { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon, 
       allowedProfiles: ['Administrador'] },
     { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon, 
