@@ -63,7 +63,7 @@ export default function Sidebar() {
       allowedProfiles: ['Administrador', 'Recepcionista', 'Responsável Financeira'] },
     { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
-    { name: 'Etiqueta', href: '/dashboard/etiqueta', icon: TicketIcon, 
+    { name: 'Etiquetas de Amostras', href: '/dashboard/etiqueta', icon: TicketIcon, 
       allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório'] },
     { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon, 
       allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },

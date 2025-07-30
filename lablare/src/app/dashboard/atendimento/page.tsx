@@ -54,7 +54,7 @@ export default function AtendimentoPage() {
   }, [examesSelecionados]);
 
   const fetchPacientes = useCallback(debounce(async (termo) => {
-    if (termo.length < 3) {
+    if (termo.length < 1) {
       setSearchResults([]);
       return;
     }
@@ -63,7 +63,7 @@ export default function AtendimentoPage() {
       const isCpf = cleanCpf.length === 11;
       // CORREÇÃO AQUI: Chama /api/pacientes diretamente, passando 'nome' ou 'cpf'
       const queryParam = isCpf ? `cpf=${encodeURIComponent(cleanCpf)}` : `nome=${encodeURIComponent(termo)}`;
-      const response = await fetch(`/api/pacientes?${queryParam}`); // URL CORRIGIDA
+      const response = await fetch(`/api/pacientes?${queryParam}`); 
       if (!response.ok) throw new Error('Erro ao buscar pacientes');
       const data = await response.json();
       setSearchResults(data);
