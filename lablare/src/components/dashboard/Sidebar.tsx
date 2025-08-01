@@ -8,16 +8,16 @@ import { useSession } from 'next-auth/react';
 import LogoLab from '../../../public/assets/img/Logo.png';
 import {
   HomeIcon,
-  UsersIcon, // Pacientes
-  UserGroupIcon, // Colaboradores
-  CalculatorIcon, // Orçamento
-  KeyIcon, // Senha
-  TicketIcon, // Etiqueta
-  Cog6ToothIcon, // Configurações
-  ShieldCheckIcon, // Privilégios
-  BeakerIcon, // Ícone para Recebimento de Amostras
-  ClipboardDocumentCheckIcon, // NOVO: Ícone para Lançamento de Resultados
-  PlusCircleIcon, // NOVO: Ícone para Cadastro de Exames
+  UsersIcon,
+  UserGroupIcon,
+  CalculatorIcon,
+  KeyIcon,
+  TicketIcon,
+  Cog6ToothIcon,
+  ShieldCheckIcon,
+  BeakerIcon,
+  ClipboardDocumentCheckIcon,
+  PlusCircleIcon,
 } from '@heroicons/react/24/outline'; 
 
 interface NavItem {
@@ -35,6 +35,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
+  // DEBUG: Vamos ver o que está dentro do objeto session
+  console.log('Dados da Sessão:', session);
+
   if (status === 'loading') {
     return (
       <div className="flex flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r border-gray-200 w-64 flex-shrink-0 items-center justify-center">
@@ -43,14 +46,9 @@ export default function Sidebar() {
     );
   }
 
-  const userProfile = session?.user?.nome_perfil;
-  const isAdmin = userProfile === 'Administrador';
-  const isRecepcionista = userProfile === 'Recepcionista';
-  const isTecnicoLaboratorio = userProfile === 'Técnico de Laboratório';
-  const isBiomedico = userProfile === 'Biomédico';
-  const isResponsavelFinanceira = userProfile === 'Responsável Financeira';
-  const isPaciente = userProfile === 'Paciente';
-
+  // A linha abaixo é a provável causa do erro.
+  // Vamos verificar o console para ver a estrutura correta.
+  const userProfile = (session?.user as any)?.nome_perfil; // Usamos 'as any' para o debug
 
   // Lista completa de navegação com permissões definidas para cada item
   const allNavItems: NavItem[] = [
@@ -69,7 +67,7 @@ export default function Sidebar() {
     { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon, 
       allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
     { name: 'Cadastro de Exames', href: '/dashboard/cadastrar-exames', icon: PlusCircleIcon, 
-      allowedProfiles: ['Administrador'] }, // Exclusivo do Administrador
+      allowedProfiles: ['Administrador'] },
     { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
       allowedProfiles: ['Administrador'] },  
     { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon, 

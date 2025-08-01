@@ -1,196 +1,176 @@
-// src/app/reset-password/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Head from 'next/head';
+import React, { useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import LogoLab from '../../../public/assets/img/Logo.png';
+import logoLab from '../../../public/assets/img/Logo.png';
+
+// Componente da engrenagem para a animação de sucesso
+const SuccessGear = () => (
+    <div className="flex justify-center items-center mb-4">
+        <svg className="animate-spin h-16 w-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
+);
 
 export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const token = searchParams.get('token') ?? '';
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isTokenValidating, setIsTokenValidating] = useState(true); // Estado para indicar que o token está sendo validado
-  const [tokenValid, setTokenValid] = useState(false); // Indica se o token de validação é válido
-  
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const validationToken = searchParams.get('validationToken'); // Pega o NOVO token de validação da URL
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  // Efeito para validar o token de validação assim que a página carrega
-  useEffect(() => {
-    const validateValidationToken = async () => {
-      if (!validationToken) {
-        setError('Token de validação não encontrado na URL. Por favor, comece o processo novamente.');
-        setIsTokenValidating(false);
-        return;
-      }
-      try {
-        // Chamada para uma NOVA API de validação de token (se você quiser uma validação separada para este token)
-        // Ou, se o token for um JWT assinado, a validação pode ser feita no backend na API de reset.
-        // Por simplicidade, vamos verificar a existência do usuário com este token.
-        const response = await fetch(`/api/auth/reset-password/validate-token-access?token=${validationToken}`); // NOVA API para validar o token de acesso
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Token de acesso inválido ou expirado. Por favor, solicite um novo código.');
-        }
-        setMessage(data.message || 'Token de acesso válido. Agora você pode definir sua nova senha.');
-        setTokenValid(true);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao validar o token de acesso.');
-      } finally {
-        setIsTokenValidating(false);
-      }
+  const passwordRules = useMemo(() => {
+    const hasMinLen = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    const doPasswordsMatch = password.length > 0 && password === confirmPassword;
+    return {
+      hasMinLen,
+      hasUpper,
+      hasSpecial,
+      doPasswordsMatch,
+      allValid: hasMinLen && hasUpper && hasSpecial && doPasswordsMatch,
     };
-    validateValidationToken();
-  }, [validationToken]);
+  }, [password, confirmPassword]);
 
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMessage('');
-    setError('');
-    setLoading(true);
+    if (!passwordRules.allValid || isSubmitting) return;
 
-    if (!tokenValid) { // Se o token de validação não é válido, não permite submeter
-      setError('Token de acesso inválido ou expirado. Por favor, solicite um novo código.');
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) { 
-      setError('A nova senha deve ter no mínimo 6 caracteres.');
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('As senhas não coincidem.');
-      setLoading(false);
-      return;
-    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const response = await fetch('/api/auth/reset-password/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Envia o validationToken e a nova senha
-        body: JSON.stringify({ token: validationToken, newPassword: password }), 
+        body: JSON.stringify({ token, newPassword: password }),
       });
 
       const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao redefinir a senha.');
+        throw new Error(data.message || 'Ocorreu um erro.');
       }
 
-      setMessage(data.message || 'Senha redefinida com sucesso!');
-      setPassword('');
-      setConfirmPassword('');
-      
+      setIsSuccess(true);
       setTimeout(() => {
-        router.push('/login'); 
-      }, 2000);
+        router.push('/login');
+      }, 3000);
 
-    } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro inesperado ao redefinir a senha.');
+    } catch (error: any) {
+      setErrorMessage(error.message);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
-  };
+  }
+  
+  const getRuleStyle = (isValid: boolean) =>
+    `flex items-center transition-colors duration-300 ${isValid ? 'text-green-600' : 'text-gray-500'}`;
+  
+  const CheckIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-2 flex-shrink-0">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+    </svg>
+  );
 
   return (
-    <>
-      <Head>
-        <title>Lare Laboratório - Redefinir Senha</title>
-        <meta name="description" content="Redefina sua senha do sistema Lare Laboratório." />
-      </Head>
-
-      <div className="relative min-h-screen bg-white overflow-hidden flex flex-col items-center justify-center py-8 px-4">
-        {/* Formas orgânicas de fundo */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-[#0047AB] rounded-bl-[50%] transform translate-x-1/2 -translate-y-1/2 rotate-45 md:rotate-0"></div>
-        <div className="absolute top-0 right-0 w-[350px] h-[350px] md:w-[550px] md:h-[550px] bg-[#0047AB] rounded-bl-[50%] transform translate-x-1/2 -translate-y-1/2 rotate-45 md:rotate-0 opacity-80"></div>
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-[#007FFF] rounded-tr-[50%] transform -translate-x-1/2 translate-y-1/2 -rotate-45 md:-rotate-0"></div>
-        <div className="absolute bottom-0 left-0 w-[250px] h-[250px] md:w-[450px] md:h-[450px] bg-[#007FFF] rounded-tr-[50%] transform -translate-x-1/2 translate-y-1/2 -rotate-45 md:-rotate-0 opacity-80"></div>
-
-        <div className="relative z-10 flex flex-col items-center max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-          <div className="mb-8 mt-16 md:mt-0">
-            <Link href="/">
-              <Image src={LogoLab} alt="Lare Laboratório Logo" width={180} height={56} priority />
-            </Link>
+    <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-md">
+        {isSuccess ? (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8 text-center">
+            <SuccessGear />
+            <h1 className="text-2xl font-bold text-gray-800">Senha Redefinida!</h1>
+            <p className="text-gray-600 mt-2 text-sm">Você será redirecionado para a tela de login em breve.</p>
           </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8">
+            <div className="text-center mb-6">
+              <Image
+                src={logoLab}
+                alt="LabLare Logo"
+                width={160}
+                height={45}
+                className="mx-auto mb-4"
+                priority
+              />
+              <h1 className="text-2xl text-gray-800">Redefinir Senha</h1>
+              <p className="text-gray-600 mt-2 text-sm">Crie uma nova senha forte que você não usa em outros sites.</p>
+            </div>
 
-          <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">Redefinir Senha</h1>
+            {errorMessage && <div className="bg-red-100 text-red-800 p-3 rounded-md mb-4 text-sm font-medium">{errorMessage}</div>}
 
-          {isTokenValidating ? (
-            <p className="text-gray-500">Validando acesso...</p>
-          ) : (
-            <>
-              {error && <div className="text-red-500 text-xs italic mt-2 text-center">{error}</div>}
-              {message && <div className="text-green-600 text-xs italic mt-2 text-center">{message}</div>}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
 
-              {tokenValid ? ( // Só mostra o formulário se o token de validação for válido
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
-                  {/* Campos de Nova Senha e Confirmação */}
-                  <div className="relative">
-                    <label htmlFor="password" className="sr-only">Nova Senha</label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 11V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2"></path></svg>
-                    </div>
-                    <input
-                      type="password"
-                      id="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="shadow appearance-none border rounded w-full py-3 px-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Nova Senha"
-                      required
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label htmlFor="confirmPassword" className="sr-only">Confirmar Nova Senha</label>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 11V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2"></path></svg>
-                    </div>
-                    <input
-                      type="password"
-                      id="confirmPassword"
+              <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar senha</label>
+                  <input
+                      type={showPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="shadow appearance-none border rounded w-full py-3 px-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Confirmar Nova Senha"
-                      required
-                    />
-                  </div>
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+              </div>
+              
+              <div className="flex items-center">
+                  <input
+                      id="showPassword"
+                      type="checkbox"
+                      checked={showPassword}
+                      onChange={(e) => setShowPassword(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="showPassword" className="ml-2 block text-sm text-gray-900">
+                      Mostrar senha
+                  </label>
+              </div>
 
-                  <button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 shadow-md"
-                    disabled={loading}
-                  >
-                    {loading ? 'Redefinindo...' : 'Redefinir Senha'}
-                  </button>
-                </form>
-              ) : (
-                // Mensagem se o token não for válido
-                <p className="text-gray-600 text-center">
-                  Por favor, solicite um novo código de redefinição de senha.
+              {/* BLOCO DE VALIDAÇÃO RESTAURADO */}
+              <div className="space-y-2 text-xs">
+                <p className={getRuleStyle(passwordRules.hasMinLen)}>
+                  <CheckIcon /> Mínimo 8 caracteres
                 </p>
-              )}
-            </>
-          )}
+                <p className={getRuleStyle(passwordRules.hasUpper)}>
+                   <CheckIcon /> Pelo menos 1 letra maiúscula
+                </p>
+                <p className={getRuleStyle(passwordRules.hasSpecial)}>
+                   <CheckIcon /> Pelo menos 1 caractere especial
+                </p>
+                 <p className={getRuleStyle(passwordRules.doPasswordsMatch)}>
+                   <CheckIcon /> As senhas devem ser iguais
+                </p>
+              </div>
 
-          <p className="text-gray-600 text-sm mt-8 text-center">
-            &copy; {new Date().getFullYear()} Todos Direitos Reservados
-          </p>
-        </div>
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={!passwordRules.allValid || isSubmitting}
+                  className="inline-flex justify-center items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Salvando...' : 'Salvar Senha'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        <p className="text-center text-xs text-gray-500 mt-6">© 2025 LabLare. Todos os Direitos Reservados.</p>
       </div>
-    </>
+    </main>
   );
 }

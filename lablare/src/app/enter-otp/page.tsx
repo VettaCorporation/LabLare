@@ -1,7 +1,7 @@
 // src/app/enter-otp/page.tsx
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Fragment } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -123,8 +123,13 @@ export default function EnterOtpPage() {
         throw new Error(data.message || 'Código inválido ou expirado.');
       }
 
-      setMessage(data.message || 'Código validado com sucesso! Redirecionando para redefinição...');
-      router.push(`/reset-password?validationToken=${encodeURIComponent(data.validationToken)}`);
+      setMessage(data.message || 'Código validado com sucesso!');
+      
+      // ==================================================================
+      // AQUI ESTÁ A ÚNICA CORREÇÃO LÓGICA APLICADA
+      // Trocamos `validationToken` por `token` para corresponder à API e à página de destino.
+      // ==================================================================
+      router.push(`/reset-password?token=${data.token}`);
 
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao validar o código.');

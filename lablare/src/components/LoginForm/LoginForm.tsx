@@ -15,6 +15,14 @@ interface LoginFormProps {
   providerId: 'credentials-admin-recep' | 'credentials-paciente'; 
 }
 
+// Componente de Spinner para o botão
+const ButtonSpinner = () => (
+    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
 const LoginForm: React.FC<LoginFormProps> = ({
   userLabel = 'Usuário',
   loginBtnBgColor = 'bg-blue-500', 
@@ -24,6 +32,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [usuario, setUsuario] = useState(''); 
   const [senha, setSenha] = useState(''); 
   const [erro, setErro] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // 1. NOVO ESTADO DE CARREGAMENTO
   const router = useRouter();
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -40,7 +49,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
         setErro('O CPF deve ter 11 dígitos.');
         return;
       }
-      if (!isValidCPF(usuario)) { // Usa isValidCPF do cpfValidator
+      if (!isValidCPF(usuario)) {
         setErro('Por favor, insira um CPF válido.');
         return;
       }
@@ -50,6 +59,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
       }
     }
 
+    setIsLoading(true); // 2. ATIVA O CARREGAMENTO
+
     let credentials: { [key: string]: string } = {};
     if (providerId === 'credentials-admin-recep') {
       credentials = { email: usuario, senha: senha }; 
@@ -57,6 +68,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
       credentials = { cpf_login: usuario, data_nascimento: senha }; 
     } else {
       setErro('Provedor de login inválido.');
+      setIsLoading(false);
       return;
     }
 
@@ -75,6 +87,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           setErro('Erro de login. Tente novamente.'); 
         }
       } else if (result?.ok) {
+        // O carregamento global do `loading.tsx` cuidará da transição
         if (providerId === 'credentials-admin-recep') {
           router.push('/dashboard'); 
         } else if (providerId === 'credentials-paciente') {
@@ -85,6 +98,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
       }
     } catch (apiError) {
       setErro('Ocorreu um erro inesperado. Tente novamente mais tarde.');
+    } finally {
+      setIsLoading(false); // 3. DESATIVA O CARREGAMENTO (SEMPRE)
     }
   };
 
@@ -103,9 +118,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-80 md:w-96 p-8 bg-white rounded-lg shadow-md">
       {/* Campo de Usuário (CPF ou Email) */}
       <div className="relative">
-        <label htmlFor="usuario" className="sr-only">
-          {userLabel}
-        </label>
+        <label htmlFor="usuario" className="sr-only">{userLabel}</label>
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
           {userLabel === 'CPF' ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
@@ -116,21 +129,17 @@ const LoginForm: React.FC<LoginFormProps> = ({
         <input
           type="text" 
           id="usuario"
-          // Aplica a máscara APENAS para exibição se for CPF, senão usa o valor bruto
           value={userLabel === 'CPF' ? formatCpfForDisplay(usuario) : usuario} 
-          onChange={handleUsuarioChange} // Novo handler para o campo de usuário
+          onChange={handleUsuarioChange}
           className="shadow appearance-none border rounded w-full py-3 px-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          // Placeholder e maxLength adaptados
           placeholder={userLabel === 'CPF' ? '000.000.000-00' : `Seu ${userLabel.toLowerCase()}`} 
-          maxLength={userLabel === 'CPF' ? 14 : undefined} // 14 para CPF formatado
+          maxLength={userLabel === 'CPF' ? 14 : undefined}
         />
       </div>
 
       {/* Campo de Senha (ou Data de Nascimento oculta) */}
       <div className="relative">
-        <label htmlFor="senha" className="sr-only">
-          Senha
-        </label>
+        <label htmlFor="senha" className="sr-only">Senha</label>
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 11V9a2 2 0 00-2-2H7a2 2 0 00-2 2v2"></path></svg>
         </div>
@@ -154,14 +163,16 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       {erro && <div className="text-red-500 text-xs italic mt-2 text-center">{erro}</div>}
 
+      {/* 4. BOTÃO ATUALIZADO */}
       <button
         type="submit"
-        className={`${loginBtnBgColor} ${loginBtnHoverBgColor} text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 shadow-md`}
+        disabled={isLoading} // Desabilita o botão durante o carregamento
+        className={`flex justify-center items-center ${loginBtnBgColor} ${loginBtnHoverBgColor} text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 shadow-md cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed`}
       >
-        LOGIN
+        {isLoading ? <ButtonSpinner /> : 'LOGIN'}
       </button>
 
-      <Link href="/esqueci-senha" className="inline-block align-baseline text-sm text-gray-500 hover:text-gray-800 text-center mt-2">
+      <Link href="/esqueci-senha" className="inline-block align-baseline text-sm text-gray-500 hover:text-gray-800 text-center mt-2 cursor-pointer">
         Esqueceu a senha?
       </Link>
     </form>
