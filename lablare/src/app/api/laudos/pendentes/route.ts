@@ -1,0 +1,72 @@
+// lablare/src/app/api/laudos/pendentes/route.ts
+
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
+import { getServerSession } from 'next-auth';
+// CORREÇÃO AQUI: O caminho correto para o arquivo de autenticação
+import { authOptions } from '../../auth/[...nextauth]/route';
+
+const prisma = new PrismaClient();
+
+/**
+ * Manipula requisições GET para listar laudos com status "Pendente de Validação".
+ * @param {NextRequest} req - O objeto de requisição do Next.js.
+ * @returns {NextResponse} Uma resposta JSON contendo a lista de laudos ou um erro.
+ */
+export async function GET(req: NextRequest) {
+  try {
+    // 1. Verificação de Sessão e Permissão (Apenas Biomédico ou Administrador)
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
+    }
+
+    const allowedProfiles = ['Administrador', 'Biomédico'];
+    const userProfile = session.user?.nome_perfil;
+
+    if (!userProfile || !allowedProfiles.includes(userProfile)) {
+      return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para visualizar laudos pendentes.' }, { status: 403 });
+    }
+
+    // 2. Busca laudos com status 'Pendente de Validação'
+    const pendingLaudos = await prisma.laudo.findMany({
+      where: {
+        status_laudo: 'Pendente de Validação',
+      },
+      orderBy: {
+        data_lancamento: 'asc', // Ordena pelos mais antigos primeiro
+      },
+      include: {
+        item_solicitacao: {
+          select: {
+            solicitacao: {
+              select: {
+                id_solicitacao: true,
+                data_hora_solicitacao: true,
+                paciente: {
+                  select: {
+                    nome_completo: true,
+                    cpf: true,
+                  },
+                },
+              },
+            },
+            exame_catalogo: {
+              select: {
+                nome_exame: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(pendingLaudos, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Erro ao buscar laudos pendentes:', error);
+    return NextResponse.json({ message: 'Erro interno do servidor ao buscar laudos pendentes.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
+}

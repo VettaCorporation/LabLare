@@ -18,6 +18,7 @@ import {
   BeakerIcon,
   ClipboardDocumentCheckIcon,
   PlusCircleIcon,
+  CheckBadgeIcon, 
 } from '@heroicons/react/24/outline'; 
 
 interface NavItem {
@@ -66,6 +67,8 @@ export default function Sidebar() {
       allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
     { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon, 
       allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
+    { name: 'Validação de Laudos', href: '/dashboard/validacao-laudos', icon: CheckBadgeIcon, 
+      allowedProfiles: ['Administrador', 'Biomédico'] },
     { name: 'Cadastro de Exames', href: '/dashboard/cadastrar-exames', icon: PlusCircleIcon, 
       allowedProfiles: ['Administrador'] },
     { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
