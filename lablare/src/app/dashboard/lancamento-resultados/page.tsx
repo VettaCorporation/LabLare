@@ -45,14 +45,13 @@ export default function LancamentoResultadosPage() {
   const [pendingItems, setPendingItems] = useState<ItemSolicitacaoData[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
 
   const [selectedItem, setSelectedItem] = useState<ItemSolicitacaoData | null>(null);
   const [resultsInput, setResultsInput] = useState<ParametroResultadoInput[]>([]);
   const [observacoesTecnico, setObservacoesTecnico] = useState('');
   const [launching, setLaunching] = useState(false);
 
+  // Permissões para acessar esta página
   const canAccessPage = session?.user?.nome_perfil === 'Administrador' ||
                         session?.user?.nome_perfil === 'Técnico de Laboratório';
 
@@ -167,8 +166,8 @@ export default function LancamentoResultadosPage() {
     <div className="space-y-6 p-8">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Lançamento de Resultados de Exames</h1>
 
-      {/* Exibe o formulário de lançamento se um item foi selecionado */}
       {selectedItem ? (
+        // Se um item foi selecionado, mostra o formulário de lançamento em um banner destacado
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-gray-700">Lançar Resultados para: <span className="text-blue-700">{selectedItem.exame_catalogo.nome_exame}</span></h2>
@@ -272,7 +271,7 @@ export default function LancamentoResultadosPage() {
           </button>
         </div>
       ) : (
-        // MOSTRA A TABELA de itens pendentes se nenhum item foi selecionado
+        // Se nenhum item foi selecionado, mostra a tabela de itens pendentes
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
           <h2 className="text-2xl font-semibold mb-4 text-gray-700">Amostras Pendentes de Lançamento</h2>
           {loadingList ? (

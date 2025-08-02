@@ -1,9 +1,8 @@
 // lablare/src/app/api/laudos/pendentes/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
+import { PrismaClient } from '../../../../generated/prisma/index.js';
 import { getServerSession } from 'next-auth';
-// CORREÇÃO AQUI: O caminho correto para o arquivo de autenticação
 import { authOptions } from '../../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
@@ -15,7 +14,6 @@ const prisma = new PrismaClient();
  */
 export async function GET(req: NextRequest) {
   try {
-    // 1. Verificação de Sessão e Permissão (Apenas Biomédico ou Administrador)
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
@@ -28,13 +26,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para visualizar laudos pendentes.' }, { status: 403 });
     }
 
-    // 2. Busca laudos com status 'Pendente de Validação'
     const pendingLaudos = await prisma.laudo.findMany({
       where: {
         status_laudo: 'Pendente de Validação',
       },
       orderBy: {
-        data_lancamento: 'asc', // Ordena pelos mais antigos primeiro
+        data_lancamento: 'asc',
       },
       include: {
         item_solicitacao: {
