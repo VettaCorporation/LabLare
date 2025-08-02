@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml'; 
+import { PlusIcon, MagnifyingGlassIcon, EyeIcon, ArrowUturnLeftIcon, DocumentTextIcon, CheckBadgeIcon, BeakerIcon, ClipboardDocumentCheckIcon, UserGroupIcon, CalculatorIcon, KeyIcon, TicketIcon, Cog6ToothIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 
 const debounce = (func, delay) => {
@@ -54,16 +55,15 @@ export default function AtendimentoPage() {
   }, [examesSelecionados]);
 
   const fetchPacientes = useCallback(debounce(async (termo) => {
-    if (termo.length < 1) {
+    if (termo.length < 3) {
       setSearchResults([]);
       return;
     }
     try {
       const cleanCpf = termo.replace(/\D/g, '');
       const isCpf = cleanCpf.length === 11;
-      // CORREÇÃO AQUI: Chama /api/pacientes diretamente, passando 'nome' ou 'cpf'
       const queryParam = isCpf ? `cpf=${encodeURIComponent(cleanCpf)}` : `nome=${encodeURIComponent(termo)}`;
-      const response = await fetch(`/api/pacientes?${queryParam}`); 
+      const response = await fetch(`/api/pacientes?${queryParam}`); // URL CORRIGIDA
       if (!response.ok) throw new Error('Erro ao buscar pacientes');
       const data = await response.json();
       setSearchResults(data);
@@ -122,9 +122,11 @@ export default function AtendimentoPage() {
       return;
     }
 
+    // CORREÇÃO: Verifica se o ID do usuário existe antes de tentar enviar
     const idUsuarioSolicitante = Number(session?.user?.id);
-    if (isNaN(idUsuarioSolicitante) || idUsuarioSolicitante <= 0) {
-      setSolicitacaoMessage('ID de usuário inválido. Tente fazer login novamente.');
+    if (!session?.user?.id || isNaN(idUsuarioSolicitante) || idUsuarioSolicitante <= 0) {
+      setSolicitacaoMessage('Não foi possível obter o ID do usuário logado. Por favor, faça login novamente.');
+      console.error('ID do usuário logado inválido:', session?.user?.id);
       return;
     }
 
@@ -197,7 +199,6 @@ export default function AtendimentoPage() {
     }
   };
 
-  // FUNÇÃO DA HISTÓRIA 7: Gerar e Imprimir Etiquetas
   const handlePrintEtiquetas = () => {
     if (!selectedPaciente || examesSelecionados.length === 0) {
       alert('Selecione um paciente e exames para gerar as etiquetas.');
@@ -369,7 +370,7 @@ export default function AtendimentoPage() {
                   </div>
 
                   {currentSolicitacaoId && (
-                    <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="mt-8 p-6 bg-blue-50 rounded-lg border">
                       <h3 className="text-2xl font-semibold mb-4">Faturamento e Pagamento</h3>
                       <div className="mb-4">
                         <p className="text-lg font-bold">Solicitação ID: {currentSolicitacaoId}</p>
@@ -415,7 +416,7 @@ export default function AtendimentoPage() {
                       {pagamentoConfirmado && (
                         <button
                           type="button"
-                          onClick={handlePrintEtiquetas} // Chama a nova função aqui
+                          onClick={handlePrintEtiquetas}
                           className="ml-4 mt-6 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md"
                         >
                           Imprimir Etiquetas
@@ -425,7 +426,7 @@ export default function AtendimentoPage() {
                   )}
                 </>
               ) : (
-                <div className="mt-8 p-6 bg-yellow-100 text-yellow-800 rounded-lg border border-yellow-200">
+                <div className="mt-8 p-6 bg-yellow-100 text-yellow-800 rounded-lg border">
                   <p>Você não tem permissão para registrar solicitações. Por favor, faça login com um perfil de Recepcionista ou Administrador.</p>
                 </div>
               )}
