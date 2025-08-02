@@ -1,8 +1,9 @@
 // lablare/src/app/api/pacientes/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '../../../generated/prisma/index.js';
-import { isValidCPF } from '../../../utils/cpfValidator'; // Assumindo que cpfValidator.ts existe em src/utils/
+// Importa PrismaClient e o utilitário isValidCPF
+import { PrismaClient } from '../../../generated/prisma/index.js'; // Caminho ajustado
+import { isValidCPF } from '../../../utils/cpfValidator'; // Caminho ajustado para o arquivo .ts
 import bcrypt from 'bcrypt';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
@@ -11,36 +12,41 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Verificação de Sessão e Permissão para Cadastrar Paciente
     const session = await getServerSession(authOptions);
 
     if (!session) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
     }
 
-    const allowedProfiles = ['Administrador', 'Recepcionista']; 
+    const allowedProfiles = ['Administrador', 'Recepcionista'];
     const userProfile = session.user?.nome_perfil;
 
     if (!userProfile || !allowedProfiles.includes(userProfile)) {
       return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para cadastrar pacientes.' }, { status: 403 });
     }
 
-    const { nome_completo, cpf, data_nascimento, sexo, email } = await request.json(); 
+    const { nome_completo, cpf, data_nascimento, sexo, email } = await request.json();
 
+    // 2. Validação de campos obrigatórios
     if (!nome_completo || !cpf || !data_nascimento) {
       return NextResponse.json({ message: 'Nome completo, CPF e Data de Nascimento são obrigatórios.' }, { status: 400 });
     }
 
+    // 3. Validação robusta do CPF
     if (!isValidCPF(cpf)) {
       return NextResponse.json({ message: 'O CPF fornecido é inválido.' }, { status: 400 });
     }
 
-    const parsedDate = new Date(data_nascimento); 
+    // 4. Validação e formatação da data de nascimento
+    const parsedDate = new Date(data_nascimento);
     if (isNaN(parsedDate.getTime())) {
       return NextResponse.json({ message: 'O formato da data de nascimento é inválido.' }, { status: 400 });
     }
 
     const cleanCpf = cpf.replace(/\D/g, '');
 
+    // 5. Verifica se o CPF já está cadastrado como Paciente
     const pacienteExistente = await prisma.paciente.findUnique({
       where: { cpf: cleanCpf },
     });
@@ -48,32 +54,34 @@ export async function POST(request: NextRequest) {
     if (pacienteExistente) {
       return NextResponse.json(
         { message: 'Este CPF já está cadastrado como paciente no sistema.', pacienteId: pacienteExistente.id_paciente },
-        { status: 409 } 
+        { status: 409 }
       );
     }
 
+    // 6. Prepara dados para o Usuário (login do paciente)
     const day = String(parsedDate.getUTCDate()).padStart(2, '0');
-    const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0'); 
+    const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
     const year = parsedDate.getUTCFullYear();
-    const initialPassword = `${day}${month}${year}`; 
+    const initialPassword = `${day}${month}${year}`;
 
-    const hash_senha_inicial = await bcrypt.hash(initialPassword, 10); 
+    const hash_senha_inicial = await bcrypt.hash(initialPassword, 10);
 
     const patientProfile = await prisma.perfil.findUnique({
-      where: { nome_perfil: 'Paciente' }, 
+      where: { nome_perfil: 'Paciente' },
     });
 
     if (!patientProfile) {
       return NextResponse.json({ error: 'Erro de configuração: Perfil "Paciente" não encontrado no banco de dados. Por favor, execute o script de seed.' }, { status: 500 });
     }
 
+    // 7. Transação para criar Paciente e Usuário atomicamente
     const newPatientAndUser = await prisma.$transaction(async (tx) => {
       const newPatient = await tx.paciente.create({
         data: {
           nome_completo,
           cpf: cleanCpf,
-          data_nascimento: parsedDate, 
-          sexo: sexo || null, 
+          data_nascimento: parsedDate,
+          sexo: sexo || null,
           email: email || null,
         },
       });
@@ -82,8 +90,8 @@ export async function POST(request: NextRequest) {
         data: {
           nome_completo: newPatient.nome_completo,
           email: newPatient.cpf,
-          hash_senha: hash_senha_inicial, 
-          id_perfil: patientProfile.id_perfil, 
+          hash_senha: hash_senha_inicial,
+          id_perfil: patientProfile.id_perfil,
           primeiro_login: true,
         },
       });
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     if (error.code === 'P2002') {
         if (error.meta?.target?.includes('email')) {
-            return NextResponse.json({ error: 'Já existe um usuário de login com este CPF. Paciente já pode ter um cadastro de acesso.' }, { status: 400 });
+            return NextResponse.json({ error: 'Já existe um usuário de login com este CPF ou e-mail.' }, { status: 409 });
         }
     }
     console.error('Erro ao tentar cadastrar o paciente:', error);
@@ -126,26 +134,22 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const searchTerm = searchParams.get('nome') || searchParams.get('cpf'); // Pega 'nome' ou 'cpf'
+    const searchTerm = searchParams.get('nome') || searchParams.get('cpf');
 
     let whereClause: any = {};
 
-    if (searchTerm && searchTerm.length >= 3) { // Aplica filtro apenas se o termo tiver 3+ caracteres
-      // Se o searchTerm for um CPF válido, busca por CPF
+    if (searchTerm && searchTerm.length >= 3) {
       const cleanCpf = searchTerm.replace(/\D/g, '');
-      if (cleanCpf.length === 11 && isValidCPF(cleanCpf)) { // Usa isValidCPF para o CPF
+      if (cleanCpf.length === 11 && isValidCPF(cleanCpf)) {
         whereClause = { cpf: cleanCpf };
-      } else { // Caso contrário, busca por nome completo (case-insensitive)
+      } else {
         whereClause = {
           nome_completo: {
             contains: searchTerm,
-            // mode: 'insensitive', // Removido, pois não é suportado por MySQL
           },
         };
       }
     }
-    // Se nenhum searchTerm for fornecido ou for muito curto, whereClause permanece vazio,
-    // resultando na busca de todos os pacientes.
 
     const pacientes = await prisma.paciente.findMany({
       where: whereClause,
@@ -160,8 +164,6 @@ export async function GET(request: NextRequest) {
       orderBy: {
         nome_completo: 'asc',
       },
-      // Não usa 'take' aqui para listagem geral, apenas se for uma busca específica com limite.
-      // Se quiser limitar a listagem geral, adicione 'take: X' aqui.
     });
 
     return NextResponse.json(pacientes, { status: 200 });

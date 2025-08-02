@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PlusCircleIcon } from '@heroicons/react/24/outline'; // Adicionado para consistência de ícones
 
 export default function CadastrarExamesPage() {
   const { data: session, status } = useSession();
@@ -41,15 +42,19 @@ export default function CadastrarExamesPage() {
     }
 
     try {
+      // CORREÇÃO AQUI: Garante que o fetch é chamado com o body e headers corretos
       const response = await fetch('/api/exames', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           nome_exame: nomeExame,
           descricao: descricao,
           preco: parseFloat(preco), // Envia como número, a API backend converterá para Decimal
         }),
       });
+
       const data = await response.json();
 
       if (response.ok) {
@@ -65,6 +70,7 @@ export default function CadastrarExamesPage() {
       }
     } catch (err: any) {
       console.error('Erro na requisição de cadastro de exame:', err);
+      // 'Unexpected end of JSON input' provavelmente será capturado aqui
       setMessage(err.message || 'Ocorreu um erro inesperado ao cadastrar o exame.');
       setMessageType('error');
     } finally {

@@ -6,37 +6,39 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Tipagens para os dados das amostras recebidas (baseado na API)
-interface ReceivedSample {
-  id_item_solicitacao: number;
-  status_item: string;
-  solicitacao: {
-    id_solicitacao: number;
-    data_hora_solicitacao: string;
-    medico_solicitante?: string;
-    paciente: {
-      nome_completo: string;
-      cpf: string;
-    };
-    recepcionista: {
-      nome_completo: string;
-    };
+// Tipagens para os dados das amostras recebidas (agora, baseada em Solicitações)
+interface SolicitacaoData {
+  id_solicitacao: number;
+  data_hora_solicitacao: string;
+  medico_solicitante?: string;
+  paciente: {
+    nome_completo: string;
+    cpf: string;
   };
-  exame_catalogo: {
-    nome_exame: string;
-    preco: number;
+  // CORREÇÃO AQUI: Adiciona a propriedade 'recepcionista'
+  recepcionista: { 
+    nome_completo: string;
+    email: string;
   };
+  itens_solicitacao: Array<{
+    id_item_solicitacao: number;
+    status_item: string;
+    exame_catalogo: {
+      nome_exame: string;
+    };
+  }>;
 }
 
 export default function RecebimentoAmostrasPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [sampleIdInput, setSampleIdInput] = useState(''); // Campo para ID da amostra
-  const [message, setMessage] = useState(''); // Mensagens de feedback
+  const [solicitacaoIdInput, setSolicitacaoIdInput] = useState(''); // Campo para ID da solicitação
+  const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+  const [loadingConfirm, setLoadingConfirm] = useState(false); // Loading para o botão de confirmação
 
-  const [receivedSamples, setReceivedSamples] = useState<ReceivedSample[]>([]); // Lista de amostras recebidas
+  const [receivedSolicitacoes, setReceivedSolicitacoes] = useState<SolicitacaoData[]>([]); // Lista de solicitações recebidas
   const [loadingList, setLoadingList] = useState(true);
 
   // Permissões para acessar esta página
@@ -44,20 +46,23 @@ export default function RecebimentoAmostrasPage() {
                         session?.user?.nome_perfil === 'Administrador' ||
                         session?.user?.nome_perfil === 'Técnico de Laboratório';
 
-  // Função para buscar a lista de amostras recebidas
-  const fetchReceivedSamples = useCallback(async () => {
+  // Função para buscar a lista de solicitações recebidas
+  const fetchReceivedSolicitacoes = useCallback(async () => {
     setLoadingList(true);
     try {
-      const response = await fetch('/api/amostras/recebidas');
+      // Busca todas as solicitações (sua API GET /api/solicitacoes já faz isso)
+      const response = await fetch('/api/solicitacoes');
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao buscar amostras recebidas.');
+        throw new Error(errorData.message || 'Falha ao buscar solicitações.');
       }
-      const data: ReceivedSample[] = await response.json();
-      setReceivedSamples(data);
+      const data: SolicitacaoData[] = await response.json();
+      // Filtra as solicitações no frontend para mostrar apenas as 'Recebida pela área técnica'
+      const received = data.filter(sol => sol.itens_solicitacao.every(item => item.status_item === 'Recebida pela área técnica'));
+      setReceivedSolicitacoes(received);
     } catch (err: any) {
-      console.error('Erro ao carregar amostras recebidas:', err);
-      setMessage(err.message || 'Erro ao carregar lista de amostras.');
+      console.error('Erro ao carregar solicitações recebidas:', err);
+      setMessage(err.message || 'Erro ao carregar lista de solicitações recebidas.');
       setMessageType('error');
     } finally {
       setLoadingList(false);
@@ -67,44 +72,48 @@ export default function RecebimentoAmostrasPage() {
   // Efeito para carregar a lista de amostras ao montar a página
   useEffect(() => {
     if (status === 'authenticated' && canAccessPage) {
-      fetchReceivedSamples();
+      fetchReceivedSolicitacoes();
     }
-  }, [status, canAccessPage, fetchReceivedSamples]);
+  }, [status, canAccessPage, fetchReceivedSolicitacoes]);
 
 
-  // Função para confirmar o recebimento da amostra
+  // Função para confirmar o recebimento da SOLICITAÇÃO completa
   const handleConfirmRecebimento = async () => {
     setMessage('');
     setMessageType('');
+    setLoadingConfirm(true);
 
-    const id = parseInt(sampleIdInput);
+    const id = parseInt(solicitacaoIdInput);
     if (isNaN(id) || id <= 0) {
-      setMessage('Por favor, insira um ID de amostra (item de solicitação) válido.');
+      setMessage('Por favor, insira um ID de solicitação válido.');
       setMessageType('error');
+      setLoadingConfirm(false);
       return;
     }
 
     try {
-      const response = await fetch('/api/amostras/recebimento', {
+      // Chama a nova API de recebimento de solicitação
+      const response = await fetch('/api/solicitacoes/recebimento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_item_solicitacao: id }),
+        body: JSON.stringify({ id_solicitacao: id }),
       });
       const data = await response.json();
 
       if (response.ok) {
         setMessage(data.message || 'Recebimento registrado com sucesso!');
         setMessageType('success');
-        setSampleIdInput(''); // Limpa o campo
-        fetchReceivedSamples(); // Recarrega a lista de amostras recebidas
+        setSolicitacaoIdInput(''); // Limpa o campo
+        fetchReceivedSolicitacoes(); // Recarrega a lista de solicitações recebidas
       } else {
-        setMessage(data.message || 'Erro ao registrar recebimento.');
-        setMessageType('error');
+        throw new Error(data.message || data.error || 'Erro ao registrar recebimento.');
       }
     } catch (err: any) {
       console.error('Erro na requisição de recebimento:', err);
       setMessage(err.message || 'Ocorreu um erro inesperado ao registrar o recebimento.');
       setMessageType('error');
+    } finally {
+      setLoadingConfirm(false);
     }
   };
 
@@ -126,27 +135,43 @@ export default function RecebimentoAmostrasPage() {
     );
   }
 
+  // Função auxiliar para estilizar o status (reutilizada)
+  const getStatusBadge = (status: string) => {
+    let bgColor = 'bg-gray-200';
+    let textColor = 'text-gray-800';
+    if (status === 'Recebida pela área técnica') {
+      bgColor = 'bg-blue-100';
+      textColor = 'text-blue-800';
+    }
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bgColor} ${textColor}`}>
+        {status}
+      </span>
+    );
+  };
+
+
   return (
     <div className="space-y-6 p-8">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Recebimento de Amostras</h1>
 
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Registrar Recebimento de Amostra</h2>
-        <p className="text-gray-600 mb-4">Insira o ID do Item de Solicitação (código de barras da amostra).</p>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Registrar Recebimento por Solicitação</h2>
+        <p className="text-gray-600 mb-4">Insira o ID da Solicitação para marcar todas as amostras como recebidas.</p>
         <div className="flex items-center gap-4 mb-4">
           <input
-            type="number" // Tipo number para IDs
-            value={sampleIdInput}
-            onChange={(e) => setSampleIdInput(e.target.value)}
-            placeholder="ID da Amostra (Item de Solicitação)"
+            type="number" 
+            value={solicitacaoIdInput}
+            onChange={(e) => setSolicitacaoIdInput(e.target.value)}
+            placeholder="ID da Solicitação (Ex: 4)"
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline flex-grow"
           />
           <button
             onClick={handleConfirmRecebimento}
-            disabled={!sampleIdInput || loadingList} // Desabilita enquanto carrega a lista
+            disabled={!solicitacaoIdInput || loadingConfirm}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Confirmar Recebimento
+            {loadingConfirm ? 'Confirmando...' : 'Confirmar Recebimento'}
           </button>
         </div>
         {message && (
@@ -157,39 +182,40 @@ export default function RecebimentoAmostrasPage() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Amostras Recebidas Recentemente</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Solicitações com Amostras Recebidas</h2>
         {loadingList ? (
-          <p className="text-gray-500">Carregando lista de amostras...</p>
-        ) : receivedSamples.length === 0 ? (
-          <p className="text-gray-600">Nenhuma amostra recebida recentemente.</p>
+          <p className="text-gray-500">Carregando lista de solicitações...</p>
+        ) : receivedSolicitacoes.length === 0 ? (
+          <p className="text-gray-600">Nenhuma solicitação com amostras recebidas recentemente.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Item</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solicitação ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paciente</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exame</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recepcionista</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exames (Status)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Solicitação</th>
-                  {/* Adicione mais colunas se houver campos como 'data_recebimento' */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {receivedSamples.map((sample) => (
-                  <tr key={sample.id_item_solicitacao}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sample.id_item_solicitacao}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sample.solicitacao.id_solicitacao}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sample.solicitacao.paciente.nome_completo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sample.exame_catalogo.nome_exame}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                        {sample.status_item.replace(/_/g, ' ')}
-                      </span>
+                {receivedSolicitacoes.map((solicitacao) => (
+                  <tr key={solicitacao.id_solicitacao}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{solicitacao.id_solicitacao}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{solicitacao.paciente.nome_completo}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{solicitacao.recepcionista.nome_completo}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <ul className="list-disc list-inside">
+                        {solicitacao.itens_solicitacao.map((item) => (
+                          <li key={item.id_item_solicitacao}>
+                            {item.exame_catalogo.nome_exame} ({getStatusBadge(item.status_item)})
+                          </li>
+                        ))}
+                      </ul>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(sample.solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}
+                      {new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}
                     </td>
                   </tr>
                 ))}
