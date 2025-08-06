@@ -1,11 +1,7 @@
-// lablare/src/app/api/auth/[...nextauth]/route.ts
-
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import NextAuth, { type NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaClient } from '../../../../generated/prisma';
+import prisma from '@/lib/prisma'; // Use a instância centralizada do Prisma
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -17,9 +13,7 @@ export const authOptions: NextAuthOptions = {
         senha: { label: 'Senha', type: 'password' },
       },
       async authorize(credentials) {
-        console.log('AUTH DEBUG: Tentativa de login Admin/Recep.');
         if (!credentials?.email || !credentials?.senha) {
-          console.log('AUTH DEBUG: Credenciais Admin/Recep incompletas.');
           throw new Error('Por favor, insira email e senha.');
         }
 
@@ -28,30 +22,26 @@ export const authOptions: NextAuthOptions = {
           include: { perfil: true },
         });
 
-        if (!user) {
-          console.log('AUTH DEBUG: Usuário Admin/Recep não encontrado pelo email.');
+        if (!user || !user.perfil || user.perfil.nome_perfil === 'Paciente') {
           throw new Error('Credencial ou senha incorreta.');
-        }
-
-        if (user.cpf_login || user.perfil?.nome_perfil === 'Paciente') {
-          console.log('AUTH DEBUG: Usuário encontrado é um paciente ou tem cpf_login. Bloqueando login por este provedor.');
-          throw new Error('Credencial ou senha incorreta.'); 
         }
 
         const isValidPassword = await bcrypt.compare(credentials.senha, user.hash_senha);
 
         if (!isValidPassword) {
-          console.log('AUTH DEBUG: Senha Admin/Recep incorreta.');
           throw new Error('Credencial ou senha incorreta.');
         }
+        
+        // Convertendo o campo de privilégios (que é JSON no DB) para um array de strings
+        const privilegiosArray = user.perfil?.privilegios ? JSON.parse(user.perfil.privilegios as string) : [];
 
-        console.log('AUTH DEBUG: Login Admin/Recep bem-sucedido.');
         return {
           id: user.id_usuario.toString(),
           name: user.nome_completo,
           email: user.email,
           id_perfil: user.id_perfil,
           nome_perfil: user.perfil?.nome_perfil,
+          privilegios: privilegiosArray, // Passando o array de privilégios
           isInternalUser: true,
         };
       },
@@ -137,12 +127,13 @@ export const authOptions: NextAuthOptions = {
         token.cpf = user.cpf;
         token.cpf_login = user.cpf_login;
         token.data_nascimento = user.data_nascimento;
+        if (user.privilegios) {
+          token.privilegios = user.privilegios;
+        }
       }
-      console.log('JWT Callback: FIM. Token final ANTES de retornar:', token); // DEBUG LOG
       return token;
     },
     async session({ session, token }) {
-      console.log('Session Callback: INÍCIO. Recebido token object (de JWT callback):', token); // DEBUG LOG
       if (token) {
         session.user.id = token.id;
         session.user.name = token.name;
@@ -152,8 +143,10 @@ export const authOptions: NextAuthOptions = {
         session.user.cpf = token.cpf;
         session.user.cpf_login = token.cpf_login;
         session.user.data_nascimento = token.data_nascimento;
+        if (token.privilegios) {
+          session.user.privilegios = token.privilegios;
+        }
       }
-      console.log('Session Callback: FIM. Sessão final ANTES de retornar:', session); // DEBUG LOG
       return session;
     },
   },
