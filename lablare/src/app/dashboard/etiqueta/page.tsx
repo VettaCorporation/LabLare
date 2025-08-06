@@ -325,7 +325,7 @@ export default function EtiquetaPage() {
                         <ul className="list-disc list-inside">
                           {solicitacao.itens_solicitacao.map((item) => (
                             <li key={item.id_item_solicitacao}>
-                              {item.exame_catalogo.nome_exame} ({item.exame_catalogo.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                             {item.exame_catalogo.nome_exame} ({item.exame_catalogo.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
                             </li>
                           ))}
                         </ul>
