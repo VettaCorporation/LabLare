@@ -127,7 +127,7 @@ function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBa
 function DeleteConfirmationModal({ paciente, onClose, onConfirm, message }: { paciente: Paciente, onClose: () => void, onConfirm: () => void, message: string }) {
   // ...código do modal...
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h2>
         <p className="text-gray-700 mb-6">
