@@ -1,9 +1,10 @@
-// src/components/PacienteCadastroForm/PacienteCadastroForm.tsx (COM onCHANGE CORRIGIDO)
+// Caminho: src/components/PacienteCadastroForm/PacienteCadastroForm.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { isValidCPF } from '@/utils/cpfValidator';
 import { formatCpfForDisplay } from '@/utils/cpfFormatter';
+import Link from 'next/link';
 
 interface Paciente {
   id_paciente: number;
@@ -47,6 +48,7 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
 
   const isEditing = !!initialData;
 
+  // LÓGICA RESTAURADA
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.nome_completo.trim()) newErrors.nome_completo = 'Nome completo é obrigatório.';
@@ -64,9 +66,7 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ### FUNÇÃO ADICIONADA DE VOLTA ###
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Remove qualquer formatação (pontos, traços) para guardar apenas os números
     const rawValue = e.target.value.replace(/\D/g, '');
     setFormData((prev) => ({ ...prev, cpf: rawValue.slice(0, 11) }));
   };
@@ -81,14 +81,12 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
     }
 
     try {
-      const url = isEditing ? `/api/pacientes/${initialData.id_paciente}` : '/api/pacientes';
+      const url = isEditing ? `/api/pacientes/${initialData!.id_paciente}` : '/api/pacientes';
       const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
-        // No modo de edição, enviamos todos os dados exceto o CPF.
-        // No modo de adição, enviamos tudo.
         body: JSON.stringify(isEditing ? { 
             nome_completo: formData.nome_completo,
             data_nascimento: formData.data_nascimento,
@@ -112,19 +110,20 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
 
   const renderOriginalValue = (fieldName: keyof typeof formData) => {
     if (isEditing && initialData && formData[fieldName] !== (fieldName === 'data_nascimento' ? new Date(initialData[fieldName]).toISOString().split('T')[0] : initialData[fieldName])) {
-      const originalValue = fieldName === 'data_nascimento' ? new Date(initialData[fieldName]).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : initialData[fieldName];
+      const originalValue = fieldName === 'data_nascimento' ? new Date(initialData[fieldName]).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : initialData[fieldName as keyof Paciente];
       return (
-        <p className="text-xs text-gray-500 mt-1">
-          <span className="font-semibold">Original:</span> {originalValue}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <span className="font-semibold">Original:</span> {String(originalValue)}
         </p>
       );
     }
     return null;
   };
-
+  
+  // O JSX já estava correto, com as classes dark e o botão onCancel
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">
+    <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">
         {isEditing ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}
       </h2>
       {message && <div className={`mb-4 text-sm p-3 rounded ${message.includes('sucesso') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{message}</div>}
@@ -132,13 +131,12 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
-            <label htmlFor="nome_completo" className="block text-sm font-medium text-gray-700">Nome Completo *</label>
-            <input type="text" name="nome_completo" value={formData.nome_completo} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+            <label htmlFor="nome_completo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Completo *</label>
+            <input type="text" name="nome_completo" value={formData.nome_completo} onChange={handleChange} />
             {renderOriginalValue('nome_completo')}
           </div>
           <div>
-            <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">CPF *</label>
-            {/* ### onCHANGE ADICIONADO AQUI ### */}
+            <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF *</label>
             <input 
               type="text" 
               name="cpf" 
@@ -146,17 +144,17 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
               onChange={handleCpfChange}
               disabled={isEditing} 
               maxLength={14}
-              className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm ${isEditing ? 'bg-gray-200 cursor-not-allowed' : 'border-gray-300'}`}
+              className={`${isEditing ? 'bg-gray-200 dark:bg-gray-700 cursor-not-allowed' : ''}`}
             />
           </div>
           <div>
-            <label htmlFor="data_nascimento" className="block text-sm font-medium text-gray-700">Data de Nascimento *</label>
-            <input type="date" name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"/>
+            <label htmlFor="data_nascimento" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Nascimento *</label>
+            <input type="date" name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} />
             {renderOriginalValue('data_nascimento')}
           </div>
           <div>
-            <label htmlFor="sexo" className="block text-sm font-medium text-gray-700">Sexo *</label>
-            <select name="sexo" value={formData.sexo} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+            <label htmlFor="sexo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sexo *</label>
+            <select name="sexo" value={formData.sexo} onChange={handleChange}>
               <option value="">Selecione...</option>
               <option value="Masculino">Masculino</option>
               <option value="Feminino">Feminino</option>
@@ -165,14 +163,14 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
             {renderOriginalValue('sexo')}
           </div>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email *</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"/>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email *</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} />
             {renderOriginalValue('email')}
           </div>
         </div>
 
-        <div className="mt-8 pt-5 border-t border-gray-200 flex justify-end gap-4">
-          <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={loading}>
+        <div className="mt-8 pt-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
+          <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600" disabled={loading}>
             Cancelar
           </button>
           <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>

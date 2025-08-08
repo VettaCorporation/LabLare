@@ -1,4 +1,4 @@
-// src/components/Dashboard/MonthlyRevenueLineChart.tsx
+// Caminho: src/components/dashboard/MonthlyRevenueLineChart.tsx
 'use client';
 
 import React from 'react';
@@ -9,7 +9,6 @@ interface ChartData {
   Faturamento: number;
 }
 
-// Novas props para os filtros
 interface MonthlyRevenueLineChartProps {
   data: ChartData[];
   selectedYear: number;
@@ -43,23 +42,31 @@ const MonthlyRevenueLineChart: React.FC<MonthlyRevenueLineChartProps> = ({
     };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md h-auto lg:h-96 flex flex-col">
+    // MUDANÇA 1: Fundo do card
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md h-auto lg:h-96 flex flex-col">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <h3 className="text-lg font-semibold text-gray-800">Faturamento Mensal</h3>
-            {/* Controles de Filtro */}
+            {/* MUDANÇA 2: Cor do título */}
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Faturamento Mensal</h3>
+            
             <div className="flex items-center gap-2">
-                <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="p-2 border rounded-md text-sm">
+                {/* Os selects já são corrigidos pelo globals.css, não precisam de mudança */}
+                <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
                     {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
                 </select>
-                <select value={startMonth} onChange={(e) => setStartMonth(Number(e.target.value))} className="p-2 border rounded-md text-sm">
+                <select value={startMonth} onChange={(e) => setStartMonth(Number(e.target.value))}>
                     {months.map(month => <option key={month.value} value={month.value}>{month.label}</option>)}
                 </select>
-                <span className="text-gray-500">até</span>
-                <select value={endMonth} onChange={(e) => setEndMonth(Number(e.target.value))} className="p-2 border rounded-md text-sm">
+                {/* MUDANÇA 3: Cor do texto "até" */}
+                <span className="text-gray-500 dark:text-gray-400">até</span>
+                <select value={endMonth} onChange={(e) => setEndMonth(Number(e.target.value))}>
                     {months.map(month => <option key={month.value} value={month.value}>{month.label}</option>)}
                 </select>
             </div>
         </div>
+        {/*
+          IMPORTANTE: As cores de dentro do gráfico (linhas, eixos)
+          serão corrigidas no Passo 2, com o CSS Global.
+        */}
         <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />

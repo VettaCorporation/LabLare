@@ -1,4 +1,4 @@
-// src/components/Dashboard/InfoPieChart.tsx
+// Caminho: src/components/dashboard/InfoPieChart.tsx
 'use client';
 
 import React from 'react';
@@ -14,7 +14,7 @@ interface InfoPieChartProps {
   title: string;
 }
 
-// Paleta de cores para os gráficos
+// Paleta de cores para os gráficos (não precisa mudar, cores vibrantes funcionam bem em ambos os temas)
 const COLORS = ['#0047AB', '#3CB371', '#007FFF', '#FFC107', '#8A2BE2'];
 
 const InfoPieChart: React.FC<InfoPieChartProps> = ({ data, title }) => {
@@ -23,12 +23,14 @@ const InfoPieChart: React.FC<InfoPieChartProps> = ({ data, title }) => {
     if (title.toLowerCase().includes('faturamento')) {
       return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
-    return value.toLocaleString('pt-BR');
+    return value.toLocaleString('pt-br');
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md h-96 flex flex-col">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+    // MUDANÇA 1: Adicionando classes dark:* ao container do card
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md h-96 flex flex-col">
+      {/* MUDANÇA 2: Adicionando classe dark:* ao título */}
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">{title}</h3>
       {data.length > 0 ? (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -46,13 +48,15 @@ const InfoPieChart: React.FC<InfoPieChartProps> = ({ data, title }) => {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
+            {/* O Tooltip e a Legenda serão estilizados pelo globals.css */}
             <Tooltip formatter={formatTooltipValue} />
             <Legend iconSize={12} wrapperStyle={{ fontSize: '14px' }}/>
           </PieChart>
         </ResponsiveContainer>
       ) : (
         <div className="flex-grow flex items-center justify-center">
-            <p className="text-gray-500">Não há dados suficientes para exibir.</p>
+            {/* MUDANÇA 3: Adicionando classe dark:* ao texto de "sem dados" */}
+            <p className="text-gray-500 dark:text-gray-400">Não há dados suficientes para exibir.</p>
         </div>
       )}
     </div>

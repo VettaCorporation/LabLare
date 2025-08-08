@@ -1,26 +1,65 @@
+/* Caminho: src/app/globals.css */
+
 @import "tailwindcss";
 
+/* Define as variáveis de cor para o corpo da página */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f9fafb; /* Um cinza muito claro para o fundo */
+  --foreground: #111827; /* Texto padrão escuro */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #111827; /* Um cinza bem escuro para o fundo (não preto puro) */
+    --foreground: #f3f4f6; /* Texto padrão claro */
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* ==================================================================
+== CORREÇÃO GLOBAL PARA INPUTS E OUTROS ELEMENTOS BASE
+==================================================================
+*/
+
+@layer base {
+  /*
+   * Estilos para os inputs, garantindo que eles também mudem
+   */
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    @apply w-full px-3 py-2 border rounded-md;
+    /* Estilos para Modo Claro */
+    @apply bg-white border-gray-300 text-gray-900 placeholder-gray-400;
+    /* Estilos para Modo Escuro */
+    @apply dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500;
+    
+    /* Estilos de Foco */
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply dark:focus:ring-blue-400;
+  }
+
+  /* Estilos para a biblioteca de gráficos Recharts no modo escuro */
+  .dark .recharts-text, 
+  .dark .recharts-legend-item-text {
+    @apply fill-gray-300;
+  }
+
+  .dark .recharts-cartesian-grid-line line,
+  .dark .recharts-y-axis .recharts-axis-line,
+  .dark .recharts-x-axis .recharts-axis-line {
+    @apply stroke-gray-700;
+  }
+
+  .dark .recharts-tooltip-wrapper {
+    background-color: theme('colors.gray.800') !important;
+    border-color: theme('colors.gray.700') !important;
+    color: theme('colors.gray.100') !important;
+  }
 }
