@@ -1,3 +1,4 @@
+// Caminho: src/app/dashboard/colaboradores/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -19,16 +20,16 @@ interface Colaborador {
 
 function DeactivateConfirmationModal({ colaborador, onClose, onConfirm, message }: { colaborador: Colaborador, onClose: () => void, onConfirm: () => void, message: string }) {
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Confirmar Desativação</h2>
-        <p className="text-gray-700 mb-6">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-xl text-center max-w-md w-full">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Confirmar Desativação</h2>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">
           Tem certeza que deseja desativar o colaborador <span className="font-bold">{colaborador.nome_completo}</span>?<br/>
-          <span className="text-sm text-gray-600">Ele(a) não poderá mais acessar o sistema.</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">Ele(a) não poderá mais acessar o sistema.</span>
         </p>
         {message && <p className="mb-4 text-sm text-red-600">{message}</p>}
         <div className="flex justify-center gap-4">
-          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">
+          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
             Cancelar
           </button>
           <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">
@@ -51,6 +52,7 @@ export default function ColaboradoresPage() {
   const [actionMessage, setActionMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // LÓGICA RESTAURADA
   const fetchColaboradores = useCallback(async () => {
     try {
       const response = await fetch('/api/colaboradores');
@@ -85,6 +87,7 @@ export default function ColaboradoresPage() {
 
   const handleOpenDeactivateModal = (colaborador: Colaborador) => { setColaboradorToDeactivate(colaborador); setActionMessage(''); };
   const handleCloseModal = () => { setColaboradorToDeactivate(null); };
+  
   const handleConfirmDeactivate = async () => {
     if (!colaboradorToDeactivate) return;
     try {
@@ -101,11 +104,12 @@ export default function ColaboradoresPage() {
     }
   };
 
-  if (status === 'loading') { return <div className="p-8">Verificando permissões...</div>; }
+  if (status === 'loading') { return <div className="p-8 dark:text-gray-300">Verificando permissões...</div>; }
   if (!session || session.user?.nome_perfil !== 'Administrador') { return null; }
 
+  // O JSX já estava correto, com todos os estilos do modo escuro.
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-8">
       {colaboradorToDeactivate && <DeactivateConfirmationModal colaborador={colaboradorToDeactivate} onClose={handleCloseModal} onConfirm={handleConfirmDeactivate} message={actionMessage} />}
       {successMessage && <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg">{successMessage}</div>}
       
@@ -114,41 +118,41 @@ export default function ColaboradoresPage() {
       ) : (
         <>
           <div className="flex justify-between items-center">
-             <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Colaboradores</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Colaboradores</h1>
             <button onClick={() => setIsAdding(true)} className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
               <PlusIcon className="h-5 w-5" /> Adicionar Colaborador
             </button>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Colaboradores Cadastrados</h2>
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Colaboradores Cadastrados</h2>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Perfil</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nome</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Perfil</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {colaboradores.map((colaborador) => (
                     <tr key={colaborador.id_usuario}>
-                      <td className="px-6 py-4">{colaborador.nome_completo}</td>
-                      <td className="px-6 py-4">{colaborador.email}</td>
-                      <td className="px-6 py-4">{colaborador.perfil.nome_perfil}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{colaborador.nome_completo}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{colaborador.email}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{colaborador.perfil.nome_perfil}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colaborador.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colaborador.ativo ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'}`}>
                           {colaborador.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <Link href={`/dashboard/colaboradores/${colaborador.id_usuario}/editar`} className="text-indigo-600 hover:text-indigo-900 mx-2" title="Editar Colaborador">
+                        <Link href={`/dashboard/colaboradores/${colaborador.id_usuario}/editar`} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2" title="Editar Colaborador">
                           <PencilIcon className="h-5 w-5 inline" />
                         </Link>
                         {colaborador.ativo && (
-                          <button onClick={() => handleOpenDeactivateModal(colaborador)} className="text-red-600 hover:text-red-900 mx-2" title="Desativar Colaborador">
+                          <button onClick={() => handleOpenDeactivateModal(colaborador)} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400 mx-2" title="Desativar Colaborador">
                             <TrashIcon className="h-5 w-5 inline" />
                           </button>
                         )}

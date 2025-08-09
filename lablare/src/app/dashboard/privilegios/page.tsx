@@ -1,3 +1,4 @@
+// Caminho: src/app/dashboard/privilegios/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -72,6 +73,7 @@ export default function PrivilegiosPage() {
     }
   }, [status, canAccessPage]);
 
+  // LÓGICA RESTAURADA: Esta função permite que os checkboxes funcionem
   const handleCheckboxChange = (path: string, isChecked: boolean) => {
     if (!abaAtivaId) return;
     const perfilAtual = perfis.find(p => p.id_perfil === abaAtivaId);
@@ -88,8 +90,7 @@ export default function PrivilegiosPage() {
 
     setAlteracoes(prev => ({
       ...prev,
-      // A CORREÇÃO ESTÁ AQUI:
-      [abaAtivaId]: Array.from(new Set(newPermissions)) // Usando Array.from() para garantir o tipo
+      [abaAtivaId]: Array.from(new Set(newPermissions))
     }));
   };
 
@@ -129,26 +130,27 @@ export default function PrivilegiosPage() {
   const temAlteracoes = Object.keys(alteracoes).length > 0;
   
   if (status === 'loading' || loading) {
-    return <div className="p-8">Carregando gerenciador de privilégios...</div>;
+    return <div className="p-8 dark:text-gray-300">Carregando gerenciador de privilégios...</div>;
   }
   if (status === 'unauthenticated' || !canAccessPage) {
     router.push('/dashboard');
     return null;
   }
 
+  // O JSX já estava correto, com todos os estilos do modo escuro.
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <ShieldCheckIcon className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Privilégios</h1>
+        <ShieldCheckIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+        <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Privilégios</h1>
       </div>
 
       {successMessage && (
         <div className="p-4 text-sm text-green-700 bg-green-100 rounded-lg">{successMessage}</div>
       )}
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+        <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-6" aria-label="Tabs">
             {perfis.map((perfil) => (
               <button
@@ -156,8 +158,8 @@ export default function PrivilegiosPage() {
                 onClick={() => setAbaAtivaId(perfil.id_perfil)}
                 className={`${
                   abaAtivaId === perfil.id_perfil
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
               >
                 {perfil.nome_perfil}
@@ -169,7 +171,7 @@ export default function PrivilegiosPage() {
         <div className="py-6">
           {perfilSelecionado && Object.entries(groupedPages).map(([category, pages]) => (
             <div key={category} className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">{category}</h3>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 border-b dark:border-gray-700 pb-2 mb-4">{category}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                 {pages.map(page => {
                   const currentPermissions = alteracoes[perfilSelecionado.id_perfil] ?? perfilSelecionado.privilegios ?? [];
@@ -177,17 +179,17 @@ export default function PrivilegiosPage() {
                   const isEditingAdminOnPrivileges = perfilSelecionado.nome_perfil === 'Administrador' && page.path === '/dashboard/privilegios';
                   
                   return (
-                    <label key={page.path} className={`flex items-start p-3 rounded-md transition-colors ${isEditingAdminOnPrivileges ? 'bg-gray-200 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
+                    <label key={page.path} className={`flex items-start p-3 rounded-md transition-colors ${isEditingAdminOnPrivileges ? 'bg-gray-200 dark:bg-gray-800 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
                       <input
                         type="checkbox"
-                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
                         checked={isChecked}
                         disabled={isEditingAdminOnPrivileges}
                         onChange={(e) => handleCheckboxChange(page.path, e.target.checked)}
                       />
                       <div className="ml-3 text-sm">
-                        <p className="font-medium text-gray-800">{page.name}</p>
-                        <p className="text-gray-500">{page.description}</p>
+                        <p className="font-medium text-gray-800 dark:text-gray-200">{page.name}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{page.description}</p>
                       </div>
                     </label>
                   );
@@ -197,7 +199,7 @@ export default function PrivilegiosPage() {
           ))}
         </div>
         
-        <div className="flex justify-end pt-4 border-t">
+        <div className="flex justify-end pt-4 border-t dark:border-gray-700">
             <button 
                 onClick={handleSaveChanges}
                 disabled={!temAlteracoes || saving}
