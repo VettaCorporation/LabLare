@@ -1,5 +1,5 @@
+// Caminho: src/app/dashboard/layout.tsx
 import React from 'react';
-import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 interface DashboardLayoutProps {
@@ -8,21 +8,16 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
-    // Estrutura principal com flexbox
-    <div className="flex h-screen bg-gray-100">
+    // O DashboardHeader fica aqui, fora da área de rolagem
+    <>
+      <DashboardHeader />
       
-      <Sidebar />
-
-      <div className="flex flex-col flex-1 overflow-y-auto">
-        
-        <DashboardHeader />
-
-        <main className="p-8">
-          {children}
-        </main>
-      </div>
-    </div>
+      {/* Criamos a área de rolagem aqui, apenas para o conteúdo da página */}
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {children}
+      </main>
+    </>
   );
 };
 
-export default DashboardLayout; 
+export default DashboardLayout;

@@ -23,8 +23,79 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onCancel }) => {
   const [senhasVisiveis, setSenhasVisiveis] = useState(false);
 
   // A lógica de submit e fetch de perfis continua a mesma
-  const handleSubmit = async (event: React.FormEvent) => { /* ...lógica original... */ };
-  useEffect(() => { /* ...lógica original... */ }, []);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault(); // Impede o recarregamento da página
+    setErro('');
+    setSucesso('');
+
+    // 1. Validação dos campos no frontend
+    if (!nome_completo || !email || !idPerfilSelecionado || !senha || !confirmarSenha) {
+      setErro('Por favor, preencha todos os campos.');
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      setErro('As senhas não coincidem.');
+      return;
+    }
+    if (senha.length < 6) { // Exemplo de regra de senha
+      setErro('A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+
+    // 2. Envio dos dados para a API
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nome_completo: nome_completo,
+          email: email,
+          senha: senha,
+          id_perfil: idPerfilSelecionado,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Se a API retornar um erro (ex: e-mail já existe), mostra aqui
+        throw new Error(data.error || 'Falha ao cadastrar colaborador.');
+      }
+
+      setSucesso('Colaborador cadastrado com sucesso!');
+      
+      // Limpa o formulário e chama a função de sucesso (que atualiza a lista na página)
+      if (onSuccess) {
+        onSuccess();
+      }
+
+    } catch (err: any) {
+      setErro(err.message);
+      console.error('Erro ao cadastrar:', err);
+    }
+  };
+  
+  useEffect(() => {
+    // Função assíncrona para buscar os perfis da API
+    const fetchPerfis = async () => {
+      try {
+        const response = await fetch('/api/auth/perfis'); // Faz a chamada para a sua API de perfis
+        if (!response.ok) {
+          throw new Error('Falha ao buscar perfis.');
+        }
+        const data = await response.json();
+        setPerfis(data); // Atualiza o estado com a lista de perfis recebida
+      } catch (err) {
+        // Define uma mensagem de erro se a busca falhar
+        setErro('Não foi possível carregar os perfis. Tente novamente mais tarde.');
+        console.error(err);
+      }
+    };
+
+    fetchPerfis(); // Executa a função de busca
+  }, []); // O array vazio [] garante que isso só rode uma vez, quando o componente é montado
 
   return (
     <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">

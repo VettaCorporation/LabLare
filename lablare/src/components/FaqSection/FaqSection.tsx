@@ -16,7 +16,7 @@ const FaqItem: React.FC<FaqItemProps> = ({ question, answer }) => {
   return (
     <div className="border border-gray-300 rounded-lg mb-4 overflow-hidden">
       <button
-        className="flex justify-between items-center w-full p-5 text-left text-gray-800 font-semibold bg-gray-50 hover:bg-gray-100"
+        className="flex justify-between items-center w-full p-5 text-left text-gray-800 font-semibold bg-gray-50 hover:bg-gray-100 npm install --save-dev @types/xlsx"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span>{question}</span>

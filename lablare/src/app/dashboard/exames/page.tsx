@@ -27,10 +27,10 @@ function DeleteConfirmationModal({ exame, onClose, onConfirm, message }: { exame
         </p>
         {message && <p className="mb-4 text-sm text-red-600">{message}</p>}
         <div className="flex justify-center gap-4">
-          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
             Cancelar
           </button>
-          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">
+          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer">
             Confirmar Exclusão
           </button>
         </div>
@@ -98,10 +98,10 @@ export default function ExamesPage() {
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{exame.descricao || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(exame.preco)}</td>
                     <td className="px-6 py-4 text-center">
-                      <Link href={`/dashboard/exames/${exame.id_exame_catalogo}/editar`} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2" title="Editar Exame">
+                      <Link href={`/dashboard/exames/${exame.id_exame_catalogo}/editar`} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2 cursor-pointer" title="Editar Exame">
                         <PencilIcon className="h-5 w-5 inline" />
                       </Link>
-                      <button onClick={() => handleOpenDeleteModal(exame)} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400 mx-2" title="Excluir Exame">
+                      <button onClick={() => handleOpenDeleteModal(exame)} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400 mx-2 cursor-pointer" title="Excluir Exame">
                         <TrashIcon className="h-5 w-5 inline" />
                       </button>
                     </td>

@@ -18,6 +18,7 @@ model Perfil {
   id_perfil   Int      @id @default(autoincrement())
   nome_perfil String   @unique @db.VarChar(50)
   usuarios    Usuario[] // Relação: Um perfil pode ter vários usuários
+  privilegios String?  @db.Text
 }
 
 // schema.prisma

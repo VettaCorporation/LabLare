@@ -90,11 +90,11 @@ export default function ValidacaoLaudosPage() {
     return (
       <div className="space-y-8">
         {/* MUDANÇA 1: Card do cabeçalho da visualização de detalhes */}
-        <div className="flex justify-between items-center bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
+        <div className="flex justify-between items-center bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 ">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Detalhes do Laudo #{selectedLaudo.id_laudo}</h1>
           <button
             onClick={() => setSelectedLaudo(null)}
-            className="flex items-center gap-x-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+            className="flex items-center gap-x-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors cursor-pointer"
           >
             <ArrowUturnLeftIcon className="h-5 w-5" />
             Voltar
@@ -154,14 +154,14 @@ export default function ValidacaoLaudosPage() {
           <button
             onClick={() => setShowRejeitarModal(true)}
             disabled={submitting}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:opacity-50"
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:opacity-50 cursor-pointer"
           >
             Rejeitar Laudo
           </button>
           <button
             onClick={() => handleAprovarLaudo(selectedLaudo.id_laudo)}
             disabled={submitting}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:opacity-50"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:opacity-50 cursor-pointer"
           >
             Aprovar Laudo
           </button>
@@ -184,7 +184,7 @@ export default function ValidacaoLaudosPage() {
               <div className="flex justify-end gap-2 mt-4">
                 <button
                   onClick={() => setShowRejeitarModal(false)}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -248,7 +248,7 @@ export default function ValidacaoLaudosPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                       <button
                         onClick={() => fetchLaudoDetalhes(laudo.id_laudo)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out cursor-pointer"
                       >
                         Visualizar Laudo
                       </button>

@@ -216,7 +216,7 @@ export default function EtiquetaPage() {
                       <td className="px-6 py-4 text-center text-sm font-medium">
                         <button
                           onClick={() => handlePrintEtiquetas(solicitacao)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out"
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out cursor-pointer"
                           title="Imprimir Etiquetas"
                         >
                           Imprimir Etiquetas
@@ -279,7 +279,7 @@ export default function EtiquetaPage() {
                     <td className="px-6 py-4 text-center text-sm font-medium">
                       <button
                         onClick={() => handlePrintEtiquetas(solicitacao)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out"
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out cursor-pointer"
                         title="Imprimir Etiquetas"
                       >
                         Imprimir Etiquetas

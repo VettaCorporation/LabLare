@@ -96,7 +96,7 @@ export default function AtendimentoPage() {
               <h1 className="text-3xl font-bold text-gray-800">Registrar Solicitação</h1>
               <button 
                   onClick={() => setSelectedPaciente(null)}
-                  className="flex items-center gap-x-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                  className="flex items-center gap-x-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer"
               >
                   <ArrowUturnLeftIcon className="h-5 w-5" />
                   Voltar para a Lista
@@ -120,7 +120,7 @@ export default function AtendimentoPage() {
           <button 
             type="button" 
             onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 cursor-pointer"
             title="Filtrar Pacientes"
           >
             <FunnelIcon className="h-6 w-6" />
@@ -138,7 +138,7 @@ export default function AtendimentoPage() {
       {/* --- NOVO PAINEL DE FILTRO COM ANIMAÇÃO --- */}
       <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isFilterOpen ? 'max-h-96' : 'max-h-0'}`}>
         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg shadow-inner mb-6 relative">
-          <button onClick={() => setIsFilterOpen(false)} className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
+          <button onClick={() => setIsFilterOpen(false)} className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer">
             <XMarkIcon className="h-5 w-5"/>
           </button>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -152,8 +152,8 @@ export default function AtendimentoPage() {
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-3">
-            <button onClick={handleClearFilter} className="text-sm font-semibold text-gray-600 dark:text-gray-400 hover:underline">Limpar Filtro</button>
-            <button onClick={handleApplyFilter} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Filtrar</button>
+            <button onClick={handleClearFilter} className="text-sm font-semibold text-gray-600 dark:text-gray-400 hover:underline cursor-pointer">Limpar Filtro</button>
+            <button onClick={handleApplyFilter} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">Filtrar</button>
           </div>
         </div>
       </div>

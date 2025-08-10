@@ -51,7 +51,7 @@ function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBa
         </h2>
         <button
           onClick={onBack}
-          className="flex items-center gap-x-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          className="flex items-center gap-x-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer"
         >
           <ArrowUturnLeftIcon className="h-5 w-5" />
           Voltar
@@ -74,10 +74,10 @@ function DeleteConfirmationModal({ paciente, onClose, onConfirm, message }: { pa
         </p>
         {message && <p className="mb-4 text-red-600">{message}</p>}
         <div className="flex justify-center gap-4">
-          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
             Cancelar
           </button>
-          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">
+          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer">
             Confirmar Exclusão
           </button>
         </div>

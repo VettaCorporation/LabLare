@@ -50,7 +50,7 @@ const LoginPage: React.FC = () => {
 
         <button
           onClick={handleGoBack}
-          className="absolute top-8 left-8 bg-[#0047AB] text-white px-4 py-2 rounded-md flex items-center shadow-lg hover:bg-[#003A8D] transition duration-200 z-20"
+          className="absolute top-8 left-8 bg-[#0047AB] text-white px-4 py-2 rounded-md flex items-center shadow-lg hover:bg-[#003A8D] transition duration-200 z-20 cursor-pointer"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -80,9 +80,9 @@ const LoginPage: React.FC = () => {
                   w-36 text-center py-2 px-4 rounded-md font-semibold text-sm transition-colors duration-300
                   ${perfilAtivo.id === perfil.id
                     ? perfil.buttonBgColor + ' ' + perfil.buttonTextColor + ' shadow-md'
-                    : 'bg-white text-gray-700' 
+                    : 'bg-white text-gray-700 cursor-pointer' 
                   }
-                  ${perfilAtivo.id !== perfil.id ? 'hover:bg-gray-100' : ''}
+                  ${perfilAtivo.id !== perfil.id ? 'hover:bg-gray-100 cursor-pointer' : ''}
                 `}
               >
                 {perfil.label}

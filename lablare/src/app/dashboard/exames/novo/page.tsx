@@ -86,7 +86,7 @@ export default function NovoExamePage() {
     <div className="space-y-8 p-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Cadastro de Novo Exame</h1>
-        <Link href="/dashboard/exames" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors">
+        <Link href="/dashboard/exames" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors cursor-pointer">
             Voltar para a Lista
         </Link>
       </div>
@@ -135,13 +135,13 @@ export default function NovoExamePage() {
             </div>
           )}
           <div className="flex justify-end gap-4 mt-4">
-              <Link href="/dashboard/exames" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">
+              <Link href="/dashboard/exames" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors cursor-pointer">
                 Cancelar
               </Link>
               <button
                 type="submit"
                 disabled={loadingForm}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out disabled:opacity-50 cursor-pointer"
               >
                 {loadingForm ? 'Salvando...' : 'Salvar Exame'}
               </button>
