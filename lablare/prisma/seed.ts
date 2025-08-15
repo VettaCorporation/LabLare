@@ -5,7 +5,9 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Start seeding profiles...');
+  console.log('Start seeding...');
+
+  // 1. Perfis
   const profiles = ['Administrador', 'Recepcionista', 'Biomédico', 'Técnico de Laboratório', 'Responsável Financeira', 'Paciente'];
   for (const name of profiles) {
     await prisma.perfil.upsert({
@@ -16,7 +18,23 @@ async function main() {
   }
   console.log('Profiles seeded.');
 
-  // Opcional: Criar um usuário Administrador e Recepcionista para testes
+  // 2. Configurações Iniciais
+  await prisma.configuracao.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      nomeLaboratorio: 'Lare Laboratório',
+      endereco: 'Rua Exemplo, 123 - Sua Cidade, UF',
+      telefone: '(XX) XXXX-XXXX',
+      emailContato: 'contato@larelaboratorio.com.br',
+      logoUrl: '/assets/img/Logo.png', // Caminho para o logo padrão
+      rodapeLaudo: 'Este é um rodapé padrão para todos os laudos. Edite nas configurações.',
+    },
+  });
+  console.log('Default settings seeded.');
+
+  // 3. Usuários Padrão (Admin/Recep)
   const adminProfile = await prisma.perfil.findUnique({ where: { nome_perfil: 'Administrador' } });
   if (adminProfile) {
     const hashedPassword = await bcrypt.hash('admin123', 10);
