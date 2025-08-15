@@ -90,7 +90,7 @@ export default function LancamentoResultadosPage() {
             <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">Lançar Resultados para: <span className="text-blue-700 dark:text-blue-400">{selectedItem.exame_catalogo.nome_exame}</span></h2>
             <button
               onClick={() => setSelectedItem(null)}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+              className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors cursor-pointer"
             >
               Voltar
             </button>
@@ -129,7 +129,7 @@ export default function LancamentoResultadosPage() {
                 <button
                   type="button"
                   onClick={() => handleRemoveResultField(index)}
-                  className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md h-10 w-10 flex items-center justify-center"
+                  className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md h-10 w-10 flex items-center justify-center cursor-pointer"
                   title="Remover Campo"
                 >
                   &times;
@@ -141,7 +141,7 @@ export default function LancamentoResultadosPage() {
           <button
             type="button"
             onClick={handleAddResultField}
-            className="mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-200 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200"
+            className="mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-200 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 cursor-pointer"
           >
             Adicionar Outro Parâmetro
           </button>
@@ -200,7 +200,7 @@ export default function LancamentoResultadosPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                         <button
                           onClick={() => handleSelectItemForLaunch(item)}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out"
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out cursor-pointer"
                         >
                           Lançar Resultados
                         </button>

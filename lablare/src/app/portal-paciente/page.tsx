@@ -62,22 +62,22 @@ export default function PortalPacientePage() {
         <nav className="flex-1">
           <ul className="space-y-2">
             <li>
-              <Link href="/portal-paciente" className="flex items-center p-2 text-blue-600 bg-blue-50 rounded-md font-semibold">
+              <Link href="/portal-paciente" className="flex items-center p-2 text-blue-600 bg-blue-50 rounded-md font-semibold cursor-pointer">
                 <HomeIcon className="h-5 w-5 mr-3" /> Painel
               </Link>
             </li>
             <li>
-              <Link href="/portal-paciente/perfil" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md">
+              <Link href="/portal-paciente/perfil" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer">
                 <UserIcon className="h-5 w-5 mr-3" /> Perfil
               </Link>
             </li>
             <li>
-              <Link href="/portal-paciente/meus-exames" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md">
+              <Link href="/portal-paciente/meus-exames" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer">
                 <DocumentMagnifyingGlassIcon className="h-5 w-5 mr-3" /> Meus Exames
               </Link>
             </li>
             <li>
-              <Link href="/portal-paciente/configuracoes" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md">
+              <Link href="/portal-paciente/configuracoes" className="flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer">
                 <Cog6ToothIcon className="h-5 w-5 mr-3" /> Configurações
               </Link>
             </li>
@@ -94,7 +94,7 @@ export default function PortalPacientePage() {
             {/* Botão de Sair: Agora usa a função signOut diretamente */}
             <button 
               onClick={() => signOut({ callbackUrl: '/login' })} // Redireciona para /login após o logout
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md cursor-pointer"
             >
               Sair
             </button>
@@ -105,7 +105,7 @@ export default function PortalPacientePage() {
           <h2 className="text-2xl font-bold mb-2">Olá, {patientName}!</h2>
           <p className="text-lg mb-4">Acesse todo seu histórico de resultados de exames em um só lugar.</p>
           <Link href="/portal-paciente/meus-exames">
-            <button className="bg-white text-blue-700 font-semibold py-2 px-6 rounded-md hover:bg-blue-100 transition-colors">
+            <button className="bg-white text-blue-700 font-semibold py-2 px-6 rounded-md hover:bg-blue-100 transition-colors cursor-pointer">
               VER MEUS EXAMES
             </button>
           </Link>

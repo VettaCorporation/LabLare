@@ -49,7 +49,7 @@ const ContactSection: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full bg-[#3CB371] hover:bg-[#349860] text-white font-semibold py-3 rounded-md transition-colors duration-200 text-lg shadow-lg"
+              className="w-full bg-[#3CB371] hover:bg-[#349860] text-white font-semibold py-3 rounded-md transition-colors duration-200 text-lg shadow-lg cursor-pointer"
             >
               Enviar mensagem
             </button>
@@ -62,7 +62,7 @@ const ContactSection: React.FC = () => {
           <button
             type="submit" // Considerar que este botão enviará o formulário do lado esquerdo.
                           // Se o formulário tiver um 'id', este botão pode ser 'form="form-id-aqui"'
-            className="w-full md:w-auto bg-[#3CB371] hover:bg-[#349860] text-white font-semibold py-3 px-12 rounded-md transition-colors duration-200 text-lg shadow-lg"
+            className="w-full md:w-auto bg-[#3CB371] hover:bg-[#349860] text-white font-semibold py-3 px-12 rounded-md transition-colors duration-200 text-lg shadow-lg cursor-pointer"
           >
             Enviar Mensagem
           </button>

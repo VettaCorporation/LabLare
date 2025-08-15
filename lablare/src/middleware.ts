@@ -29,20 +29,32 @@ export default withAuth(
         return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     
-    // --- NOVA REGRA DE VERIFICAÇÃO DE PRIVILÉGIOS (O CORAÇÃO DA LÓGICA) ---
+    // --- NOVA REGRA DE VERIFICAÇÃO DE PRIVILÉGIOS (CORRIGIDA) ---
     if (isInternalUser && pathname.startsWith('/dashboard')) {
       // O Administrador sempre tem acesso total.
       if (userProfile === 'Administrador') {
         return NextResponse.next();
       }
 
-      // Para outros perfis, verifica se o caminho está na lista de privilégios.
-      // Usamos startsWith para que a permissão a '/dashboard/exames' também libere '/dashboard/exames/novo'.
+      // 1. LÓGICA PARA A PÁGINA PRINCIPAL DO DASHBOARD
+      // Se o usuário tentar acessar a raiz do dashboard
+      if (pathname === '/dashboard') {
+        // E ele tiver alguma permissão, redireciona para a primeira página que ele pode acessar
+        if (userPrivileges && userPrivileges.length > 0) {
+          const firstAllowedPage = userPrivileges[0];
+          return NextResponse.redirect(new URL(firstAllowedPage, request.url));
+        }
+        // Se não tiver nenhuma, o acesso será negado abaixo
+      }
+
+      // 2. LÓGICA PARA AS PÁGINAS INTERNAS
+      // Verifica se o usuário tem acesso à página solicitada
       const hasAccess = userPrivileges.some(p => pathname.startsWith(p));
       
       if (!hasAccess) {
         console.warn(`ACESSO NEGADO para ${userProfile} em ${pathname}. Redirecionando...`);
-        // Redireciona para o painel principal com uma mensagem de erro.
+        // Se o acesso for negado, redireciona para a raiz do dashboard,
+        // que por sua vez o levará para a primeira página permitida (graças à lógica acima).
         const url = new URL('/dashboard', request.url);
         url.searchParams.set('error', 'access_denied'); 
         return NextResponse.redirect(url);

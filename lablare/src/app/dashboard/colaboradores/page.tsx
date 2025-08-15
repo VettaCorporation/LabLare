@@ -29,10 +29,10 @@ function DeactivateConfirmationModal({ colaborador, onClose, onConfirm, message 
         </p>
         {message && <p className="mb-4 text-sm text-red-600">{message}</p>}
         <div className="flex justify-center gap-4">
-          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
             Cancelar
           </button>
-          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">
+          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer">
             Confirmar Desativação
           </button>
         </div>
@@ -119,7 +119,7 @@ export default function ColaboradoresPage() {
         <>
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Colaboradores</h1>
-            <button onClick={() => setIsAdding(true)} className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+            <button onClick={() => setIsAdding(true)} className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
               <PlusIcon className="h-5 w-5" /> Adicionar Colaborador
             </button>
           </div>
@@ -148,11 +148,11 @@ export default function ColaboradoresPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <Link href={`/dashboard/colaboradores/${colaborador.id_usuario}/editar`} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2" title="Editar Colaborador">
+                        <Link href={`/dashboard/colaboradores/${colaborador.id_usuario}/editar`} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2 cursor-pointer" title="Editar Colaborador">
                           <PencilIcon className="h-5 w-5 inline" />
                         </Link>
                         {colaborador.ativo && (
-                          <button onClick={() => handleOpenDeactivateModal(colaborador)} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400 mx-2" title="Desativar Colaborador">
+                          <button onClick={() => handleOpenDeactivateModal(colaborador)} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400 mx-2 cursor-pointer" title="Desativar Colaborador">
                             <TrashIcon className="h-5 w-5 inline" />
                           </button>
                         )}

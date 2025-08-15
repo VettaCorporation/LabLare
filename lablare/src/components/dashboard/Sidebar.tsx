@@ -21,13 +21,11 @@ import {
   CheckBadgeIcon, 
 } from '@heroicons/react/24/outline';
 
-const PlusIcon = PlusCircleIcon;
-
+// A interface foi simplificada, removendo 'allowedProfiles'
 interface NavItem {
   name: string;
   href: string;
   icon: React.ElementType; 
-  allowedProfiles: string[];
 }
 
 function classNames(...classes: string[]) {
@@ -37,42 +35,43 @@ function classNames(...classes: string[]) {
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  
+  // Pegamos o perfil e os privilégios REAIS da sessão do usuário
   const userProfile = (session?.user as any)?.nome_perfil;
+  const userPrivileges = (session?.user as any)?.privilegios || [];
 
+  // A lista de TODOS os itens possíveis do menu
   const allNavItems: NavItem[] = [
-    { name: 'Painel', href: '/dashboard', icon: HomeIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
-    { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico'] },
-    { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista', 'Responsável Financeira'] },
-    { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira', 'Paciente'] },
-    { name: 'Etiquetas de Amostras', href: '/dashboard/etiqueta', icon: TicketIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista', 'Técnico de Laboratório'] },
-    { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon, 
-      allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
-    { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon, 
-      allowedProfiles: ['Administrador', 'Técnico de Laboratório'] },
-    { name: 'Validação de Laudos', href: '/dashboard/validacao-laudos', icon: CheckBadgeIcon, 
-      allowedProfiles: ['Administrador', 'Biomédico'] },
-    { name: 'Exames', href: '/dashboard/exames', icon: PlusIcon, 
-      allowedProfiles: ['Administrador'] },
-    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon, 
-      allowedProfiles: ['Administrador'] },   
-    { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon, 
-      allowedProfiles: ['Administrador'] },
-    { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon, 
-      allowedProfiles: ['Administrador', 'Recepcionista'] },
+    { name: 'Painel', href: '/dashboard', icon: HomeIcon },
+    { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
+    { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
+    { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon },
+    { name: 'Etiquetas de Amostras', href: '/dashboard/etiqueta', icon: TicketIcon },
+    { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon },
+    { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon },
+    { name: 'Validação de Laudos', href: '/dashboard/validacao-laudos', icon: CheckBadgeIcon },
+    { name: 'Exames', href: '/dashboard/exames', icon: PlusCircleIcon },
+    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },   
+    { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon },
+    { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon },
   ];
   
-  const filteredNavigation = allNavItems.filter(item => 
-    item.allowedProfiles.includes(userProfile || '')
-  );
+  // ==================================================================
+  // ESTA É A NOVA LÓGICA DE FILTRAGEM
+  // ==================================================================
+  const filteredNavigation = allNavItems.filter(item => {
+    // Regra 1: O Administrador sempre vê todos os links.
+    if (userProfile === 'Administrador') {
+      return true;
+    }
+    // Regra 2: Para outros perfis, o link só aparece se o seu 'href'
+    // estiver na lista de 'userPrivileges' vinda da sessão.
+    return userPrivileges.includes(item.href);
+  });
 
   if (status === 'loading') {
     return (
-      <div className="flex flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 border-r border-gray-200 w-64 flex-shrink-0 items-center justify-center dark:bg-gray-900 dark:border-gray-800">
+      <div className="hidden lg:flex lg:flex-col lg:gap-y-5 lg:overflow-y-auto lg:bg-white lg:px-6 lg:pb-4 lg:border-r lg:border-gray-200 lg:w-64 lg:flex-shrink-0 items-center justify-center dark:bg-gray-900 dark:border-gray-800">
         <p className="text-sm text-gray-500 dark:text-gray-400">Carregando menu...</p>
       </div>
     );
@@ -94,7 +93,6 @@ export default function Sidebar() {
           <li>
             <ul role="list" className="-mx-2 space-y-1">
               {filteredNavigation.map((item) => {
-                // MUDANÇA 2: A nova lógica para determinar o link ativo
                 const isActive = pathname === item.href || 
                                  (item.href === '/dashboard/pacientes' && pathname.startsWith('/dashboard/atendimento'));
                 

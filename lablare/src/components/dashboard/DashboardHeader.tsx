@@ -44,11 +44,11 @@ export default function DashboardHeader() {
         </form>
         <div className="flex items-center gap-x-4 lg:gap-x-6">
           {/* MUDANÇA 4: Cor dos ícones de Configurações e Notificações */}
-          <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400">
+          <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 cursor-pointer">
             <span className="sr-only">Configurações</span>
             <Cog6ToothIcon className="h-6 w-6" aria-hidden="true" />
           </button>
-          <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400">
+          <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 cursor-pointer">
             <span className="sr-only">Ver notificações</span>
             <BellIcon className="h-6 w-6" aria-hidden="true" />
           </button>
@@ -58,7 +58,7 @@ export default function DashboardHeader() {
           {/* Profile dropdown */}
           <div className="relative" ref={profileMenuRef}>
             {/* MUDANÇA 6: Cor do botão de perfil e textos */}
-            <button onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} className="-m-1.5 flex items-center p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+            <button onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} className="-m-1.5 flex items-center p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer">
               <span className="hidden lg:flex lg:items-center">
                 <span className="ml-4 text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100" aria-hidden="true">
                   Olá, {session?.user?.name || 'Usuário'}
@@ -80,7 +80,7 @@ export default function DashboardHeader() {
                 <div className="p-2">
                   <button
                     onClick={() => signOut({ callbackUrl: '/' })}
-                    className="w-full text-left block rounded-md px-3 py-2 text-sm leading-6 text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                    className="w-full text-left block rounded-md px-3 py-2 text-sm leading-6 text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100 cursor-pointer"
                   >
                     Sair
                   </button>

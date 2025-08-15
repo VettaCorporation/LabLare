@@ -134,10 +134,10 @@ export default function EditarColaboradorPage() {
                 </div>
             )}
             <div className="flex justify-end gap-4 pt-4 border-t">
-                <Link href="/dashboard/colaboradores" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg">
+                <Link href="/dashboard/colaboradores" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg cursor-pointer">
                     Cancelar
                 </Link>
-                <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md disabled:opacity-50">
+                <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 cursor-pointer">
                     {loading ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
             </div>

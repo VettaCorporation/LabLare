@@ -93,7 +93,7 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
                 <button
                   type="button"
                   onClick={() => handleCheckboxChange(exame)} 
-                  className="text-red-500 hover:text-red-700 text-sm ml-2"
+                  className="text-red-500 hover:text-red-700 text-sm ml-2 cursor-pointer"
                 >
                   Remover
                 </button>

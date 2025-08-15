@@ -145,9 +145,7 @@ export default function PrivilegiosPage() {
         <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Privilégios</h1>
       </div>
 
-      {successMessage && (
-        <div className="p-4 text-sm text-green-700 bg-green-100 rounded-lg">{successMessage}</div>
-      )}
+      
 
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
         <div className="border-b border-gray-200 dark:border-gray-700">
@@ -158,9 +156,9 @@ export default function PrivilegiosPage() {
                 onClick={() => setAbaAtivaId(perfil.id_perfil)}
                 className={`${
                   abaAtivaId === perfil.id_perfil
-                    ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400 cursor-pointer'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600 cursor-pointer'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer`}
               >
                 {perfil.nome_perfil}
               </button>
@@ -182,7 +180,7 @@ export default function PrivilegiosPage() {
                     <label key={page.path} className={`flex items-start p-3 rounded-md transition-colors ${isEditingAdminOnPrivileges ? 'bg-gray-200 dark:bg-gray-800 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
                       <input
                         type="checkbox"
-                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                         checked={isChecked}
                         disabled={isEditingAdminOnPrivileges}
                         onChange={(e) => handleCheckboxChange(page.path, e.target.checked)}
@@ -203,11 +201,15 @@ export default function PrivilegiosPage() {
             <button 
                 onClick={handleSaveChanges}
                 disabled={!temAlteracoes || saving}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
                 {saving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
         </div>
+
+        {successMessage && (
+        <div className="p-4 text-sm text-green-700 bg-green-100 rounded-lg">{successMessage}</div>
+      )}
 
       </div>
     </div>

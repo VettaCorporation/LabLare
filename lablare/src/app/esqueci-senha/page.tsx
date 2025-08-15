@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
         {/* Botão "Voltar" */}
         <button
           onClick={handleGoBack}
-          className="absolute top-8 left-8 bg-[#0047AB] text-white px-4 py-2 rounded-md flex items-center shadow-lg hover:bg-[#003A8D] transition duration-200 z-20"
+          className="absolute top-8 left-8 bg-[#0047AB] text-white px-4 py-2 rounded-md flex items-center shadow-lg hover:bg-[#003A8D] transition duration-200 z-20 cursor-pointer"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
             {/* Link "Lembrou a senha? Entrar" */}
             <p className="text-sm text-gray-600 text-center">
               Lembrou a senha?{' '}
-              <Link href="/login" className="text-blue-600 hover:underline font-semibold">
+              <Link href="/login" className="text-blue-600 hover:underline font-semibold cursor-pointer">
                 Entrar
               </Link>
             </p>
@@ -137,7 +137,7 @@ export default function ForgotPasswordPage() {
             {/* Botão "RECUPERAR SENHA" */}
             <button
               type="submit"
-              className="bg-[#3CB371] hover:bg-[#349860] text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 shadow-md"
+              className="bg-[#3CB371] hover:bg-[#349860] text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 shadow-md cursor-pointer"
               disabled={loading}
             >
               {loading ? 'Enviando...' : 'RECUPERAR SENHA'}
