@@ -164,3 +164,15 @@ model OrcamentoItem {
   orcamento         Orcamento     @relation(fields: [id_orcamento], references: [id_orcamento])
   exame_catalogo    ExameCatalogo @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
 }
+
+// Adicione este novo modelo ao final do seu schema
+
+model Configuracao {
+  id               Int     @id @default(1) // Sempre usaremos o ID 1
+  nomeLaboratorio  String? @db.VarChar(255)
+  endereco         String? @db.Text
+  telefone         String? @db.VarChar(50)
+  emailContato     String? @db.VarChar(255)
+  logoUrl          String? @db.Text
+  rodapeLaudo      String? @db.Text
+}

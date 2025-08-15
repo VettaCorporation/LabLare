@@ -37,6 +37,7 @@ interface OrcamentoStats {
     barChart: { name: string, Orçamentos: number }[];
 }
 
+
 // --- Componentes Auxiliares (100% IMPLEMENTADOS) ---
 
 const getStatusBadge = (status: string) => {
@@ -55,15 +56,15 @@ const getStatusBadge = (status: string) => {
 
 const DeleteModal = ({ orcamento, onClose, onConfirm }: { orcamento: Orcamento, onClose: () => void, onConfirm: () => void }) => {
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h2>
-        <p className="text-gray-700 mb-6">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-xl text-center max-w-md w-full">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Confirmar Exclusão</h2>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">
           Tem certeza que deseja excluir o orçamento #{orcamento.id_orcamento} do paciente <span className="font-bold">{orcamento.paciente.nome_completo}</span>?
         </p>
         <div className="flex justify-center gap-4">
-          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
-          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Confirmar</button>
+          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">Cancelar</button>
+          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer">Confirmar</button>
         </div>
       </div>
     </div>
@@ -83,22 +84,22 @@ const ViewModal = ({ orcamento, onClose }: { orcamento: OrcamentoCompleto | null
     };
 
     return (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center border-b pb-3 mb-4">
-                    <h2 className="text-2xl font-bold text-gray-800">Detalhes do Orçamento #{orcamento.id_orcamento}</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center border-b dark:border-gray-700 pb-3 mb-4">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Detalhes do Orçamento #{orcamento.id_orcamento}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none cursor-pointer">&times;</button>
                 </div>
-                <div className="overflow-y-auto space-y-4 pr-2">
+                <div className="overflow-y-auto space-y-4 pr-2 text-gray-700 dark:text-gray-300">
                     <p><strong>Paciente:</strong> {orcamento.paciente.nome_completo}</p>
                     <p><strong>Status:</strong> {getStatusBadge(orcamento.status)}</p>
                     <p><strong>Criado por:</strong> {orcamento.recepcionista.nome_completo} em {new Date(orcamento.data_criacao).toLocaleDateString('pt-BR')}</p>
                     
-                    <div className="border-t pt-4">
-                        <h3 className="font-semibold mb-2">Exames:</h3>
+                    <div className="border-t dark:border-gray-700 pt-4">
+                        <h3 className="font-semibold mb-2 text-gray-800 dark:text-gray-200">Exames:</h3>
                         <ul>
                             {orcamento.itens.map((item, index) => (
-                                <li key={index} className="flex justify-between border-b py-1 text-sm">
+                                <li key={index} className="flex justify-between border-b dark:border-gray-700 py-1 text-sm">
                                     <span>{item.exame_catalogo.nome_exame}</span>
                                     <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.preco_exame))}</span>
                                 </li>
@@ -106,15 +107,15 @@ const ViewModal = ({ orcamento, onClose }: { orcamento: OrcamentoCompleto | null
                         </ul>
                     </div>
 
-                    <div className="mt-4 border-t pt-4 text-right space-y-1">
+                    <div className="mt-4 border-t dark:border-gray-700 pt-4 text-right space-y-1">
                         <p>Subtotal: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(orcamento.valor_bruto))}</p>
-                        <p className="text-red-600">Desconto: - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(orcamento.desconto))}</p>
-                        <p className="font-bold text-lg">Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(orcamento.valor_final))}</p>
+                        <p className="text-red-500">Desconto: - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(orcamento.desconto))}</p>
+                        <p className="font-bold text-lg text-gray-800 dark:text-gray-100">Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(orcamento.valor_final))}</p>
                     </div>
                 </div>
-                <div className="flex justify-end gap-4 mt-6 pt-4 border-t">
-                    <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Fechar</button>
-                    <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                <div className="flex justify-end gap-4 mt-6 pt-4 border-t dark:border-gray-700">
+                    <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">Fechar</button>
+                    <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer">
                         <PrinterIcon className="h-5 w-5" /> Imprimir
                     </button>
                 </div>
@@ -171,7 +172,6 @@ export default function OrcamentoPage() {
         if (success === 'true') {
             setMessage('Orçamento criado com sucesso!');
             setMessageType('success');
-            // Limpa a URL para que a mensagem não apareça ao recarregar
             router.replace('/dashboard/orcamento', { scroll: false });
         }
     } else if (status === 'authenticated' && !canAccessPage) { 
@@ -197,7 +197,7 @@ export default function OrcamentoPage() {
       if (!response.ok) throw new Error('Falha ao excluir orçamento.');
       setOrcamentoToDelete(null);
       setMessage('Orçamento excluído com sucesso!'); setMessageType('success');
-      fetchData(); // Recarrega todos os dados
+      fetchData();
     } catch (err: any) {
        setMessage(err.message); setMessageType('error');
     }
@@ -211,13 +211,13 @@ export default function OrcamentoPage() {
       if (!response.ok) throw new Error(data.message);
       
       setMessage(data.message); setMessageType('success');
-      fetchData(); // Recarrega todos os dados
+      fetchData();
     } catch (err: any) {
        setMessage(err.message); setMessageType('error');
     }
   };
   
-  if (status === 'loading' || loading) { return <div className="p-8">Carregando...</div>; }
+  if (status === 'loading' || loading) { return <div className="p-8 dark:text-gray-300">Carregando...</div>; }
   if (status === 'unauthenticated') { router.push('/login'); return null; }
 
   return (
@@ -226,8 +226,8 @@ export default function OrcamentoPage() {
       {orcamentoToView && <ViewModal orcamento={orcamentoToView} onClose={() => setOrcamentoToView(null)} />}
 
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Orçamentos</h1>
-        <Link href="/dashboard/orcamento/novo" className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gerenciamento de Orçamentos</h1>
+        <Link href="/dashboard/orcamento/novo" className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
           <PlusIcon className="h-5 w-5" />
           Criar Novo Orçamento
         </Link>
@@ -253,35 +253,35 @@ export default function OrcamentoPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Lista de Orçamentos</h2>
-            {orcamentos.length === 0 ? (<p className="text-gray-500">Nenhum orçamento encontrado.</p>) : (
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Lista de Orçamentos</h2>
+            {orcamentos.length === 0 ? (<p className="text-gray-500 dark:text-gray-400">Nenhum orçamento encontrado.</p>) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor Final</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Paciente</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Data</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Valor Final</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                     {orcamentos.map((orc) => (
-                      <tr key={orc.id_orcamento}>
-                        <td className="px-6 py-4">{orc.id_orcamento}</td>
-                        <td className="px-6 py-4">{orc.paciente.nome_completo}</td>
-                        <td className="px-6 py-4">{new Date(orc.data_criacao).toLocaleDateString('pt-BR')}</td>
-                        <td className="px-6 py-4 font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(orc.valor_final)}</td>
+                      <tr key={orc.id_orcamento} className="dark:hover:bg-gray-800/50">
+                        <td className="px-6 py-4 text-sm text-gray-800 dark:text-gray-200">{orc.id_orcamento}</td>
+                        <td className="px-6 py-4 text-sm text-gray-800 dark:text-gray-200">{orc.paciente.nome_completo}</td>
+                        <td className="px-6 py-4 text-sm text-gray-800 dark:text-gray-200">{new Date(orc.data_criacao).toLocaleDateString('pt-BR')}</td>
+                        <td className="px-6 py-4 font-medium text-sm text-gray-800 dark:text-gray-200">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(orc.valor_final)}</td>
                         <td className="px-6 py-4">{getStatusBadge(orc.status)}</td>
                         <td className="px-6 py-4 text-center">
-                          <button onClick={() => handleOpenViewModal(orc.id_orcamento)} className="text-gray-500 hover:text-blue-700 mx-2" title="Visualizar/Imprimir"><EyeIcon className="h-5 w-5" /></button>
+                          <button onClick={() => handleOpenViewModal(orc.id_orcamento)} className="text-gray-500 hover:text-blue-700 dark:hover:text-blue-400 mx-2 cursor-pointer" title="Visualizar/Imprimir"><EyeIcon className="h-5 w-5" /></button>
                           {orc.status === 'Pendente' && (
-                            <button onClick={() => handleConvert(orc.id_orcamento)} className="text-gray-500 hover:text-green-700 mx-2" title="Converter em Solicitação"><ArrowUpOnSquareIcon className="h-5 w-5" /></button>
+                            <button onClick={() => handleConvert(orc.id_orcamento)} className="text-gray-500 hover:text-green-700 dark:hover:text-green-400 mx-2 cursor-pointer" title="Converter em Solicitação"><ArrowUpOnSquareIcon className="h-5 w-5" /></button>
                           )}
-                          <button onClick={() => setOrcamentoToDelete(orc)} className="text-gray-500 hover:text-red-700 mx-2" title="Excluir Orçamento"><TrashIcon className="h-5 w-5" /></button>
+                          <button onClick={() => setOrcamentoToDelete(orc)} className="text-gray-500 hover:text-red-700 dark:hover:text-red-500 mx-2 cursor-pointer" title="Excluir Orçamento"><TrashIcon className="h-5 w-5" /></button>
                         </td>
                       </tr>
                     ))}

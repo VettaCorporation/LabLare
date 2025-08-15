@@ -126,34 +126,34 @@ export default function NovoOrcamentoPage() {
   };
 
 
-  if (status === 'loading') return <div className="p-8">Carregando...</div>;
+  if (status === 'loading') return <div className="p-8 dark:text-gray-300">Carregando...</div>;
   if (status === 'unauthenticated') { router.push('/login'); return null; }
 
   return (
     <div className="space-y-6 p-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Criar Novo Orçamento</h1>
-        <Link href="/dashboard/orcamento" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Criar Novo Orçamento</h1>
+        <Link href="/dashboard/orcamento" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
           Voltar para a Lista
         </Link>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Seção do Paciente */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">1. Paciente</h2>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">1. Paciente</h2>
           <input
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
             placeholder="Digite o nome ou CPF para buscar..."
-            className="w-full p-2 border border-gray-300 rounded-md"
+            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
           />
           {searchResults.length > 0 && (
-            <ul className="border mt-2 rounded-md max-h-40 overflow-y-auto">
+            <ul className="border dark:border-gray-700 mt-2 rounded-md max-h-40 overflow-y-auto">
               {searchResults.map((p) => (
                 <li key={p.id_paciente} onClick={() => handlePacienteSelect(p)}
-                  className="p-2 cursor-pointer hover:bg-blue-50 border-b">
+                  className="p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/50 border-b dark:border-gray-700 text-gray-800 dark:text-gray-200">
                   {p.nome_completo} - CPF: {p.cpf}
                 </li>
               ))}
@@ -162,33 +162,34 @@ export default function NovoOrcamentoPage() {
         </div>
 
         {/* Seção de Exames */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">2. Exames</h2>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">2. Exames</h2>
+            {/* O componente ExameSelection precisa ser adaptado para o dark mode internamente se ainda não foi */}
             <ExameSelection onExamesSelected={setExamesSelecionados} />
         </div>
 
         {/* Seção de Valores e Validade */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">3. Detalhes e Valores</h2>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">3. Detalhes e Valores</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label htmlFor="desconto" className="block text-sm font-medium text-gray-700">Desconto (R$)</label>
+                    <label htmlFor="desconto" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Desconto (R$)</label>
                     <input type="number" id="desconto" value={desconto} onChange={(e) => setDesconto(e.target.value)}
-                        className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                        className="mt-1 w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
                         placeholder="0.00" step="0.01"
                     />
                 </div>
                  <div>
-                    <label htmlFor="validade" className="block text-sm font-medium text-gray-700">Validade do Orçamento (dias)</label>
+                    <label htmlFor="validade" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Validade do Orçamento (dias)</label>
                     <input type="number" id="validade" value={validadeDias} onChange={(e) => setValidadeDias(e.target.value)}
-                        className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                        className="mt-1 w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
                     />
                 </div>
             </div>
-            <div className="mt-6 border-t pt-4 space-y-2">
-                <div className="flex justify-between text-gray-600"><p>Subtotal:</p> <p>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorBruto)}</p></div>
-                <div className="flex justify-between text-red-600"><p>Desconto:</p> <p>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</p></div>
-                <div className="flex justify-between text-xl font-bold text-gray-800"><p>Valor Total:</p> <p>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorFinal)}</p></div>
+            <div className="mt-6 border-t dark:border-gray-700 pt-4 space-y-2">
+                <div className="flex justify-between text-gray-600 dark:text-gray-400"><p>Subtotal:</p> <p>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorBruto)}</p></div>
+                <div className="flex justify-between text-red-600 dark:text-red-500"><p>Desconto:</p> <p>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</p></div>
+                <div className="flex justify-between text-xl font-bold text-gray-800 dark:text-gray-100"><p>Valor Total:</p> <p>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorFinal)}</p></div>
             </div>
         </div>
 
@@ -200,7 +201,7 @@ export default function NovoOrcamentoPage() {
 
         <div className="flex justify-end">
             <button type="submit" disabled={loading}
-             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-md disabled:opacity-50"
+             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-md disabled:opacity-50 cursor-pointer"
             >
                 {loading ? 'Salvando...' : 'Salvar Orçamento'}
             </button>
