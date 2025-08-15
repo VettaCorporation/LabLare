@@ -19,7 +19,24 @@ interface Paciente {
   email?: string | null;
 }
 
-// --- SUB-COMPONENTES COM LÓGICA E JSX COMPLETOS ---
+// --- SUB-COMPONENTES COM LÓGICA E JSX 100% COMPLETOS ---
+
+const getStatusBadge = (status: string) => {
+    let baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
+    let lightClasses = 'bg-blue-100 text-blue-800';
+    let darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
+    switch (status) {
+        case 'AGUARDANDO_PAGAMENTO':
+            lightClasses = 'bg-yellow-100 text-yellow-800';
+            darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
+            break;
+        case 'PAGA':
+            lightClasses = 'bg-green-100 text-green-800';
+            darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
+            break;
+    }
+    return <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>{status.replace(/_/g, ' ')}</span>;
+};
 
 function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBack: () => void; }) {
   const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
@@ -57,7 +74,7 @@ function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBa
           Voltar
         </button>
       </div>
-      {/* Aqui vai o JSX para renderizar a tabela de solicitações */}
+      {/* Aqui virá a tabela de solicitações */}
     </div>
   );
 }
@@ -103,8 +120,10 @@ export default function PacientesPage() {
     setIsLoadingList(true);
     try {
       const params = new URLSearchParams();
-      if (filters.nome) params.append('nome', filters.nome);
-      if (filters.cpf) params.append('cpf', filters.cpf.replace(/\D/g, ''));
+      if (filters.nome.trim()) params.append('nome', filters.nome.trim());
+      const cleanCpf = filters.cpf.replace(/\D/g, '');
+      if (cleanCpf) params.append('cpf', cleanCpf);
+      
       const response = await fetch(`/api/pacientes?${params.toString()}`);
       if (!response.ok) throw new Error('Falha ao buscar pacientes.');
       const data = await response.json();
@@ -130,6 +149,9 @@ export default function PacientesPage() {
     setFilters({ nome: '', cpf: '' });
     setTempFilters({ nome: '', cpf: '' });
   };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') handleApplyFilters();
+  };
   
   const handleExportToExcel = () => {
     const dataToExport = pacientes.map((p, index) => ({
@@ -146,8 +168,10 @@ export default function PacientesPage() {
     writeFile(workbook, "ListaDePacientes.xlsx");
   };
 
-  // --- LÓGICA DAS FUNÇÕES DE HANDLE RESTAURADA ---
-  const handlePatientSaved = () => setView('list');
+  const handlePatientSaved = () => {
+    setView('list');
+    fetchPacientes();
+  };
   const handleOpenDeleteModal = (paciente: Paciente) => setPatientToDelete(paciente);
   const handleCloseDeleteModal = () => setPatientToDelete(null);
   const handleConfirmDelete = async () => {
@@ -186,7 +210,7 @@ export default function PacientesPage() {
             <input 
               type="text" id="nome-filtro" value={tempFilters.nome}
               onChange={(e) => setTempFilters({...tempFilters, nome: e.target.value})}
-              onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
+              onKeyDown={handleKeyDown}
               placeholder="Filtrar por nome..." 
             />
           </div>
@@ -195,7 +219,7 @@ export default function PacientesPage() {
             <input 
               type="text" id="cpf-filtro" value={tempFilters.cpf}
               onChange={(e) => setTempFilters({...tempFilters, cpf: formatCpfOnType(e.target.value)})}
-              onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
+              onKeyDown={handleKeyDown}
               placeholder="000.000.000-00" 
             />
           </div>
