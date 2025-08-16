@@ -1,153 +1,116 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+interface ExameFormData {
+    nome_exame: string;
+    descricao: string;
+    preco: string;
+    codigo_interno: string;
+    codigo_pardini: string;
+}
 
 export default function NovoExamePage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+    const router = useRouter();
+    const [formData, setFormData] = useState<ExameFormData>({
+        nome_exame: '',
+        descricao: '',
+        preco: '',
+        codigo_interno: '',
+        codigo_pardini: '',
+    });
+    const [message, setMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-  // Estados para o formulário de cadastro
-  const [nomeExame, setNomeExame] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [preco, setPreco] = useState('');
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
-  const [loadingForm, setLoadingForm] = useState(false);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
 
-  const canAccessPage = session?.user?.nome_perfil === 'Administrador';
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMessage('');
+        setIsLoading(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage('');
-    setMessageType('');
-    setLoadingForm(true);
+        // Determina a origem com base nos códigos preenchidos
+        const origem = formData.codigo_pardini ? 'PARDINI' : 'INTERNO';
 
-    if (!nomeExame.trim() || !preco.trim()) {
-      setMessage('Nome do exame e preço são obrigatórios.');
-      setMessageType('error');
-      setLoadingForm(false);
-      return;
-    }
-    if (isNaN(parseFloat(preco)) || parseFloat(preco) <= 0) {
-      setMessage('Preço inválido. Deve ser um número positivo.');
-      setMessageType('error');
-      setLoadingForm(false);
-      return;
-    }
+        try {
+            const response = await fetch(`/api/exames-catalogo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...formData,
+                    preco: parseFloat(formData.preco.replace(',', '.')) || 0,
+                    origem: origem, // Envia a origem para a API
+                }),
+            });
+            const data = await response.json();
 
-    try {
-      const response = await fetch('/api/exames', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome_exame: nomeExame,
-          descricao: descricao,
-          preco: parseFloat(preco),
-        }),
-      });
+            if (response.ok) {
+                router.push('/dashboard/exames?success=Exame criado com sucesso!');
+            } else {
+                setMessage(data.error || 'Erro ao criar o exame.');
+            }
+        } catch (err: any) {
+            setMessage(err.message || 'Ocorreu um erro inesperado.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Após o sucesso, redireciona para a página da lista
-        router.push('/dashboard/exames?success=true');
-      } else {
-        setMessage(data.message || data.error || 'Erro ao cadastrar exame.');
-        setMessageType('error');
-      }
-    } catch (err: any) {
-      console.error('Erro na requisição de cadastro de exame:', err);
-      setMessage(err.message || 'Ocorreu um erro inesperado.');
-      setMessageType('error');
-    } finally {
-      setLoadingForm(false);
-    }
-  };
-
-  if (status === 'loading') {
-    return <div className="text-center text-xl mt-10">Verificando autenticação...</div>;
-  }
-  if (status === 'unauthenticated') {
-    router.push('/login');
-    return null;
-  }
-  if (!canAccessPage) {
     return (
-      <div className="text-center text-xl mt-10 p-5 bg-yellow-100 text-yellow-800 rounded-md">
-        Você não tem permissão para acessar esta página.
-      </div>
-    );
-  }
+        <div className="p-4 sm:p-6 md:p-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="mb-6">
+                    <Link href="/dashboard/exames" className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        Voltar para a lista de exames
+                    </Link>
+                </div>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8">
+                    Adicionar Novo Exame
+                </h1>
 
-  return (
-    <div className="space-y-8 p-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Cadastro de Novo Exame</h1>
-        <Link href="/dashboard/exames" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors cursor-pointer">
-            Voltar para a Lista
-        </Link>
-      </div>
-
-
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label htmlFor="nomeExame" className="block text-gray-700 text-sm font-bold mb-2">
-              Nome do Exame:
-            </label>
-            <input
-              type="text" id="nomeExame" value={nomeExame}
-              onChange={(e) => setNomeExame(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-              placeholder="Ex: Hemograma Completo"
-              disabled={loadingForm}
-            />
-          </div>
-          <div>
-            <label htmlFor="descricao" className="block text-gray-700 text-sm font-bold mb-2">
-              Descrição (Opcional):
-            </label>
-            <textarea
-              id="descricao" value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              rows={3}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 resize-y"
-              placeholder="Detalhes sobre o exame"
-              disabled={loadingForm}
-            ></textarea>
-          </div>
-          <div>
-            <label htmlFor="preco" className="block text-gray-700 text-sm font-bold mb-2">Preço:</label>
-            <input
-              type="number" id="preco" value={preco}
-              onChange={(e) => setPreco(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-              placeholder="Ex: 50.00" step="0.01"
-              disabled={loadingForm}
-            />
-          </div>
-          {message && (
-            <div className={`mt-4 p-3 rounded-md ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {message}
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label htmlFor="nome_exame" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Exame</label>
+                            <input type="text" id="nome_exame" value={formData.nome_exame} onChange={handleChange} required className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label htmlFor="codigo_interno" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Código Interno</label>
+                                <input type="text" id="codigo_interno" value={formData.codigo_interno} onChange={handleChange} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
+                            </div>
+                            <div>
+                                <label htmlFor="codigo_pardini" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Código Pardini</label>
+                                <input type="text" id="codigo_pardini" value={formData.codigo_pardini} onChange={handleChange} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="preco" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço</label>
+                            <input type="text" id="preco" value={formData.preco} onChange={handleChange} required placeholder="ex: 25,50" className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
+                        </div>
+                        <div>
+                            <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição (Opcional)</label>
+                            <textarea id="descricao" value={formData.descricao} onChange={handleChange} rows={4} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
+                        </div>
+                        {message && <div className="p-3 rounded-md text-sm bg-red-100 text-red-800">{message}</div>}
+                        <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <Link href="/dashboard/exames" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                                Cancelar
+                            </Link>
+                            <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                                {isLoading ? 'A Criar...' : 'Criar Exame'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-          )}
-          <div className="flex justify-end gap-4 mt-4">
-              <Link href="/dashboard/exames" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors cursor-pointer">
-                Cancelar
-              </Link>
-              <button
-                type="submit"
-                disabled={loadingForm}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out disabled:opacity-50 cursor-pointer"
-              >
-                {loadingForm ? 'Salvando...' : 'Salvar Exame'}
-              </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }

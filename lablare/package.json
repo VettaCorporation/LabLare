@@ -6,18 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "import:exames": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/importar-exames.ts",
+    "update:origem": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/atualizar-origem-pardini.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
     "bcrypt": "^6.0.0",
+    "iconv-lite": "^0.6.3",
     "next": "15.3.5",
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.1.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@heroicons/react": "^2.2.0",
@@ -29,8 +33,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/xlsx": "^0.0.35",
+    "@types/xml2js": "^0.4.14",
     "prisma": "^6.12.0",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
