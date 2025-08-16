@@ -61,15 +61,26 @@ model Paciente {
   @@index([nome_completo])
 }
 
+
+
+
 // Tabela mestre com todos os exames que o laboratório oferece
+enum OrigemExame {
+  PARDINI
+  INTERNO
+}
+
 model ExameCatalogo {
-  id_exame_catalogo Int             @id @default(autoincrement())
-  nome_exame        String          @db.VarChar(100)
-  descricao         String?         @db.Text
-  preco             Decimal         @db.Decimal(10, 2)
+  id_exame_catalogo Int      @id @default(autoincrement())
+  codigo_pardini    String?  @unique
+  codigo_interno    String?  @unique // <-- ADICIONE ESTA LINHA
+  nome_exame        String   @db.VarChar(100)
+  descricao         String?  @db.Text
+  preco             Decimal  @db.Decimal(10, 2)
+  origem            OrigemExame @default(INTERNO)
+
   // Relações
   itens_solicitacao ItemSolicitacao[]
-  // CORREÇÃO: Adicionada a relação inversa para orçamentos
   itens_orcamento   OrcamentoItem[]
 }
 

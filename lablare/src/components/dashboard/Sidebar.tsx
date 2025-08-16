@@ -1,4 +1,3 @@
-// Caminho: src/components/dashboard/Sidebar.tsx
 'use client';
 
 import Image from 'next/image';
@@ -21,7 +20,6 @@ import {
   CheckBadgeIcon, 
 } from '@heroicons/react/24/outline';
 
-// A interface foi simplificada, removendo 'allowedProfiles'
 interface NavItem {
   name: string;
   href: string;
@@ -36,11 +34,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   
-  // Pegamos o perfil e os privilégios REAIS da sessão do usuário
   const userProfile = (session?.user as any)?.nome_perfil;
   const userPrivileges = (session?.user as any)?.privilegios || [];
 
-  // A lista de TODOS os itens possíveis do menu
   const allNavItems: NavItem[] = [
     { name: 'Painel', href: '/dashboard', icon: HomeIcon },
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
@@ -56,23 +52,17 @@ export default function Sidebar() {
     { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon },
   ];
   
-  // ==================================================================
-  // ESTA É A NOVA LÓGICA DE FILTRAGEM
-  // ==================================================================
   const filteredNavigation = allNavItems.filter(item => {
-    // Regra 1: O Administrador sempre vê todos os links.
     if (userProfile === 'Administrador') {
       return true;
     }
-    // Regra 2: Para outros perfis, o link só aparece se o seu 'href'
-    // estiver na lista de 'userPrivileges' vinda da sessão.
     return userPrivileges.includes(item.href);
   });
 
   if (status === 'loading') {
     return (
-      <div className="hidden lg:flex lg:flex-col lg:gap-y-5 lg:overflow-y-auto lg:bg-white lg:px-6 lg:pb-4 lg:border-r lg:border-gray-200 lg:w-64 lg:flex-shrink-0 items-center justify-center dark:bg-gray-900 dark:border-gray-800">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Carregando menu...</p>
+      <div className="hidden lg:flex lg:flex-col lg:w-64">
+        <div className="p-6 text-sm text-gray-500 dark:text-gray-400">A carregar menu...</div>
       </div>
     );
   }
@@ -93,9 +83,18 @@ export default function Sidebar() {
           <li>
             <ul role="list" className="-mx-2 space-y-1">
               {filteredNavigation.map((item) => {
-                const isActive = pathname === item.href || 
-                                 (item.href === '/dashboard/pacientes' && pathname.startsWith('/dashboard/atendimento'));
                 
+                let isActive = false;
+                
+                // MUDANÇA: Adicionada regra especial para Pacientes -> Atendimento
+                if (item.href === '/dashboard/pacientes') {
+                  isActive = pathname.startsWith('/dashboard/pacientes') || pathname.startsWith('/dashboard/atendimento');
+                } else if (item.href === '/dashboard') {
+                  isActive = pathname === item.href;
+                } else {
+                  isActive = pathname.startsWith(item.href);
+                }
+
                 return (
                   <li key={item.name}>
                     <Link
@@ -114,7 +113,7 @@ export default function Sidebar() {
                         )}
                         aria-hidden="true"
                       />
-                      <p className="hidden md:block">{item.name}</p>
+                      {item.name}
                     </Link>
                   </li>
                 );
@@ -125,4 +124,4 @@ export default function Sidebar() {
       </nav>
     </div>
   );
-};
+}

@@ -7,7 +7,7 @@ import PacienteCadastroForm from '@/components/PacienteCadastroForm/PacienteCada
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { utils, writeFile } from 'xlsx'; 
+import { utils, writeFile } from 'xlsx';
 import { formatCpfForDisplay, formatCpfOnType } from '@/utils/cpfFormatter';
 
 interface Paciente {
@@ -22,20 +22,20 @@ interface Paciente {
 // --- SUB-COMPONENTES COM LÓGICA E JSX 100% COMPLETOS ---
 
 const getStatusBadge = (status: string) => {
-    let baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
-    let lightClasses = 'bg-blue-100 text-blue-800';
-    let darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
-    switch (status) {
-        case 'AGUARDANDO_PAGAMENTO':
-            lightClasses = 'bg-yellow-100 text-yellow-800';
-            darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
-            break;
-        case 'PAGA':
-            lightClasses = 'bg-green-100 text-green-800';
-            darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
-            break;
-    }
-    return <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>{status.replace(/_/g, ' ')}</span>;
+  let baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
+  let lightClasses = 'bg-blue-100 text-blue-800';
+  let darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
+  switch (status) {
+    case 'AGUARDANDO_PAGAMENTO':
+      lightClasses = 'bg-yellow-100 text-yellow-800';
+      darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
+      break;
+    case 'PAGA':
+      lightClasses = 'bg-green-100 text-green-800';
+      darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
+      break;
+  }
+  return <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>{status.replace(/_/g, ' ')}</span>;
 };
 
 function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBack: () => void; }) {
@@ -86,7 +86,7 @@ function DeleteConfirmationModal({ paciente, onClose, onConfirm, message }: { pa
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Confirmar Exclusão</h2>
         <p className="text-gray-700 dark:text-gray-300 mb-6">
           Tem certeza que deseja excluir o paciente <span className="font-bold">{paciente.nome_completo}</span>?
-          <br/>
+          <br />
           <span className="font-bold text-red-600">Esta ação não pode ser desfeita.</span>
         </p>
         {message && <p className="mb-4 text-red-600">{message}</p>}
@@ -123,7 +123,7 @@ export default function PacientesPage() {
       if (filters.nome.trim()) params.append('nome', filters.nome.trim());
       const cleanCpf = filters.cpf.replace(/\D/g, '');
       if (cleanCpf) params.append('cpf', cleanCpf);
-      
+
       const response = await fetch(`/api/pacientes?${params.toString()}`);
       if (!response.ok) throw new Error('Falha ao buscar pacientes.');
       const data = await response.json();
@@ -143,7 +143,7 @@ export default function PacientesPage() {
       router.push('/login');
     }
   }, [status, view, fetchPacientes]);
-  
+
   const handleApplyFilters = () => setFilters(tempFilters);
   const handleClearFilters = () => {
     setFilters({ nome: '', cpf: '' });
@@ -152,20 +152,25 @@ export default function PacientesPage() {
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') handleApplyFilters();
   };
-  
+
   const handleExportToExcel = () => {
     const dataToExport = pacientes.map((p, index) => ({
-        'ID Sequencial': index + 1,
-        'Nome Completo': p.nome_completo,
-        'CPF': formatCpfForDisplay(p.cpf),
-        'Data de Nascimento': new Date(p.data_nascimento).toLocaleDateString('pt-BR'),
-        'Sexo': p.sexo,
-        'E-mail': p.email,
+      'ID Sequencial': index + 1,
+      'Nome Completo': p.nome_completo,
+      'CPF': formatCpfForDisplay(p.cpf),
+      'Data de Nascimento': new Date(p.data_nascimento).toLocaleDateString('pt-BR'),
+      'Sexo': p.sexo,
+      'E-mail': p.email,
     }));
     const worksheet = utils.json_to_sheet(dataToExport);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Pacientes");
     writeFile(workbook, "ListaDePacientes.xlsx");
+  };
+
+  const handleStartAdd = () => {
+    setCurrentPatient(null);
+    setView('edit');
   };
 
   const handlePatientSaved = () => {
@@ -177,15 +182,15 @@ export default function PacientesPage() {
   const handleConfirmDelete = async () => {
     if (!patientToDelete) return;
     try {
-        const response = await fetch(`/api/pacientes/${patientToDelete.id_paciente}`, { method: 'DELETE' });
-        if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.message);
-        }
-        handleCloseDeleteModal();
-        fetchPacientes();
+      const response = await fetch(`/api/pacientes/${patientToDelete.id_paciente}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.message);
+      }
+      handleCloseDeleteModal();
+      fetchPacientes();
     } catch (error: any) {
-        setDeleteMessage(error.message);
+      setDeleteMessage(error.message);
     }
   };
   const handleStartEdit = (paciente: Paciente) => { setCurrentPatient(paciente); setView('edit'); };
@@ -201,26 +206,26 @@ export default function PacientesPage() {
   return (
     <div className="flex flex-row-reverse gap-8">
       {patientToDelete && <DeleteConfirmationModal paciente={patientToDelete} onClose={handleCloseDeleteModal} onConfirm={handleConfirmDelete} message={deleteMessage} />}
-      
+
       <aside className="w-1/4 max-w-sm flex-shrink-0">
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md space-y-4">
           <h2 className="text-lg font-semibold dark:text-white">Filtros</h2>
           <div>
             <label htmlFor="nome-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-            <input 
+            <input
               type="text" id="nome-filtro" value={tempFilters.nome}
-              onChange={(e) => setTempFilters({...tempFilters, nome: e.target.value})}
+              onChange={(e) => setTempFilters({ ...tempFilters, nome: e.target.value })}
               onKeyDown={handleKeyDown}
-              placeholder="Filtrar por nome..." 
+              placeholder="Filtrar por nome..."
             />
           </div>
           <div>
             <label htmlFor="cpf-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
-            <input 
+            <input
               type="text" id="cpf-filtro" value={tempFilters.cpf}
-              onChange={(e) => setTempFilters({...tempFilters, cpf: formatCpfOnType(e.target.value)})}
+              onChange={(e) => setTempFilters({ ...tempFilters, cpf: formatCpfOnType(e.target.value) })}
               onKeyDown={handleKeyDown}
-              placeholder="000.000.000-00" 
+              placeholder="000.000.000-00"
             />
           </div>
           <div className="flex flex-col gap-2 pt-2">
@@ -239,10 +244,17 @@ export default function PacientesPage() {
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-800">Gestão de Pacientes</h1>
             <div className="flex gap-3">
-              {(isAdmin || isRecepcionista) && <Link href="/dashboard/atendimento?action=add" className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"><PlusIcon className="h-5 w-5" /> Adicionar Paciente</Link>}
+              {(isAdmin || isRecepcionista) && (
+                <button
+                  onClick={handleStartAdd}
+                  className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer"
+                >
+                  <PlusIcon className="h-5 w-5" /> Adicionar Paciente
+                </button>
+              )}
             </div>
           </div>
-          
+
           <div className="rounded-lg shadow-md overflow-hidden">
             <div className="bg-blue-600 dark:bg-white p-4 flex justify-between items-center">
               <p className="font-semibold text-white dark:text-blue-800">
@@ -252,7 +264,7 @@ export default function PacientesPage() {
                 <ArrowDownTrayIcon className="h-4 w-4" /> Exportar
               </button>
             </div>
-            
+
             <div className="bg-white dark:bg-blue-900/10 p-6">
               <div className="overflow-x-auto">
                 <table className="min-w-full">
