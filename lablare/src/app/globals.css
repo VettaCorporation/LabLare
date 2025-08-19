@@ -63,3 +63,20 @@ body {
     color: theme('colors.gray.100') !important;
   }
 }
+
+@layer components {
+  /* Estilo base para inputs, selects e textareas do formulário */
+  .form-input {
+    @apply block w-full px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-colors;
+  }
+
+  /* Estilo para indicar um campo com erro de validação */
+  .input-error {
+    @apply border-red-500 dark:border-red-400 focus:ring-red-500;
+  }
+  
+  /* Estilo para a mensagem de texto do erro */
+  .form-error-message {
+    @apply mt-1.5 text-xs text-red-600 dark:text-red-400;
+  }
+}
