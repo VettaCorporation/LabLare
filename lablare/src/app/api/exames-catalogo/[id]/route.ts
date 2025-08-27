@@ -41,7 +41,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID do exame inválido.' }, { status: 400 });
     }
-    const { nome_exame, descricao, preco, codigo_interno, codigo_pardini } = await request.json();
+    const { nome_exame, descricao, preco, codigo_lare, codigo_pardini } = await request.json();
     if (!nome_exame || preco === undefined) {
       return NextResponse.json({ message: 'Nome e preço são obrigatórios.' }, { status: 400 });
     }
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         nome_exame,
         descricao,
         preco: parseFloat(preco),
-        codigo_interno,
+        codigo_lare,
         codigo_pardini,
       },
     });

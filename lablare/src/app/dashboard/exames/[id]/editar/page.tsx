@@ -12,9 +12,9 @@ interface Exame {
     nome_exame: string;
     descricao: string | null;
     preco: number;
-    codigo_interno: string | null;
+    codigo_lare: string | null;
     codigo_pardini: string | null;
-    origem: 'INTERNO' | 'PARDINI';
+    origem: 'LARE' | 'PARDINI';
 }
 
 export default function EditarExamePage() {
@@ -45,7 +45,7 @@ export default function EditarExamePage() {
                 nome_exame: data.nome_exame || '',
                 descricao: data.descricao || '',
                 preco: String(data.preco) || '0',
-                codigo: data.origem === 'INTERNO' ? (data.codigo_interno || '') : (data.codigo_pardini || ''),
+                codigo: data.origem === 'LARE' ? (data.codigo_lare || '') : (data.codigo_pardini || ''),
             });
         } catch (err) {
             setMessage('Erro ao carregar o exame.');
@@ -72,7 +72,7 @@ export default function EditarExamePage() {
             nome_exame: formData.nome_exame,
             descricao: formData.descricao,
             preco: parseFloat(formData.preco.replace(',', '.')) || 0,
-            codigo_interno: exame?.origem === 'INTERNO' ? formData.codigo : exame?.codigo_interno,
+            codigo_lare: exame?.origem === 'LARE' ? formData.codigo : exame?.codigo_lare,
             codigo_pardini: exame?.origem === 'PARDINI' ? formData.codigo : exame?.codigo_pardini,
         };
 
@@ -141,7 +141,7 @@ export default function EditarExamePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor="codigo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {exame.origem === 'INTERNO' ? 'Código Interno' : 'Código Pardini'}
+                                    {exame.origem === 'LARE' ? 'Código Lare' : 'Código Pardini'}
                                 </label>
                                 <input type="text" id="codigo" value={formData.codigo} onChange={handleChange} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                             </div>

@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE `examecatalogo` ADD COLUMN `origem` ENUM('PARDINI', 'INTERNO') NOT NULL DEFAULT 'INTERNO';

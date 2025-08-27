@@ -17,10 +17,10 @@ const useDebounce = (value: string, delay: number) => {
 interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
-    codigo_interno: string | null;
+    codigo_lare: string | null;
     codigo_pardini: string | null;
     preco: number;
-    origem: 'INTERNO' | 'PARDINI';
+    origem: 'LARE' | 'PARDINI';
 }
 interface PaginationInfo {
     page: number;
@@ -158,7 +158,7 @@ export default function GerenciamentoExamesPage() {
                                     <tr key={exame.id_exame_catalogo} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-white">{exame.nome_exame}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {exame.origem === 'PARDINI' ? ( <span className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Pardini</span> ) : ( <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Interno</span> )}
+                                            {exame.origem === 'PARDINI' ? ( <span className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Pardini</span> ) : ( <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">LARE</span> )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(exame.preco)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">

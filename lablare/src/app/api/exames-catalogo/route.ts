@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       ? {
           OR: [
             { nome_exame: { contains: searchTerm, mode: 'insensitive' } },
-            { codigo_interno: { contains: searchTerm, mode: 'insensitive' } },
+            { codigo_lare: { contains: searchTerm, mode: 'insensitive' } },
             { codigo_pardini: { contains: searchTerm, mode: 'insensitive' } },
           ],
         }
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 });
     }
     const body = await request.json();
-    const { nome_exame, preco, descricao, codigo_interno } = body;
+    const { nome_exame, preco, descricao, codigo_lare } = body;
     if (!nome_exame || preco === undefined) {
       return NextResponse.json({ error: 'Nome do exame e preço são obrigatórios.' }, { status: 400 });
     }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         nome_exame,
         preco: parseFloat(preco),
         descricao,
-        codigo_interno: codigo_interno || null,
+        codigo_lare: codigo_lare || null,
       },
     });
     return NextResponse.json(novoExame, { status: 201 });

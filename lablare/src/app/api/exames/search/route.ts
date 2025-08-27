@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         id_exame_catalogo: true,
         nome_exame: true,
         codigo_pardini: true, // Retorna o código para ser exibido
-        origem: true,         // Retorna a origem (Pardini ou Interno)
+        origem: true,         // Retorna a origem (Pardini ou Lare)
       },
       // Limita o número de resultados para não sobrecarregar a aplicação
       take: 15,

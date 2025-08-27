@@ -23,7 +23,7 @@ interface Exame {
   id_exame_catalogo: number;
   codigo_pardini: string | null;
   nome_exame: string;
-  origem: 'PARDINI' | 'INTERNO';
+  origem: 'PARDINI' | 'LARE';
 }
 
 interface ExameSelectionProps {
@@ -124,7 +124,7 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
                             </span>
                           ) : (
                             <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                              Interno
+                              Lare
                             </span>
                           )}
                         </div>

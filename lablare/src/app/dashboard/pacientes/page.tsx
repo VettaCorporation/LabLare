@@ -1,4 +1,3 @@
-// Caminho: src/app/dashboard/pacientes/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,6 +8,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { utils, writeFile } from 'xlsx';
 import { formatCpfForDisplay, formatCpfOnType } from '@/utils/cpfFormatter';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Paciente {
   id_paciente: number;
@@ -130,6 +131,7 @@ export default function PacientesPage() {
       setPacientes(data);
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
+      toast.error("Erro ao carregar pacientes.");
     } finally {
       setIsLoadingList(false);
     }
@@ -166,6 +168,7 @@ export default function PacientesPage() {
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, "Pacientes");
     writeFile(workbook, "ListaDePacientes.xlsx");
+    toast.success('Pacientes exportados com sucesso!');
   };
 
   const handleStartAdd = () => {
@@ -173,12 +176,18 @@ export default function PacientesPage() {
     setView('edit');
   };
 
-  const handlePatientSaved = () => {
+  const handlePatientSaved = (patient: Paciente) => {
     setView('list');
     fetchPacientes();
+    // toast.success(`Paciente ${patient.nome_completo} salvo com sucesso!`); removido conforme sua solicitação
   };
+
   const handleOpenDeleteModal = (paciente: Paciente) => setPatientToDelete(paciente);
-  const handleCloseDeleteModal = () => setPatientToDelete(null);
+  const handleCloseDeleteModal = () => {
+    setPatientToDelete(null);
+    setDeleteMessage('');
+  };
+
   const handleConfirmDelete = async () => {
     if (!patientToDelete) return;
     try {
@@ -187,13 +196,20 @@ export default function PacientesPage() {
         const result = await response.json();
         throw new Error(result.message);
       }
+      toast.success(`Paciente ${patientToDelete.nome_completo} excluído com sucesso!`);
       handleCloseDeleteModal();
       fetchPacientes();
     } catch (error: any) {
-      setDeleteMessage(error.message);
+      console.error("Erro ao excluir paciente:", error);
+      toast.error(error.message || 'Falha ao excluir o paciente.');
+      setDeleteMessage(error.message || 'Falha ao excluir o paciente.');
     }
   };
-  const handleStartEdit = (paciente: Paciente) => { setCurrentPatient(paciente); setView('edit'); };
+
+  const handleStartEdit = (paciente: Paciente) => { 
+    setCurrentPatient(paciente); 
+    setView('edit'); 
+  };
 
   const userProfile = session?.user?.nome_perfil;
   const isAdmin = userProfile === 'Administrador';
@@ -217,6 +233,7 @@ export default function PacientesPage() {
               onChange={(e) => setTempFilters({ ...tempFilters, nome: e.target.value })}
               onKeyDown={handleKeyDown}
               placeholder="Filtrar por nome..."
+              className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div>
@@ -226,6 +243,7 @@ export default function PacientesPage() {
               onChange={(e) => setTempFilters({ ...tempFilters, cpf: formatCpfOnType(e.target.value) })}
               onKeyDown={handleKeyDown}
               placeholder="000.000.000-00"
+              className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div className="flex flex-col gap-2 pt-2">
