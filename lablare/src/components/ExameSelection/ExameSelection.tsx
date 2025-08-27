@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { XCircleIcon, PlusCircleIcon } from '@heroicons/react/24/solid';
-import { useRouter } from 'next/navigation'; // Importa o useRouter
+import { useRouter } from 'next/navigation';
+
 
 // Hook customizado para "atrasar" a busca enquanto o usuário digita
 const useDebounce = (value: string, delay: number) => {
@@ -26,20 +27,20 @@ interface Exame {
 
 interface ExameSelectionProps {
   onExamesSelected: (exames: Exame[]) => void;
-  initialSelectedExames?: Exame[];
+  initialSelectedExams?: Exame[];
 }
 
-export default function ExameSelection({ onExamesSelected, initialSelectedExames = [] }: ExameSelectionProps) {
+export default function ExameSelection({ onExamesSelected, initialSelectedExams = [] }: ExameSelectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<Exame[]>([]);
-  const [selectedExams, setSelectedExams] = useState<Exame[]>(initialSelectedExames);
+  const [selectedExams, setSelectedExams] = useState<Exame[]>(initialSelectedExams);
   const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const router = useRouter(); // Inicializa o useRouter
+  const router = useRouter();
 
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
-  // Efeito para buscar exames na API quando o termo de busca muda
   useEffect(() => {
     if (debouncedSearchTerm.length > 1) {
       setLoading(true);
@@ -53,7 +54,6 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
     }
   }, [debouncedSearchTerm]);
 
-  // Adiciona um exame à lista de selecionados
   const handleSelectExam = (exame: Exame) => {
     if (!selectedExams.find(e => e.id_exame_catalogo === exame.id_exame_catalogo)) {
       const newSelectedExams = [...selectedExams, exame];
@@ -64,16 +64,22 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
     setSuggestions([]);
   };
 
-  // Remove um exame da lista de selecionados
   const handleRemoveExam = (exameId: number) => {
     const newSelectedExams = selectedExams.filter(e => e.id_exame_catalogo !== exameId);
     setSelectedExams(newSelectedExams);
     onExamesSelected(newSelectedExams);
   };
-
-  // NOVO: Função para lidar com a navegação para a página de cadastro
-  const handleAddNewExam = () => {
-    router.push('/dashboard/exames/novo');
+  
+  const handleNewExamSuccess = (novoExame: Exame) => {
+    const newSelectedExams = [...selectedExams, novoExame];
+    setSelectedExams(newSelectedExams);
+    onExamesSelected(newSelectedExams);
+    setIsModalOpen(false);
+  };
+  
+  const formattedPrice = (price: number | undefined) => {
+    const numericPrice = parseFloat(String(price || 0));
+    return numericPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   return (
@@ -101,7 +107,6 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
                             onClick={() => handleSelectExam(exame)}
                             className="px-4 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700"
                         >
-                            {/* Correção de Responsividade e Tags */}
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                               <div className="mb-1 sm:mb-0">
                                 <p className="font-semibold dark:text-gray-200">{exame.nome_exame}</p>
@@ -109,7 +114,7 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
                                   Código: {exame.codigo_lare || exame.codigo_pardini || 'N/A'}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Preço: {exame.preco ? exame.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                                  Preço: {formattedPrice(exame.preco)}
                                 </p>
                               </div>
                               <div>
@@ -125,8 +130,7 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
                     </ul>
                 )}
             </div>
-            {/* O botão '+' agora navega para a nova rota */}
-            <button type="button" title="Adicionar Novo Exame ao Catálogo" onClick={handleAddNewExam} className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer">
+            <button type="button" title="Adicionar Novo Exame ao Catálogo" onClick={() => setIsModalOpen(true)} className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer">
               <PlusCircleIcon className="h-8 w-8" />
             </button>
         </div>
@@ -142,7 +146,7 @@ export default function ExameSelection({ onExamesSelected, initialSelectedExames
                   <div>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{exame.nome_exame}</span>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Preço: {exame.preco ? exame.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                      Preço: {formattedPrice(exame.preco)}
                     </p>
                   </div>
                   <button type="button" onClick={() => handleRemoveExam(exame.id_exame_catalogo)} title="Remover Exame" className="cursor-pointer">

@@ -14,7 +14,7 @@ interface Paciente {
   cpf: string;
 }
 
-export default function AtendimentoPage() {
+export default function SolicitarExamePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,7 +49,6 @@ export default function AtendimentoPage() {
       setSelectedPaciente(data);
     } catch (error) {
       console.error("Erro ao buscar paciente:", error);
-      // Se não encontrar o paciente, limpa o estado para exibir a lista
       setSelectedPaciente(null);
     } finally {
       setLoading(false);
@@ -70,7 +69,11 @@ export default function AtendimentoPage() {
     }
   }, [status, searchTerm, fetchPacientes, pacienteIdFromUrl, fetchSinglePatient, router]);
 
-  const handleCancel = () => setSelectedPaciente(null);
+  // Função para limpar o paciente selecionado e voltar para a lista
+  const handleCancel = () => {
+    setSelectedPaciente(null);
+    router.push('/dashboard/solicitar-exame');
+  };
   
   if (status === 'loading' || loading) {
     return <div className="p-8 dark:text-gray-300">Carregando...</div>;
