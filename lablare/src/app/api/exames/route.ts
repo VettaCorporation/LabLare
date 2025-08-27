@@ -1,12 +1,19 @@
 // lablare/src/app/api/exames/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-// CORREÇÃO AQUI: Removido 'Decimal' da importação. Não vamos instanciá-lo explicitamente.
-import { PrismaClient } from '../../../generated/prisma/index.js'; 
+// CORREÇÃO: Importação correta do PrismaClient e dos tipos de enumeração
+import { PrismaClient, OrigemExame } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
+
+// Função auxiliar para gerar um código LARE de 3 dígitos aleatório
+function generateLareCode(): string {
+  // Gera um número entre 100 e 999
+  const randomCode = Math.floor(100 + Math.random() * 900);
+  return randomCode.toString();
+}
 
 // --- MÉTODO GET: Lista todos os exames disponíveis no catálogo ---
 /**
@@ -38,6 +45,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
+
 // --- MÉTODO POST: Cadastra um novo exame no catálogo ---
 /**
  * Manipula requisições POST para cadastrar um novo exame no catálogo.
@@ -47,60 +55,65 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verificação de Sessão e Permissão (Apenas Administrador)
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
     }
 
-    const allowedProfiles = ['Administrador'];
+    const allowedProfiles = ['Administrador', 'Recepcionista'];
     const userProfile = session.user?.nome_perfil;
 
     if (!userProfile || !allowedProfiles.includes(userProfile)) {
-      return NextResponse.json({ message: 'Acesso negado. Apenas Administradores podem cadastrar exames.' }, { status: 403 });
+      return NextResponse.json({ message: 'Acesso negado. Apenas perfis autorizados podem cadastrar exames.' }, { status: 403 });
     }
 
-    const { nome_exame, descricao, preco } = await req.json();
+    const { nome_exame, preco, origem, codigo_pardini } = await req.json();
 
-    // 2. Validação de campos obrigatórios
-    if (!nome_exame || preco === undefined || preco === null) {
-      return NextResponse.json({ message: 'Nome do exame e preço são obrigatórios.' }, { status: 400 });
+    if (!nome_exame || preco === undefined || preco === null || !origem) {
+      return NextResponse.json({ message: 'Nome do exame, preço e origem são obrigatórios.' }, { status: 400 });
     }
-
-    // 3. Validação do preço: Apenas verifica se é um número válido e positivo
-    const numericPreco = Number(preco); // Converte para número JavaScript
-    if (isNaN(numericPreco) || numericPreco <= 0) { 
+    
+    const numericPreco = Number(preco);
+    if (isNaN(numericPreco) || numericPreco < 0) {
       return NextResponse.json({ message: 'Preço inválido. Deve ser um número positivo.' }, { status: 400 });
     }
 
-    // 4. Verifica se o exame já existe (usando findFirst para flexibilidade no 'where')
-    const existingExame = await prisma.exameCatalogo.findFirst({
-      where: { nome_exame: nome_exame },
-    });
+    let dataToCreate: any = {
+      nome_exame,
+      preco: numericPreco,
+      descricao: null,
+    };
+    
+    const origemEnum: OrigemExame = origem as OrigemExame;
+    dataToCreate.origem = origemEnum;
 
-    if (existingExame) {
-      return NextResponse.json({ message: 'Já existe um exame com este nome.' }, { status: 409 });
+    if (origemEnum === OrigemExame.PARDINI) {
+      if (!codigo_pardini) {
+        return NextResponse.json({ message: 'Código Pardini é obrigatório para exames desta origem.' }, { status: 400 });
+      }
+      dataToCreate.codigo_pardini = codigo_pardini;
+      delete dataToCreate.codigo_lare; 
+    } else if (origemEnum === OrigemExame.LARE) {
+      dataToCreate.codigo_lare = generateLareCode();
+      delete dataToCreate.codigo_pardini;
     }
-
-    // 5. Cadastra o novo exame
+    
     const newExame = await prisma.exameCatalogo.create({
-      data: {
-        nome_exame,
-        descricao: descricao || null, // Descrição pode ser nula
-        // CORREÇÃO AQUI: Passa o número JavaScript diretamente.
-        // O Prisma fará a conversão para o tipo Decimal do banco de dados.
-        preco: numericPreco, 
-      },
+      data: dataToCreate,
     });
 
     return NextResponse.json({ message: 'Exame cadastrado com sucesso!', exame: newExame }, { status: 201 });
 
   } catch (error: any) {
     console.error('Erro ao cadastrar exame:', error);
-    if (error.code === 'P2002' && error.meta?.target?.includes('nome_exame')) {
-      return NextResponse.json({ message: 'Já existe um exame com este nome.' }, { status: 409 });
+    
+    if (error.code === 'P2002') {
+      const target = error.meta?.target || 'campo desconhecido';
+      console.error(`Violação de unicidade no campo: ${target}`);
+      return NextResponse.json({ message: `Já existe um exame com este código.` }, { status: 409 });
     }
-    return NextResponse.json({ message: 'Erro interno do servidor ao cadastrar exame.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
+    
+    return NextResponse.json({ message: 'Erro ao cadastrar exame.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }

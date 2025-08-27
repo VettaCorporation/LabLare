@@ -56,7 +56,7 @@ export async function PUT(
     }
 
     // MUDANÇA 2: Incluindo todos os campos editáveis
-    const { nome_exame, descricao, preco, codigo_interno, codigo_pardini } = await request.json();
+    const { nome_exame, descricao, preco, codigo_lare, codigo_pardini } = await request.json();
     if (!nome_exame || preco === undefined) {
       return NextResponse.json({ message: 'Nome e preço são obrigatórios.' }, { status: 400 });
     }
@@ -67,7 +67,7 @@ export async function PUT(
         nome_exame,
         descricao,
         preco: parseFloat(preco),
-        codigo_interno, // <-- Campo adicionado
+        codigo_lare, // <-- Campo adicionado
         codigo_pardini, // <-- Campo adicionado
       },
     });

@@ -4,9 +4,10 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { isValidCPF } from '@/utils/cpfValidator';
 import { formatCpfOnType } from '@/utils/cpfFormatter';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // --- INTERFACES ---
-// Nenhuma alteração aqui, as interfaces estão bem definidas.
 interface Paciente {
   id_paciente: number;
   nome_completo: string;
@@ -23,7 +24,6 @@ interface PacienteCadastroFormProps {
 }
 
 // --- ESTADO INICIAL ---
-// Mover o estado inicial para uma constante limpa o `useState`
 const initialState = {
   nome_completo: '',
   cpf: '',
@@ -37,30 +37,23 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
   const [formData, setFormData] = useState(initialState);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  // Melhoria: Estado de feedback mais robusto
-  const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
   const [loading, setLoading] = useState(false);
   const isEditing = !!initialData;
 
-  // O `useEffect` para popular os dados de edição está correto.
   useEffect(() => {
     if (initialData) {
       setFormData({
         nome_completo: initialData.nome_completo,
         cpf: initialData.cpf,
-        // Garantir que a data esteja no formato YYYY-MM-DD
         data_nascimento: new Date(initialData.data_nascimento).toISOString().split('T')[0],
         sexo: initialData.sexo || '',
         email: initialData.email || '',
       });
     } else {
-      // Garante que o formulário limpe se `initialData` mudar para nulo
       setFormData(initialState);
     }
   }, [initialData]);
 
-  // A lógica de validação está correta. Nenhuma alteração necessária.
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.nome_completo.trim()) {
@@ -72,25 +65,21 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
     if (!formData.data_nascimento) {
       newErrors.data_nascimento = 'A data de nascimento é obrigatória.';
     }
-    // Validação opcional para email
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-        newErrors.email = 'O formato do email é inválido.'
+      newErrors.email = 'O formato do email é inválido.'
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  // Centraliza a lógica de mudança de campo
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Limpa o erro do campo ao começar a digitar
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
 
-    // Formatação específica para CPF
     if (name === 'cpf') {
       const formattedCpf = formatCpfOnType(value);
       setFormData(prev => ({ ...prev, cpf: formattedCpf }));
@@ -99,11 +88,10 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
     }
   };
   
-  // A lógica de submit está correta, apenas ajustamos o feedback
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setFormStatus(null); // Limpa a mensagem anterior
     if (!validateForm()) {
+      toast.error('Por favor, corrija os erros no formulário.');
       return;
     }
     setLoading(true);
@@ -125,14 +113,14 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
 
       const result = await response.json();
       onPatientSaved(result);
-      setFormStatus({ type: 'success', message: 'Paciente salvo com sucesso!' });
+      toast.success('Paciente Salvo com sucesso!'); // Notificação de sucesso
 
       if (!isEditing) {
         setFormData(initialState); // Limpa o formulário após o sucesso
       }
     } catch (error: any) {
       console.error("Erro ao salvar paciente:", error);
-      setFormStatus({ type: 'error', message: error.message || 'Ocorreu um erro inesperado.' });
+      toast.error(error.message || 'Ocorreu um erro inesperado.'); // Notificação de erro
     } finally {
       setLoading(false);
     }
@@ -177,7 +165,7 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
                   type="text"
                   name="cpf"
                   id="cpf"
-                  value={formData.cpf} // O valor já está formatado no estado
+                  value={formData.cpf}
                   onChange={handleChange}
                   disabled={isEditing}
                   maxLength={14}
@@ -238,23 +226,6 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
               </div>
             </div>
           </div>
-
-          {/* Mensagem de Status */}
-          {formStatus && (
-            <div className={`flex items-center gap-3 p-3 rounded-md text-sm ${
-              formStatus.type === 'success'
-                ? 'bg-green-50 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-                : 'bg-red-50 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-            }`}>
-              {/* Ícone de Sucesso ou Erro */}
-              {formStatus.type === 'success' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
-              )}
-              <span>{formStatus.message}</span>
-            </div>
-          )}
         </div>
 
         {/* Botões de Ação */}

@@ -4,59 +4,74 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface ExameFormData {
     nome_exame: string;
-    descricao: string;
     preco: string;
-    codigo_interno: string;
+    origem: 'LARE' | 'PARDINI';
     codigo_pardini: string;
+    descricao: string;
 }
 
 export default function NovoExamePage() {
     const router = useRouter();
     const [formData, setFormData] = useState<ExameFormData>({
         nome_exame: '',
-        descricao: '',
         preco: '',
-        codigo_interno: '',
+        origem: 'LARE',
         codigo_pardini: '',
+        descricao: '',
     });
-    const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMessage('');
         setIsLoading(true);
 
-        // Determina a origem com base nos códigos preenchidos
-        const origem = formData.codigo_pardini ? 'PARDINI' : 'INTERNO';
+        if (!formData.nome_exame || !formData.preco) {
+            toast.error('Nome do exame e preço são obrigatórios.');
+            setIsLoading(false);
+            return;
+        }
+        
+        if (formData.origem === 'PARDINI' && !formData.codigo_pardini) {
+            toast.error('Código Pardini é obrigatório para exames desta origem.');
+            setIsLoading(false);
+            return;
+        }
 
         try {
-            const response = await fetch(`/api/exames-catalogo`, {
+            const response = await fetch(`/api/exames`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...formData,
+                    nome_exame: formData.nome_exame,
+                    origem: formData.origem,
                     preco: parseFloat(formData.preco.replace(',', '.')) || 0,
-                    origem: origem, // Envia a origem para a API
+                    codigo_pardini: formData.origem === 'PARDINI' ? formData.codigo_pardini : null,
+                    descricao: formData.descricao,
                 }),
             });
             const data = await response.json();
 
             if (response.ok) {
-                router.push('/dashboard/exames?success=Exame criado com sucesso!');
+                // Exibe a mensagem de sucesso e atrasa o redirecionamento
+                toast.success('Exame criado com sucesso!');
+                setTimeout(() => {
+                    router.push('/dashboard/exames');
+                }, 1500); // Redireciona após 1.5 segundos
             } else {
-                setMessage(data.error || 'Erro ao criar o exame.');
+                toast.error(data.message || 'Erro ao criar o exame.');
             }
         } catch (err: any) {
-            setMessage(err.message || 'Ocorreu um erro inesperado.');
+            toast.error(err.message || 'Ocorreu um erro inesperado.');
         } finally {
             setIsLoading(false);
         }
@@ -81,25 +96,32 @@ export default function NovoExamePage() {
                             <label htmlFor="nome_exame" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Exame</label>
                             <input type="text" id="nome_exame" value={formData.nome_exame} onChange={handleChange} required className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label htmlFor="codigo_interno" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Código Interno</label>
-                                <input type="text" id="codigo_interno" value={formData.codigo_interno} onChange={handleChange} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
-                            </div>
+                        
+                        <div>
+                            <label htmlFor="origem" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Origem</label>
+                            <select id="origem" value={formData.origem} onChange={handleChange} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600">
+                                <option value="LARE">LARE</option>
+                                <option value="PARDINI">PARDINI</option>
+                            </select>
+                        </div>
+                        
+                        {formData.origem === 'PARDINI' && (
                             <div>
                                 <label htmlFor="codigo_pardini" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Código Pardini</label>
                                 <input type="text" id="codigo_pardini" value={formData.codigo_pardini} onChange={handleChange} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                             </div>
-                        </div>
+                        )}
+                        
                         <div>
                             <label htmlFor="preco" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço</label>
                             <input type="text" id="preco" value={formData.preco} onChange={handleChange} required placeholder="ex: 25,50" className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                         </div>
+                        
                         <div>
                             <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição (Opcional)</label>
                             <textarea id="descricao" value={formData.descricao} onChange={handleChange} rows={4} className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                         </div>
-                        {message && <div className="p-3 rounded-md text-sm bg-red-100 text-red-800">{message}</div>}
+                        
                         <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <Link href="/dashboard/exames" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
                                 Cancelar

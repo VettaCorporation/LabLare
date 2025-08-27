@@ -67,17 +67,17 @@ model Paciente {
 // Tabela mestre com todos os exames que o laboratório oferece
 enum OrigemExame {
   PARDINI
-  INTERNO
+  LARE
 }
 
 model ExameCatalogo {
   id_exame_catalogo Int      @id @default(autoincrement())
   codigo_pardini    String?  @unique
-  codigo_interno    String?  @unique // <-- ADICIONE ESTA LINHA
+  codigo_lare       String?  @unique
   nome_exame        String   @db.VarChar(100)
   descricao         String?  @db.Text
   preco             Decimal  @db.Decimal(10, 2)
-  origem            OrigemExame @default(INTERNO)
+  origem            OrigemExame @default(LARE)
 
   // Relações
   itens_solicitacao ItemSolicitacao[]
