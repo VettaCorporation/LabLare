@@ -308,7 +308,7 @@ export default function PacientesPage() {
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.email || 'N/A'}</td>
                         <td className="px-6 py-4 text-center">
                           {(isAdmin || isRecepcionista) && (
-                            <Link href={`/dashboard/atendimento?pacienteId=${paciente.id_paciente}`} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mx-2 cursor-pointer" title="Solicitar Exame">
+                            <Link href={`/dashboard/solicitar-exame?pacienteId=${paciente.id_paciente}`} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mx-2 cursor-pointer" title="Solicitar Exame">
                               <DocumentTextIcon className="h-5 w-5 inline" />
                             </Link>
                           )}

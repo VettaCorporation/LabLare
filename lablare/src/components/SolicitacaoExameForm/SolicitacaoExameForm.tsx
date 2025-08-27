@@ -5,6 +5,7 @@ import ExameSelection from '@/components/ExameSelection/ExameSelection';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter';
 
 interface Paciente {
     id_paciente: number;
@@ -31,7 +32,7 @@ export default function SolicitacaoExameForm({ paciente, onCancel }: Solicitacao
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
-    const totalValue = selectedExams.reduce((sum, exame) => sum + (exame.preco || 0), 0);
+    const totalValue = selectedExams.reduce((sum, exame) => sum + parseFloat(String(exame.preco || 0)), 0);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -59,7 +60,7 @@ export default function SolicitacaoExameForm({ paciente, onCancel }: Solicitacao
             }
 
             toast.success("Solicitação e pagamento confirmados com sucesso!");
-            onCancel(); // Volta para a lista de pacientes ou outra tela
+            onCancel();
         } catch (error) {
             console.error("Erro ao registrar solicitação:", error);
             toast.error("Erro ao registrar solicitação.");
@@ -69,72 +70,83 @@ export default function SolicitacaoExameForm({ paciente, onCancel }: Solicitacao
     };
 
     return (
-        <div className="p-6 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Registrar Solicitação</h1>
-                <button onClick={onCancel} className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+        <div className="p-8 bg-gray-50 dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl mx-auto">
+            <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-gray-700">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Registrar Solicitação</h1>
+                <button onClick={onCancel} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
                     Voltar para Pacientes
                 </button>
             </div>
-            <div className="space-y-4">
-                <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md">
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">Paciente: {paciente.nome_completo}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">CPF: {paciente.cpf}</p>
-                </div>
-
-                <ExameSelection onExamesSelected={setSelectedExams} />
-
-                <div className="mt-6 p-4 border-t dark:border-gray-700">
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Resumo do Pedido</h2>
-                    <ul className="space-y-2">
-                        {selectedExams.map(exame => (
-                            <li key={exame.id_exame_catalogo} className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                                <span>{exame.nome_exame}</span>
-                                <span>{exame.preco ? exame.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}</span>
-                            </li>
-                        ))}
-                    </ul>
-                    <div className="flex justify-between items-center font-bold text-lg mt-4 border-t pt-4 dark:border-gray-700">
-                        <span>Total a Pagar:</span>
-                        <span>{totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-inner">
+                <div className="space-y-4">
+                    {/* Dados do Paciente */}
+                    <div className="flex flex-col gap-1 p-4 bg-gray-100 dark:bg-gray-900 rounded-md">
+                        <p className="font-semibold text-lg text-gray-800 dark:text-gray-200">Paciente: {paciente.nome_completo}</p>
+                        {/* CORREÇÃO AQUI: Formatação do CPF */}
+                        <p className="text-sm text-gray-600 dark:text-gray-400">CPF: {formatCpfForDisplay(paciente.cpf)}</p>
                     </div>
-                </div>
 
-                <div className="mt-6 p-4 border-t dark:border-gray-700">
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Pagamento</h2>
-                    <div className="flex gap-4">
-                        {['PIX', 'ESPECIE', 'CARTAO', 'CONVENIO'].map(method => (
-                            <label key={method} className="inline-flex items-center">
-                                <input
-                                    type="radio"
-                                    name="formaPagamento"
-                                    value={method}
-                                    checked={formaPagamento === method}
-                                    onChange={() => setFormaPagamento(method as FormaPagamento)}
-                                    className="form-radio text-blue-600"
-                                />
-                                <span className="ml-2 text-gray-700 dark:text-gray-300">{method.charAt(0) + method.slice(1).toLowerCase()}</span>
-                            </label>
-                        ))}
+                    {/* Componente de seleção de exames */}
+                    <ExameSelection onExamesSelected={setSelectedExams} />
+
+                    {/* Resumo do Pedido */}
+                    <div className="mt-6 border-t pt-6 dark:border-gray-700">
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Resumo do Pedido</h2>
+                        <ul className="space-y-2 text-base">
+                            {selectedExams.map(exame => (
+                                <li key={exame.id_exame_catalogo} className="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                                    <span>{exame.nome_exame}</span>
+                                    <span className="font-semibold">
+                                      {parseFloat(String(exame.preco || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex justify-between items-center text-xl font-bold mt-4 pt-4 border-t dark:border-gray-700">
+                            <span>Total a Pagar:</span>
+                            <span>{totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex justify-end gap-x-4 mt-6">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="px-6 py-2 border rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={isLoading || selectedExams.length === 0}
-                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isLoading ? 'Processando...' : 'Confirmar Pagamento'}
-                    </button>
+                    {/* Pagamento */}
+                    <div className="mt-6 border-t pt-6 dark:border-gray-700">
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Forma de Pagamento</h2>
+                        <div className="flex flex-wrap gap-4">
+                            {['PIX', 'ESPECIE', 'CARTAO', 'CONVENIO'].map(method => (
+                                <label key={method} className="inline-flex items-center text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="formaPagamento"
+                                        value={method}
+                                        checked={formaPagamento === method}
+                                        onChange={() => setFormaPagamento(method as FormaPagamento)}
+                                        className="form-radio text-blue-600 h-5 w-5 transition duration-150 ease-in-out"
+                                    />
+                                    <span className="ml-2 text-base">{method.charAt(0) + method.slice(1).toLowerCase()}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Botões de Ação */}
+                    <div className="flex justify-end gap-x-4 mt-8 pt-4 border-t dark:border-gray-700">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isLoading || selectedExams.length === 0}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {isLoading ? 'Processando...' : 'Confirmar Pagamento'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

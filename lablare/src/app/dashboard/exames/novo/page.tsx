@@ -7,6 +7,9 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Importa a nova função de formatação de moeda
+import { formatCurrencyOnType } from '@/utils/currencyFormatter';
+
 interface ExameFormData {
     nome_exame: string;
     preco: string;
@@ -28,7 +31,13 @@ export default function NovoExamePage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
+        
+        if (id === 'preco') {
+            const formattedValue = formatCurrencyOnType(value);
+            setFormData(prev => ({ ...prev, [id]: formattedValue }));
+        } else {
+            setFormData(prev => ({ ...prev, [id]: value }));
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +63,7 @@ export default function NovoExamePage() {
                 body: JSON.stringify({
                     nome_exame: formData.nome_exame,
                     origem: formData.origem,
-                    preco: parseFloat(formData.preco.replace(',', '.')) || 0,
+                    preco: parseFloat(formData.preco.replace(/\D/g, '')) / 100 || 0,
                     codigo_pardini: formData.origem === 'PARDINI' ? formData.codigo_pardini : null,
                     descricao: formData.descricao,
                 }),
@@ -62,11 +71,10 @@ export default function NovoExamePage() {
             const data = await response.json();
 
             if (response.ok) {
-                // Exibe a mensagem de sucesso e atrasa o redirecionamento
                 toast.success('Exame criado com sucesso!');
                 setTimeout(() => {
                     router.push('/dashboard/exames');
-                }, 1500); // Redireciona após 1.5 segundos
+                }, 1500);
             } else {
                 toast.error(data.message || 'Erro ao criar o exame.');
             }
@@ -114,7 +122,14 @@ export default function NovoExamePage() {
                         
                         <div>
                             <label htmlFor="preco" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço</label>
-                            <input type="text" id="preco" value={formData.preco} onChange={handleChange} required placeholder="ex: 25,50" className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
+                            <input
+                              type="text"
+                              id="preco"
+                              value={formData.preco}
+                              onChange={handleChange}
+                              required
+                              placeholder="ex: R$ 25,50"
+                              className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                         </div>
                         
                         <div>

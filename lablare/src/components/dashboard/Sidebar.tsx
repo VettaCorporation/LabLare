@@ -41,7 +41,7 @@ export default function Sidebar() {
     { name: 'Painel', href: '/dashboard', icon: HomeIcon },
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
     { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
-    { name: 'Senha', href: '/dashboard/senha', icon: KeyIcon },
+    { name: 'Solicitar Exame', href: '/dashboard/solicitar-exame', icon: KeyIcon },
     { name: 'Etiquetas de Amostras', href: '/dashboard/etiqueta', icon: TicketIcon },
     { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon },
     { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon },
@@ -86,9 +86,9 @@ export default function Sidebar() {
                 
                 let isActive = false;
                 
-                // MUDANÇA: Adicionada regra especial para Pacientes -> Atendimento
+                // MUDANÇA: Adicionada regra especial para Pacientes -> solicitar-exame
                 if (item.href === '/dashboard/pacientes') {
-                  isActive = pathname.startsWith('/dashboard/pacientes') || pathname.startsWith('/dashboard/atendimento');
+                  isActive = pathname.startsWith('/dashboard/pacientes') || pathname.startsWith('/dashboard/pacientes');
                 } else if (item.href === '/dashboard') {
                   isActive = pathname === item.href;
                 } else {
