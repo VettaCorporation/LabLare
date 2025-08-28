@@ -35,6 +35,7 @@ CREATE TABLE `Paciente` (
     `cpf` VARCHAR(14) NOT NULL,
     `data_nascimento` DATE NOT NULL,
     `sexo` VARCHAR(20) NULL,
+    `contato` VARCHAR(20) NULL,
     `data_cadastro` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `email` VARCHAR(255) NULL,
 

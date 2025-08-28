@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const [startMonth, setStartMonth] = useState<number>(1);
   const [endMonth, setEndMonth] = useState<number>(12);
 
-
+  
   const fetchDashboardData = useCallback(async () => {
     // Constrói a URL com os parâmetros de filtro
     const params = new URLSearchParams({

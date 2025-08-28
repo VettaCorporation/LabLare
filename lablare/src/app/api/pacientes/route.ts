@@ -1,5 +1,7 @@
+// Caminho: src/app/api/pacientes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '../../../generated/prisma/index.js';
+// Importação corrigida para o padrão do Prisma
+import { PrismaClient } from '@prisma/client'; 
 import { isValidCPF } from '../../../utils/cpfValidator';
 import bcrypt from 'bcrypt';
 import { getServerSession } from 'next-auth';
@@ -7,6 +9,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
+// ... (A função POST continua a mesma, sem alterações)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -19,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const { nome_completo, cpf, data_nascimento, sexo, email } = await request.json();
+    const { nome_completo, cpf, data_nascimento, sexo, email, contato } = await request.json();
     if (!nome_completo || !cpf || !data_nascimento) {
       return NextResponse.json({ message: 'Nome completo, CPF e Data de Nascimento são obrigatórios.' }, { status: 400 });
     }
@@ -58,6 +61,7 @@ export async function POST(request: NextRequest) {
           data_nascimento: parsedDate,
           sexo: sexo || null,
           email: email || null,
+          contato: contato || null,
         },
       });
       await tx.usuario.create({
@@ -85,58 +89,62 @@ export async function POST(request: NextRequest) {
   }
 }
 
+
 export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
+        }
+        const allowedProfiles = ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira'];
+        const userProfile = session.user?.nome_perfil;
+        if (!userProfile || !allowedProfiles.includes(userProfile)) {
+            return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const nome = searchParams.get('nome');
+        const cpf = searchParams.get('cpf');
+
+        const whereClause: any = {};
+
+        if (nome) {
+            whereClause.nome_completo = {
+                contains: nome,
+            };
+        }
+
+        if (cpf) {
+            whereClause.cpf = {
+                startsWith: cpf.replace(/\D/g, ''),
+            };
+        }
+
+        // --- ▼▼▼ MODIFICAÇÃO PRINCIPAL AQUI ▼▼▼ ---
+        // Adicionamos 'contato: true' para garantir que ele seja enviado na resposta da API.
+        const pacientes = await prisma.paciente.findMany({
+            where: whereClause,
+            select: {
+                id_paciente: true,
+                nome_completo: true,
+                cpf: true,
+                data_nascimento: true,
+                sexo: true,
+                email: true,
+                contato: true, // <-- AQUI ESTÁ A CORREÇÃO
+            },
+            orderBy: {
+                nome_completo: 'asc',
+            },
+            take: 50,
+        });
+        // --- ▲▲▲ FIM DA MODIFICAÇÃO ▲▲▲ ---
+
+        return NextResponse.json(pacientes, { status: 200 });
+    } catch (error: any) {
+        console.error('ERRO DETALHADO AO BUSCAR PACIENTES:', error);
+        return NextResponse.json({ message: 'Erro interno do servidor ao buscar pacientes.', details: error.message }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
     }
-    const allowedProfiles = ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira'];
-    const userProfile = session.user?.nome_perfil;
-    if (!userProfile || !allowedProfiles.includes(userProfile)) {
-      return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const nome = searchParams.get('nome');
-    const cpf = searchParams.get('cpf');
-
-    const whereClause: any = {};
-
-    if (nome) {
-      // MUDANÇA: 'mode: insensitive' foi removido para evitar o erro 500
-      whereClause.nome_completo = {
-        contains: nome,
-      };
-    }
-
-    if (cpf) {
-      whereClause.cpf = {
-        startsWith: cpf.replace(/\D/g, ''),
-      };
-    }
-
-    const pacientes = await prisma.paciente.findMany({
-      where: whereClause,
-      select: {
-        id_paciente: true,
-        nome_completo: true,
-        cpf: true,
-        data_nascimento: true,
-        sexo: true,
-        email: true,
-      },
-      orderBy: {
-        nome_completo: 'asc',
-      },
-      take: 50,
-    });
-
-    return NextResponse.json(pacientes, { status: 200 });
-  } catch (error: any) {
-    console.error('ERRO DETALHADO AO BUSCAR PACIENTES:', error); 
-    return NextResponse.json({ message: 'Erro interno do servidor ao buscar pacientes.', details: error.message }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
-  }
 }

@@ -15,6 +15,7 @@ interface Paciente {
   data_nascimento: string;
   sexo?: string | null;
   email?: string | null;
+  contato?: string | null; // <-- Adicionado Contato
 }
 
 interface PacienteCadastroFormProps {
@@ -30,7 +31,19 @@ const initialState = {
   data_nascimento: '',
   sexo: '',
   email: '',
+  contato: '', // <-- Adicionado Contato
 };
+
+// --- FUNÇÃO DE MÁSCARA DE TELEFONE ---
+const formatPhoneOnType = (phone: string): string => {
+  const cleaned = phone.replace(/\D/g, '');
+  const match = cleaned.match(/^(\d{2})(\d{5})(\d{4})$/);
+  if (match) {
+    return `(${match[1]}) ${match[2]}-${match[3]}`;
+  }
+  return phone;
+};
+
 
 // --- COMPONENTE PRINCIPAL ---
 export default function PacienteCadastroForm({ onPatientSaved, onCancel, initialData }: PacienteCadastroFormProps) {
@@ -48,6 +61,7 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
         data_nascimento: new Date(initialData.data_nascimento).toISOString().split('T')[0],
         sexo: initialData.sexo || '',
         email: initialData.email || '',
+        contato: initialData.contato || '', // <-- Adicionado Contato
       });
     } else {
       setFormData(initialState);
@@ -68,6 +82,10 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'O formato do email é inválido.'
     }
+    // Validação opcional para o telefone
+    if (formData.contato && formData.contato.replace(/\D/g, '').length < 10) {
+        newErrors.contato = 'O número de contato parece curto demais.';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -83,6 +101,9 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
     if (name === 'cpf') {
       const formattedCpf = formatCpfOnType(value);
       setFormData(prev => ({ ...prev, cpf: formattedCpf }));
+    } else if (name === 'contato') {
+        const formattedPhone = formatPhoneOnType(value);
+        setFormData(prev => ({ ...prev, contato: formattedPhone }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -113,14 +134,14 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
 
       const result = await response.json();
       onPatientSaved(result);
-      toast.success('Paciente Salvo com sucesso!'); // Notificação de sucesso
+      toast.success('Paciente Salvo com sucesso!');
 
       if (!isEditing) {
-        setFormData(initialState); // Limpa o formulário após o sucesso
+        setFormData(initialState);
       }
     } catch (error: any) {
       console.error("Erro ao salvar paciente:", error);
-      toast.error(error.message || 'Ocorreu um erro inesperado.'); // Notificação de erro
+      toast.error(error.message || 'Ocorreu um erro inesperado.');
     } finally {
       setLoading(false);
     }
@@ -223,6 +244,21 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
                   className={`form-input ${errors.email ? 'input-error' : ''}`}
                 />
                 {errors.email && <p className="form-error-message">{errors.email}</p>}
+              </div>
+              {/* Contato (Telefone) */}
+              <div className="md:col-span-2">
+                  <label htmlFor="contato" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contato (Telefone)</label>
+                  <input
+                      type="text"
+                      name="contato"
+                      id="contato"
+                      value={formData.contato}
+                      onChange={handleChange}
+                      placeholder="(81) 99999-8888"
+                      maxLength={15}
+                      className={`form-input ${errors.contato ? 'input-error' : ''}`}
+                  />
+                  {errors.contato && <p className="form-error-message">{errors.contato}</p>}
               </div>
             </div>
           </div>

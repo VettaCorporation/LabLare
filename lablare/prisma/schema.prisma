@@ -45,17 +45,19 @@ model Usuario {
 }
 
 // Tabela de pacientes
+// Tabela de pacientes
 model Paciente {
   id_paciente     Int         @id @default(autoincrement())
   nome_completo   String      @db.VarChar(255)
   cpf             String      @unique @db.VarChar(14)
   data_nascimento DateTime    @db.Date
   sexo            String?     @db.VarChar(20)
+  contato         String?     @db.VarChar(20) // <-- Coluna adicionada
   data_cadastro   DateTime    @default(now()) @db.Timestamp(0)
   email           String?     @unique @db.VarChar(255)
+  
   // Relações
   solicitacoes    Solicitacao[]
-  // CORREÇÃO: Adicionada a relação inversa para orçamentos
   orcamentos      Orcamento[]
 
   @@index([nome_completo])

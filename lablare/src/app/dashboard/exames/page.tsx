@@ -3,9 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PlusIcon, PencilSquareIcon, TrashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'; // <-- NOVO IMPORT
+import { TableSkeleton } from '@/components/skeletons/TableSkeleton';
 
-// ... (Hook useDebounce, Tipagens e Modal de Exclusão - sem alterações) ...
 const useDebounce = (value: string, delay: number) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
     useEffect(() => {
@@ -14,6 +13,7 @@ const useDebounce = (value: string, delay: number) => {
     }, [value, delay]);
     return debouncedValue;
 };
+
 interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
@@ -22,12 +22,14 @@ interface Exame {
     preco: number;
     origem: 'LARE' | 'PARDINI';
 }
+
 interface PaginationInfo {
     page: number;
     pageSize: number;
     totalItems: number;
     totalPages: number;
 }
+
 function DeleteConfirmationModal({ exame, onClose, onConfirm, isDeleting, errorMessage }: { exame: Exame, onClose: () => void, onConfirm: () => void, isDeleting: boolean, errorMessage: string | null }) {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -54,7 +56,6 @@ function DeleteConfirmationModal({ exame, onClose, onConfirm, isDeleting, errorM
 }
 
 export default function GerenciamentoExamesPage() {
-    // ... (Estados e hooks - sem alterações) ...
     const router = useRouter();
     const searchParams = useSearchParams();
     const [exames, setExames] = useState<Exame[]>([]);
@@ -69,7 +70,6 @@ export default function GerenciamentoExamesPage() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-    // ... (Funções fetchExames, useEffect, handleDelete, etc. - sem alterações) ...
     const fetchExames = useCallback(async () => {
         setIsLoading(true);
         setError(null);
@@ -86,7 +86,9 @@ export default function GerenciamentoExamesPage() {
             setIsLoading(false);
         }
     }, [currentPage, debouncedSearchTerm]);
+
     useEffect(() => { fetchExames(); }, [fetchExames]);
+
     useEffect(() => {
         const success = searchParams.get('success');
         if (success) {
@@ -98,7 +100,9 @@ export default function GerenciamentoExamesPage() {
             return () => clearTimeout(timer);
         }
     }, [searchParams]);
+
     const handleEdit = (id: number) => { router.push(`/dashboard/exames/${id}/editar`); };
+
     const handleDelete = async () => {
         if (!exameToDelete) return;
         setIsDeleting(true);
@@ -116,11 +120,11 @@ export default function GerenciamentoExamesPage() {
             setIsDeleting(false);
         }
     };
+    
     const handleAddNew = () => { router.push('/dashboard/exames/novo'); };
 
     return (
         <div className="p-4 sm:p-6 md:p-8 space-y-6">
-            {/* ... (Modais e Mensagens de Sucesso - sem alterações) ... */}
             {exameToDelete && <DeleteConfirmationModal exame={exameToDelete} onClose={() => setExameToDelete(null)} onConfirm={handleDelete} isDeleting={isDeleting} errorMessage={deleteError} />}
             {successMessage && <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md" role="alert"><p>{successMessage}</p></div>}
             
@@ -147,7 +151,6 @@ export default function GerenciamentoExamesPage() {
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        {/* MUDANÇA: Lógica de exibição da tabela atualizada */}
                         {isLoading ? (
                             <TableSkeleton rows={5} />
                         ) : error ? (
@@ -173,7 +176,6 @@ export default function GerenciamentoExamesPage() {
                         )}
                     </table>
                 </div>
-                {/* ... (Controles de Paginação - sem alterações) ... */}
                 {pagination && pagination.totalPages > 1 && !isLoading && exames.length > 0 && (
                     <div className="flex justify-between items-center mt-4">
                         <span className="text-sm text-gray-700 dark:text-gray-400">Página {pagination.page} de {pagination.totalPages} ({pagination.totalItems} resultados)</span>
