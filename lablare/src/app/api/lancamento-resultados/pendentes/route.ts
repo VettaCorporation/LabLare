@@ -1,7 +1,7 @@
 // lablare/src/app/api/lancamento-resultados/pendentes/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../../src/generated/prisma/index.js'; // Caminho ajustado
+import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
 
@@ -28,10 +28,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para visualizar amostras pendentes de lançamento.' }, { status: 403 });
     }
 
-    // 2. Busca ItemSolicitacao com status 'Recebida pela área técnica' e sem laudo associado
+    // 2. Busca ItemSolicitacao com status 'Amostra Recebida' e sem laudo associado
     const pendingItems = await prisma.itemSolicitacao.findMany({
       where: {
-        status_item: 'Recebida pela área técnica',
+        status_item: 'Amostra Recebida', // Alterado o status para o novo fluxo
         laudo: null, // Garante que ainda não há um laudo (resultados não lançados)
       },
       orderBy: {

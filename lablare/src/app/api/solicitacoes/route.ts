@@ -1,9 +1,10 @@
 // lablare/src/app/api/solicitacoes/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../generated/prisma/index.js'; // Caminho ajustado e com .js
+import { PrismaClient } from '../../../generated/prisma/index.js';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route'; // Importa as opções de autenticação
+import { authOptions } from '../auth/[...nextauth]/route';
+import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml';
 
 const prisma = new PrismaClient();
 
@@ -12,7 +13,7 @@ const prisma = new PrismaClient();
  * Manipula requisições POST para registrar uma nova solicitação de exames.
  * Permite que usuários com perfil 'Recepcionista' ou 'Administrador' criem solicitações.
  * @param {NextRequest} req - O objeto de requisição do Next.js.
- * @returns {NextResponse} Uma resposta JSON indicando sucesso ou erro.
+ * @returns {NextResponse} Uma resposta JSON indicando sucesso, erro ou o HTML da etiqueta.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +22,9 @@ export async function POST(req: NextRequest) {
       id_usuario_solicitante,
       examesSelecionados,
       medico_solicitante,
-      observacoes_medicas,
+      tipo_atendimento,
+      forma_pagamento,
+      valor_pago,
     } = await req.json();
 
     if (!id_paciente || !id_usuario_solicitante || !examesSelecionados || examesSelecionados.length === 0) {
@@ -55,22 +58,72 @@ export async function POST(req: NextRequest) {
           id_paciente: id_paciente,
           id_recepcionista: id_usuario_solicitante,
           medico_solicitante: medico_solicitante,
+          status: 'AGUARDANDO_COLETA',
         },
       });
 
       const itensSolicitacaoData = examesSelecionados.map(exame => ({
         id_solicitacao: solicitacao.id_solicitacao,
         id_exame_catalogo: exame.id_exame_catalogo,
+        status_item: 'Aguardando Coleta'
       }));
 
       await tx.itemSolicitacao.createMany({
         data: itensSolicitacaoData,
       });
 
+      if (tipo_atendimento && forma_pagamento && valor_pago) {
+        await tx.pagamento.create({
+          data: {
+            id_solicitacao: solicitacao.id_solicitacao,
+            tipo_atendimento,
+            forma_pagamento,
+            valor_pago,
+          }
+        });
+      }
+
       return { solicitacao };
     });
 
-    return NextResponse.json({ message: 'Solicitação de exames registrada com sucesso!', solicitacao: result.solicitacao }, { status: 201 });
+    const solicitacaoCompleta = await prisma.solicitacao.findUnique({
+      where: { id_solicitacao: result.solicitacao.id_solicitacao },
+      include: {
+        paciente: true,
+        itens_solicitacao: {
+          include: {
+            exame_catalogo: true,
+          }
+        }
+      }
+    });
+
+    if (!solicitacaoCompleta) {
+      return NextResponse.json({ message: 'Erro ao recuperar a solicitação completa.' }, { status: 500 });
+    }
+
+    const calculateAge = (birthdate: Date) => {
+      const today = new Date();
+      let age = today.getFullYear() - birthdate.getFullYear();
+      const m = today.getMonth() - birthdate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthdate.getDate())) {
+        age--;
+      }
+      return age;
+    };
+    
+    const idadePaciente = calculateAge(solicitacaoCompleta.paciente.data_nascimento);
+    const examesParaEtiqueta = solicitacaoCompleta.itens_solicitacao.map(item => ({
+      nome_exame: item.exame_catalogo.nome_exame,
+    }));
+    
+    const etiquetaHtml = generateLabelHtml(solicitacaoCompleta.paciente, idadePaciente, examesParaEtiqueta);
+
+    return NextResponse.json({
+      message: 'Solicitação de exames registrada e paga com sucesso! Etiqueta gerada.',
+      solicitacao: result.solicitacao,
+      etiquetaHtml: etiquetaHtml
+    }, { status: 201 });
 
   } catch (error: any) {
     console.error('Erro ao registrar solicitação de exames:', error);
@@ -91,7 +144,8 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const pacienteId = searchParams.get('pacienteId'); // Parâmetro para filtrar por paciente
+    const pacienteId = searchParams.get('pacienteId');
+    const statusFilter = searchParams.get('status');
 
     let whereClause: any = {};
 
@@ -103,43 +157,34 @@ export async function GET(req: NextRequest) {
       whereClause = { id_paciente: parsedPacienteId };
     }
 
+    if (statusFilter) {
+      whereClause.status = statusFilter;
+    }
+
+    // A consulta do Prisma foi corrigida para garantir que todas as relações sejam carregadas
     const solicitacoes = await prisma.solicitacao.findMany({
-      where: whereClause, // Aplica o filtro se houver
+      where: whereClause,
       orderBy: {
-        data_hora_solicitacao: 'desc', // Ordena das mais recentes para as mais antigas
+        data_hora_solicitacao: 'desc',
       },
-      include: { // Inclui dados relacionados de outras tabelas
-        paciente: {
-          select: {
-            id_paciente: true,
-            nome_completo: true,
-            cpf: true,
-            data_nascimento: true,
-            email: true,
-            sexo: true,
-          },
-        },
-        recepcionista: { // ADICIONADO: Inclui dados do recepcionista
-          select: {
-            nome_completo: true,
-            email: true,
-          },
-        },
+      include: {
+        paciente: true,
+        recepcionista: true,
         itens_solicitacao: {
           include: {
-            exame_catalogo: {
-              select: {
-                id_exame_catalogo: true,
-                nome_exame: true,
-                preco: true,
-              },
-            },
+            exame_catalogo: true,
           },
         },
       },
     });
 
-    return NextResponse.json(solicitacoes, { status: 200 });
+    // Filtra solicitações para garantir que todas as relações existam para evitar erros de renderização
+    const filteredSolicitacoes = solicitacoes.filter(
+      (solicitacao) =>
+        solicitacao.paciente && solicitacao.recepcionista && solicitacao.itens_solicitacao.every(item => item.exame_catalogo)
+    );
+
+    return NextResponse.json(filteredSolicitacoes, { status: 200 });
 
   } catch (error: any) {
     console.error('Erro ao buscar solicitações:', error);

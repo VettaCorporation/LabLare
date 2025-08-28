@@ -10,7 +10,6 @@ import {
   UsersIcon,
   UserGroupIcon,
   CalculatorIcon,
-  KeyIcon,
   TicketIcon,
   Cog6ToothIcon,
   ShieldCheckIcon,
@@ -41,7 +40,7 @@ export default function Sidebar() {
     { name: 'Painel', href: '/dashboard', icon: HomeIcon },
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
     { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
-    { name: 'Solicitar Exame', href: '/dashboard/solicitar-exame', icon: KeyIcon },
+    { name: 'Solicitar Exame', href: '/dashboard/solicitar-exame', icon: ClipboardDocumentCheckIcon }, // Ícone alterado
     { name: 'Etiquetas de Amostras', href: '/dashboard/etiqueta', icon: TicketIcon },
     { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon },
     { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon },

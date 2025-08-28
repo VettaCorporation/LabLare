@@ -1,10 +1,10 @@
-// Caminho: src/app/dashboard/etiqueta/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml'; 
+import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter';
 
 // As tipagens e a lógica interna permanecem as mesmas.
 
@@ -63,13 +63,103 @@ export default function EtiquetaPage() {
                         session?.user?.nome_perfil === 'Administrador' ||
                         session?.user?.nome_perfil === 'Técnico de Laboratório';
 
-  const calculateAge = useCallback((birthDateString: string) => { /* ...lógica... */ return 0 }, []);
-  const fetchPatients = useCallback(debounce(async (term: string) => { /* ...lógica... */ }, 300), []);
-  const fetchSolicitacoesByPatient = useCallback(async (patientId: number) => { /* ...lógica... */ }, []);
-  const handlePrintEtiquetas = useCallback((solicitacao: SolicitacaoData) => { /* ...lógica... */ }, []);
+  const calculateAge = useCallback((birthDateString: string): number => {
+    const today = new Date();
+    const birthDate = new Date(birthDateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }, []);
+
+  const fetchPatients = useCallback(debounce(async (term: string) => {
+    if (term.length < 3) {
+      setPatientSearchResults([]);
+      return;
+    }
+    setLoadingPatientSearch(true);
+    try {
+      const response = await fetch(`/api/pacientes?nome=${encodeURIComponent(term)}`);
+      if (!response.ok) throw new Error('Erro ao buscar pacientes.');
+      const data = await response.json();
+      setPatientSearchResults(data);
+    } catch (err: any) {
+      console.error('Falha na busca:', err);
+      setError('Não foi possível buscar os pacientes.');
+    } finally {
+      setLoadingPatientSearch(false);
+    }
+  }, 300), []);
+
+  const fetchSolicitacoesByPatient = useCallback(async (patientId: number) => {
+    setLoadingSolicitacoes(true);
+    try {
+      const response = await fetch(`/api/solicitacoes?pacienteId=${patientId}`);
+      if (!response.ok) throw new Error('Erro ao buscar solicitações.');
+      const data = await response.json();
+      setSolicitacoesDoPaciente(data);
+    } catch (err: any) {
+      console.error('Falha ao buscar solicitações:', err);
+      setError('Não foi possível carregar as solicitações do paciente.');
+    } finally {
+      setLoadingSolicitacoes(false);
+    }
+  }, []);
+
+  const fetchLatestGlobalSolicitations = useCallback(async () => {
+    setLoadingGlobalSolicitations(true);
+    try {
+      const response = await fetch('/api/solicitacoes');
+      if (!response.ok) throw new Error('Erro ao buscar solicitações globais.');
+      const data = await response.json();
+      setLatestGlobalSolicitations(data.slice(0, 5)); // Exibe as 5 últimas
+    } catch (err: any) {
+      console.error('Falha ao buscar solicitações globais:', err);
+      setError('Não foi possível carregar as últimas solicitações.');
+    } finally {
+      setLoadingGlobalSolicitations(false);
+    }
+  }, []);
+
+  const handlePrintEtiquetas = useCallback((solicitacao: SolicitacaoData) => {
+    if (!solicitacao.paciente || !solicitacao.itens_solicitacao.length) {
+      alert('Não é possível imprimir etiquetas. Dados da solicitação incompletos.');
+      return;
+    }
+
+    const idadePaciente = calculateAge(solicitacao.paciente.data_nascimento);
+    const examesParaEtiqueta = solicitacao.itens_solicitacao.map(item => ({
+      nome_exame: item.exame_catalogo.nome_exame,
+    }));
+
+    const etiquetaHtml = generateLabelHtml(solicitacao.paciente, idadePaciente, examesParaEtiqueta);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(etiquetaHtml);
+      printWindow.document.close();
+    } else {
+      alert('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.');
+    }
+  }, [calculateAge]);
   
-  useEffect(() => { /* ...lógica... */ }, [patientSearchTerm, fetchPatients]);
-  useEffect(() => { /* ...lógica... */ }, [status, canAccessPage]);
+  useEffect(() => {
+    if (patientSearchTerm.length >= 3) {
+      fetchPatients(patientSearchTerm);
+    } else {
+      setPatientSearchResults([]);
+    }
+  }, [patientSearchTerm, fetchPatients]);
+
+  useEffect(() => {
+    if (status === 'authenticated' && canAccessPage) {
+      fetchLatestGlobalSolicitations();
+    }
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, canAccessPage, router, fetchLatestGlobalSolicitations]);
 
   const handleSelectPatient = (patient: PacienteData) => {
     setSelectedPatient(patient);
@@ -78,31 +168,31 @@ export default function EtiquetaPage() {
     fetchSolicitacoesByPatient(patient.id_paciente);
   };
 
-  // MUDANÇA 1: getStatusBadge agora entende o modo escuro
   const getStatusBadge = (status: string) => {
     let baseClasses = 'px-2 py-1 rounded-full text-xs font-semibold';
     let lightClasses = '';
     let darkClasses = '';
     switch (status) {
       case 'AGUARDANDO_PAGAMENTO':
+      case 'AGUARDANDO_COLETA':
         lightClasses = 'bg-yellow-100 text-yellow-800';
         darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
         break;
-      case 'PAGA':
-        lightClasses = 'bg-green-100 text-green-800';
-        darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
-        break;
-      case 'COLETADA':
+      case 'AMOSTRA_RECEBIDA':
         lightClasses = 'bg-blue-100 text-blue-800';
         darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
         break;
-      case 'VALIDADA':
-        lightClasses = 'bg-purple-100 text-purple-800';
-        darkClasses = 'dark:bg-purple-900/50 dark:text-purple-300';
+      case 'PENDENTE_DE_VALIDACAO':
+        lightClasses = 'bg-orange-100 text-orange-800';
+        darkClasses = 'dark:bg-orange-900/50 dark:text-orange-300';
+        break;
+      case 'VALIDADO':
+        lightClasses = 'bg-green-100 text-green-800';
+        darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
         break;
       case 'LIBERADA':
-        lightClasses = 'bg-indigo-100 text-indigo-800';
-        darkClasses = 'dark:bg-indigo-900/50 dark:text-indigo-300';
+        lightClasses = 'bg-purple-100 text-purple-800';
+        darkClasses = 'dark:bg-purple-900/50 dark:text-purple-300';
         break;
       default:
         lightClasses = 'bg-gray-200 text-gray-800';
@@ -133,20 +223,17 @@ export default function EtiquetaPage() {
 
   return (
     <div className="space-y-8">
-      {/* O título `h1` já pega o estilo global que corrigimos, sem necessidade de mudança aqui */}
-      <h1 className="text-3xl font-bold">Impressão de Etiquetas</h1>
+      <h1 className="text-3xl font-bold dark:text-gray-100">Impressão de Etiquetas</h1>
 
-      {/* MUDANÇA 2: Card de "Buscar Paciente" */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Buscar Paciente</h2>
         <div className="flex items-center gap-4 mb-4">
-          {/* O input já pega os estilos globais do globals.css */}
           <input
             type="text"
             value={patientSearchTerm}
             onChange={(e) => setPatientSearchTerm(e.target.value)}
             placeholder="Digite o nome ou CPF do paciente"
-            className="flex-grow" // Removidas classes de estilo redundantes
+            className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
           />
           {loadingPatientSearch && <p className="text-gray-500 dark:text-gray-400">Buscando...</p>}
         </div>
@@ -162,7 +249,7 @@ export default function EtiquetaPage() {
                   onClick={() => handleSelectPatient(patient)}
                   className="cursor-pointer p-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-md border-b dark:border-gray-700 last:border-b-0 dark:text-gray-300"
                 >
-                  <strong>{patient.nome_completo}</strong> (CPF: {patient.cpf}) - {new Date(patient.data_nascimento).toLocaleDateString()}
+                  <strong>{patient.nome_completo}</strong> (CPF: {formatCpfForDisplay(patient.cpf)})
                 </li>
               ))}
             </ul>
@@ -175,7 +262,6 @@ export default function EtiquetaPage() {
       </div>
 
       {selectedPatient && (
-        // MUDANÇA 3: Card de "Solicitações de:"
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
           <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Solicitações de: <span className="text-blue-700 dark:text-blue-400">{selectedPatient.nome_completo}</span></h2>
           <p className="text-gray-700 dark:text-gray-400 mb-4">Selecione uma solicitação para imprimir as etiquetas.</p>
@@ -231,7 +317,6 @@ export default function EtiquetaPage() {
         </div>
       )}
 
-      {/* MUDANÇA 4: Card de "Últimas Solicitações Globais" */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Últimas Solicitações Globais</h2>
         {loadingGlobalSolicitations ? (

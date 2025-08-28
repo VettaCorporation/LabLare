@@ -21,19 +21,31 @@ interface Paciente {
 }
 
 // --- SUB-COMPONENTES COM LÓGICA E JSX 100% COMPLETOS ---
-
 const getStatusBadge = (status: string) => {
   let baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
-  let lightClasses = 'bg-blue-100 text-blue-800';
-  let darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
+  let lightClasses = 'bg-gray-200 text-gray-800';
+  let darkClasses = 'dark:bg-gray-700 dark:text-gray-200';
   switch (status) {
     case 'AGUARDANDO_PAGAMENTO':
+    case 'AGUARDANDO_COLETA':
       lightClasses = 'bg-yellow-100 text-yellow-800';
       darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
       break;
-    case 'PAGA':
+    case 'AMOSTRA_RECEBIDA':
+      lightClasses = 'bg-blue-100 text-blue-800';
+      darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
+      break;
+    case 'PENDENTE_DE_VALIDACAO':
+      lightClasses = 'bg-orange-100 text-orange-800';
+      darkClasses = 'dark:bg-orange-900/50 dark:text-orange-300';
+      break;
+    case 'VALIDADO':
       lightClasses = 'bg-green-100 text-green-800';
       darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
+      break;
+    case 'LIBERADA':
+      lightClasses = 'bg-purple-100 text-purple-800';
+      darkClasses = 'dark:bg-purple-900/50 dark:text-purple-300';
       break;
   }
   return <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>{status.replace(/_/g, ' ')}</span>;
@@ -75,7 +87,49 @@ function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBa
           Voltar
         </button>
       </div>
-      {/* Aqui virá a tabela de solicitações */}
+
+      {loading ? (
+        <div className="text-center text-xl mt-10">Carregando solicitações...</div>
+      ) : error ? (
+        <div className="text-center text-red-500 mt-10">{error}</div>
+      ) : solicitacoes.length === 0 ? (
+        <div className="text-center text-gray-600 p-4 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-gray-400">
+          Nenhuma solicitação encontrada para este paciente.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data/Hora</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exames</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              {solicitacoes.map((solicitacao) => (
+                <tr key={solicitacao.id_solicitacao}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{solicitacao.id_solicitacao}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {getStatusBadge(solicitacao.status)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    <ul className="list-disc list-inside">
+                      {solicitacao.itens_solicitacao?.map((item: any) => (
+                        <li key={item.id_item_solicitacao}>
+                          {item.exame_catalogo?.nome_exame}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,7 +233,6 @@ export default function PacientesPage() {
   const handlePatientSaved = (patient: Paciente) => {
     setView('list');
     fetchPacientes();
-    // toast.success(`Paciente ${patient.nome_completo} salvo com sucesso!`); removido conforme sua solicitação
   };
 
   const handleOpenDeleteModal = (paciente: Paciente) => setPatientToDelete(paciente);
@@ -328,5 +381,5 @@ export default function PacientesPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }

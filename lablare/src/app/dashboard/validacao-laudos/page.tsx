@@ -1,10 +1,10 @@
-// Caminho: src/app/dashboard/validacao-laudos/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
 // As tipagens e a lógica interna permanecem as mesmas.
 interface PacienteData {
@@ -55,14 +55,111 @@ export default function ValidacaoLaudosPage() {
   const [showRejeitarModal, setShowRejeitarModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const canAccessPage = session?.user?.nome_perfil === 'Administrador' ||
-                        session?.user?.nome_perfil === 'Biomédico';
+  // Removendo o perfil de Biomédico, conforme o último pedido
+  const canAccessPage = session?.user?.nome_perfil === 'Administrador';
 
-  const calculateAge = useCallback((birthDateString: string) => { /* ...lógica... */ return 0; }, []);
-  const fetchPendingLaudos = useCallback(async () => { /* ...lógica... */ }, []);
-  const fetchLaudoDetalhes = useCallback(async (laudoId: number) => { /* ...lógica... */ }, []);
-  const handleAprovarLaudo = async (laudoId: number) => { /* ...lógica... */ };
-  const handleRejeitarLaudo = async () => { /* ...lógica... */ };
+  const calculateAge = useCallback((birthDateString: string) => {
+    const today = new Date();
+    const birthDate = new Date(birthDateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }, []);
+
+  const fetchPendingLaudos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/laudos/pendentes');
+      if (!response.ok) throw new Error('Falha ao buscar laudos pendentes.');
+      const data = await response.json();
+      setPendingLaudos(data);
+    } catch (err: any) {
+      console.error('Erro ao buscar laudos pendentes:', err);
+      setError('Não foi possível carregar a lista de laudos pendentes.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchLaudoDetalhes = useCallback(async (laudoId: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/laudos/${laudoId}/detalhes`);
+      if (!response.ok) throw new Error('Falha ao buscar detalhes do laudo.');
+      const data = await response.json();
+      setSelectedLaudo(data);
+    } catch (err: any) {
+      console.error('Erro ao buscar detalhes do laudo:', err);
+      setError('Não foi possível carregar os detalhes do laudo.');
+      setLoading(false);
+    }
+  }, []);
+
+  const handleAprovarLaudo = async (laudoId: number) => {
+    setSubmitting(true);
+    setMessage('');
+    setMessageType('');
+    try {
+      const response = await fetch('/api/laudos/aprovar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_laudo: laudoId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao aprovar o laudo.');
+      }
+      setMessage(data.message);
+      setMessageType('success');
+      setSelectedLaudo(null);
+      fetchPendingLaudos(); // Atualiza a lista
+      toast.success(data.message);
+    } catch (err: any) {
+      console.error('Erro ao aprovar laudo:', err);
+      setMessage(err.message);
+      setMessageType('error');
+      toast.error(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRejeitarLaudo = async () => {
+    if (!selectedLaudo || !motivoRejeicao.trim()) {
+      return;
+    }
+    setSubmitting(true);
+    setMessage('');
+    setMessageType('');
+    try {
+      const response = await fetch('/api/laudos/rejeitar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_laudo: selectedLaudo.id_laudo, motivo: motivoRejeicao }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao rejeitar o laudo.');
+      }
+      setMessage(data.message);
+      setMessageType('success');
+      setShowRejeitarModal(false);
+      setMotivoRejeicao('');
+      setSelectedLaudo(null);
+      fetchPendingLaudos(); // Atualiza a lista
+      toast.success(data.message);
+    } catch (err: any) {
+      console.error('Erro ao rejeitar laudo:', err);
+      setMessage(err.message);
+      setMessageType('error');
+      toast.error(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (status === 'authenticated' && canAccessPage) {
@@ -89,7 +186,6 @@ export default function ValidacaoLaudosPage() {
   if (selectedLaudo) {
     return (
       <div className="space-y-8">
-        {/* MUDANÇA 1: Card do cabeçalho da visualização de detalhes */}
         <div className="flex justify-between items-center bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 ">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Detalhes do Laudo #{selectedLaudo.id_laudo}</h1>
           <button
@@ -107,7 +203,6 @@ export default function ValidacaoLaudosPage() {
           </div>
         )}
 
-        {/* MUDANÇA 2: Card de "Informações do Paciente" */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300">
           <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Informações do Paciente</h2>
           <p><strong>Nome:</strong> {selectedLaudo.item_solicitacao.solicitacao.paciente.nome_completo}</p>
@@ -119,7 +214,6 @@ export default function ValidacaoLaudosPage() {
           <p className="mt-4"><strong>Observações do Técnico:</strong> {selectedLaudo.observacoes_tecnico || 'N/A'}</p>
         </div>
 
-        {/* MUDANÇA 3: Card e Tabela de "Resultados" */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
           <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Resultados</h2>
           {selectedLaudo.parametros_resultado?.length ? (
@@ -167,12 +261,10 @@ export default function ValidacaoLaudosPage() {
           </button>
         </div>
 
-        {/* MUDANÇA 4: Modal de Rejeição */}
         {showRejeitarModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
             <div className="relative p-8 bg-white dark:bg-gray-900 w-96 rounded-lg shadow-lg">
               <h3 className="text-xl font-bold mb-4 dark:text-white">Motivo da Rejeição</h3>
-              {/* O textarea já pega os estilos globais */}
               <textarea
                 value={motivoRejeicao}
                 onChange={(e) => setMotivoRejeicao(e.target.value)}
@@ -206,7 +298,6 @@ export default function ValidacaoLaudosPage() {
   // Lógica de renderização da lista de laudos pendentes
   return (
     <div className="space-y-8">
-      {/* MUDANÇA 5: Título principal */}
       <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Validação de Laudos</h1>
 
       {message && (
@@ -215,7 +306,6 @@ export default function ValidacaoLaudosPage() {
         </div>
       )}
 
-      {/* MUDANÇA 6: Card da tabela de laudos pendentes */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Laudos Pendentes de Validação</h2>
         {loading ? (

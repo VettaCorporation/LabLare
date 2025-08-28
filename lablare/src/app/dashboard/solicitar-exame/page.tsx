@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import { formatCpfForDisplay } from '@/utils/cpfFormatter';
@@ -12,6 +12,7 @@ interface Paciente {
   id_paciente: number;
   nome_completo: string;
   cpf: string;
+  data_nascimento: Date;
 }
 
 export default function SolicitarExamePage() {
@@ -69,7 +70,6 @@ export default function SolicitarExamePage() {
     }
   }, [status, searchTerm, fetchPacientes, pacienteIdFromUrl, fetchSinglePatient, router]);
 
-  // Função para limpar o paciente selecionado e voltar para a lista
   const handleCancel = () => {
     setSelectedPaciente(null);
     router.push('/dashboard/solicitar-exame');
@@ -79,7 +79,7 @@ export default function SolicitarExamePage() {
     return <div className="p-8 dark:text-gray-300">Carregando...</div>;
   }
 
-  // Renderiza o formulário se um paciente foi selecionado (via URL ou lista)
+  // CORREÇÃO: Renderiza o formulário somente se um paciente estiver selecionado
   if (selectedPaciente) {
     return (
       <div className="p-8 max-w-4xl mx-auto">

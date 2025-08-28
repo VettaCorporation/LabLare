@@ -1,16 +1,16 @@
-"use client"; 
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 export default function SolicitacoesPage() {
-  const { data: session, status: sessionStatus } = useSession(); 
+  const { data: session, status: sessionStatus } = useSession();
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  
+
   const canViewSolicitacoes = session?.user?.nome_perfil === 'Recepcionista' ||
                               session?.user?.nome_perfil === 'Administrador' ||
                               session?.user?.nome_perfil === 'Técnico de Laboratório' ||
@@ -62,7 +62,7 @@ export default function SolicitacoesPage() {
   if (error) {
     return <div className="text-center text-red-500">{error}</div>;
   }
-
+  
   const getStatusBadge = (status) => {
     let bgColor = 'bg-gray-200';
     let textColor = 'text-gray-800';
@@ -71,28 +71,32 @@ export default function SolicitacoesPage() {
         bgColor = 'bg-yellow-100';
         textColor = 'text-yellow-800';
         break;
-      case 'PAGA':
-        bgColor = 'bg-green-100';
-        textColor = 'text-green-800';
+      case 'AGUARDANDO_COLETA':
+        bgColor = 'bg-yellow-100';
+        textColor = 'text-yellow-800';
         break;
-      case 'COLETADA':
+      case 'AMOSTRA_RECEBIDA':
         bgColor = 'bg-blue-100';
         textColor = 'text-blue-800';
         break;
-      case 'VALIDADA':
-        bgColor = 'bg-purple-100';
-        textColor = 'text-purple-800';
+      case 'PENDENTE_DE_VALIDACAO':
+        bgColor = 'bg-orange-100';
+        textColor = 'text-orange-800';
+        break;
+      case 'VALIDADO':
+        bgColor = 'bg-green-100';
+        textColor = 'text-green-800';
         break;
       case 'LIBERADA':
-        bgColor = 'bg-indigo-100';
-        textColor = 'text-indigo-800';
+        bgColor = 'bg-purple-100';
+        textColor = 'text-purple-800';
         break;
       default:
         break;
     }
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bgColor} ${textColor}`}>
-        {status.replace(/_/g, ' ')} 
+        {status.replace(/_/g, ' ')}
       </span>
     );
   };
@@ -116,7 +120,7 @@ export default function SolicitacoesPage() {
                 <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Recepcionista</th>
                 <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Médico Solicitante</th>
                 <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Exames</th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Status</th> 
+                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 border-b">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -127,20 +131,20 @@ export default function SolicitacoesPage() {
                     {new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-800">
-                    {solicitacao.paciente.nome_completo} <br />
-                    <span className="text-gray-500 text-xs">CPF: {solicitacao.paciente.cpf}</span>
+                    {solicitacao.paciente?.nome_completo} <br />
+                    <span className="text-gray-500 text-xs">CPF: {solicitacao.paciente?.cpf}</span>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-800">
-                    {solicitacao.recepcionista.nome_completo}
+                    {solicitacao.recepcionista?.nome_completo}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-800">
                     {solicitacao.medico_solicitante || 'Não informado'}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-800">
                     <ul className="list-disc list-inside text-xs">
-                      {solicitacao.itens_solicitacao.map((item) => (
+                      {solicitacao.itens_solicitacao?.map((item) => (
                         <li key={item.id_item_solicitacao}>
-                          {item.exame_catalogo.nome_exame} ({item.exame_catalogo.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                          {item.exame_catalogo?.nome_exame} ({item.exame_catalogo?.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
                         </li>
                       ))}
                     </ul>

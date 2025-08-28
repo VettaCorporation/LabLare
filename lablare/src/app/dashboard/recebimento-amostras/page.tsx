@@ -4,27 +4,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter';
 
 // As tipagens permanecem as mesmas
+interface ExameCatalogoData {
+  nome_exame: string;
+}
+
+interface PacienteData {
+  nome_completo: string;
+  cpf: string;
+}
+
+interface RecepcionistaData {
+  nome_completo: string;
+  email: string;
+}
+
+interface ItemSolicitacaoData {
+  id_item_solicitacao: number;
+  status_item: string;
+  exame_catalogo: ExameCatalogoData;
+  solicitacao: SolicitacaoData; // Adicionando a relação com Solicitacao
+}
+
 interface SolicitacaoData {
   id_solicitacao: number;
   data_hora_solicitacao: string;
   medico_solicitante?: string;
-  paciente: {
-    nome_completo: string;
-    cpf: string;
-  };
-  recepcionista: { 
-    nome_completo: string;
-    email: string;
-  };
-  itens_solicitacao: Array<{
-    id_item_solicitacao: number;
-    status_item: string;
-    exame_catalogo: {
-      nome_exame: string;
-    };
-  }>;
+  paciente: PacienteData;
+  recepcionista: RecepcionistaData;
+  itens_solicitacao: ItemSolicitacaoData[];
 }
 
 export default function RecebimentoAmostrasPage() {
@@ -35,25 +46,96 @@ export default function RecebimentoAmostrasPage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
   const [loadingConfirm, setLoadingConfirm] = useState(false);
-  const [receivedSolicitacoes, setReceivedSolicitacoes] = useState<SolicitacaoData[]>([]);
+  const [receivedSolicitacoes, setReceivedSolicitacoes] = useState<ItemSolicitacaoData[]>([]);
   const [loadingList, setLoadingList] = useState(true);
 
   const canAccessPage = session?.user?.nome_perfil === 'Recepcionista' ||
                         session?.user?.nome_perfil === 'Administrador' ||
                         session?.user?.nome_perfil === 'Técnico de Laboratório';
 
-  const fetchReceivedSolicitacoes = useCallback(async () => { /* ...lógica original... */ }, []);
-  useEffect(() => { /* ...lógica original... */ }, [status, canAccessPage, fetchReceivedSolicitacoes]);
-  const handleConfirmRecebimento = async () => { /* ...lógica original... */ };
+  const fetchReceivedSolicitacoes = useCallback(async () => {
+    setLoadingList(true);
+    try {
+      // A API correta para esta página é a de pendentes de lançamento de resultados,
+      // pois ela lista os itens que foram pagos e estão aguardando a coleta.
+      const response = await fetch('/api/lancamento-resultados/pendentes');
+      if (!response.ok) throw new Error('Falha ao buscar solicitações.');
+      const data = await response.json();
+      setReceivedSolicitacoes(data);
+    } catch (err: any) {
+      console.error('Erro ao buscar solicitações:', err);
+      setMessage('Não foi possível carregar a lista de solicitações.');
+      setMessageType('error');
+    } finally {
+      setLoadingList(false);
+    }
+  }, []);
 
-  // MUDANÇA 1: getStatusBadge agora entende o modo escuro
+  useEffect(() => {
+    if (status === 'authenticated' && canAccessPage) {
+      fetchReceivedSolicitacoes();
+    }
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, canAccessPage, fetchReceivedSolicitacoes, router]);
+
+  const handleConfirmRecebimento = async () => {
+    if (!solicitacaoIdInput) {
+      setMessage('Por favor, insira o ID de um exame.');
+      setMessageType('error');
+      return;
+    }
+
+    setLoadingConfirm(true);
+    setMessage('');
+    setMessageType('');
+
+    try {
+      const response = await fetch('/api/solicitacoes/recebimento', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id_item_solicitacao: solicitacaoIdInput }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao confirmar recebimento.');
+      }
+      setMessage(data.message);
+      setMessageType('success');
+      setSolicitacaoIdInput(''); // Limpa o input
+      fetchReceivedSolicitacoes(); // Atualiza a lista
+      toast.success(data.message);
+    } catch (err: any) {
+      console.error('Erro ao confirmar recebimento:', err);
+      setMessage(err.message);
+      setMessageType('error');
+      toast.error(err.message);
+    } finally {
+      setLoadingConfirm(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     let baseClasses = 'px-2 py-1 rounded-full text-xs font-semibold';
-    let lightClasses = 'bg-blue-100 text-blue-800'; // Padrão para 'Recebida'
-    let darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
-    
-    // Adicione outros casos se houver mais status possíveis aqui
-    
+    let lightClasses = '';
+    let darkClasses = '';
+    switch (status) {
+      case 'Aguardando Coleta':
+        lightClasses = 'bg-yellow-100 text-yellow-800';
+        darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
+        break;
+      case 'Amostra Recebida':
+        lightClasses = 'bg-blue-100 text-blue-800';
+        darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
+        break;
+      default:
+        lightClasses = 'bg-gray-200 text-gray-800';
+        darkClasses = 'dark:bg-gray-700 dark:text-gray-200';
+        break;
+    }
     return (
       <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>
         {status}
@@ -78,21 +160,18 @@ export default function RecebimentoAmostrasPage() {
 
   return (
     <div className="space-y-8">
-      {/* MUDANÇA 2: Título principal agora tem cor escura em ambos os modos */}
       <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Recebimento de Amostras</h1>
 
-      {/* MUDANÇA 3: Card de "Registrar Recebimento" */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Registrar Recebimento por Solicitação</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">Insira o ID da Solicitação para marcar todas as amostras como recebidas.</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">Insira o ID de um exame para marcar como recebido.</p>
         <div className="flex items-center gap-4 mb-4">
-          {/* O input já pega os estilos globais */}
           <input
-            type="number" 
+            type="number"
             value={solicitacaoIdInput}
             onChange={(e) => setSolicitacaoIdInput(e.target.value)}
-            placeholder="ID da Solicitação (Ex: 4)"
-            className="flex-grow" // Removidas classes redundantes
+            placeholder="ID do Item de Solicitação (Ex: 4)"
+            className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
           />
           <button
             onClick={handleConfirmRecebimento}
@@ -109,42 +188,41 @@ export default function RecebimentoAmostrasPage() {
         )}
       </div>
 
-      {/* MUDANÇA 4: Card e Tabela de "Solicitações com Amostras Recebidas" */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Solicitações com Amostras Recebidas</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Amostras Pendentes de Recebimento</h2>
         {loadingList ? (
-          <p className="text-gray-500 dark:text-gray-400">Carregando lista de solicitações...</p>
+          <p className="text-gray-500 dark:text-gray-400">Carregando lista de amostras...</p>
         ) : receivedSolicitacoes.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400">Nenhuma solicitação com amostras recebidas recentemente.</p>
+          <p className="text-gray-600 dark:text-gray-400">Nenhuma amostra pendente de recebimento.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID Item</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Solicitação ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paciente</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recepcionista</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exames (Status)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exame</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data Solicitação</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {receivedSolicitacoes.map((solicitacao) => (
-                  <tr key={solicitacao.id_solicitacao}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{solicitacao.id_solicitacao}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{solicitacao.paciente.nome_completo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{solicitacao.recepcionista.nome_completo}</td>
+                {receivedSolicitacoes.map((item) => (
+                  <tr key={item.id_item_solicitacao}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{item.id_item_solicitacao}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.solicitacao?.id_solicitacao}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {item.solicitacao?.paciente?.nome_completo}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                      <ul className="list-disc list-inside">
-                        {solicitacao.itens_solicitacao.map((item) => (
-                          <li key={item.id_item_solicitacao}>
-                            {item.exame_catalogo.nome_exame} ({getStatusBadge(item.status_item)})
-                          </li>
-                        ))}
-                      </ul>
+                      {item.exame_catalogo?.nome_exame}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}
+                      {item.solicitacao?.data_hora_solicitacao ? new Date(item.solicitacao.data_hora_solicitacao).toLocaleString('pt-BR') : 'Data inválida'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {getStatusBadge(item.status_item)}
                     </td>
                   </tr>
                 ))}

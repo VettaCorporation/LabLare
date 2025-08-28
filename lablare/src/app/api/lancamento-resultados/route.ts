@@ -1,4 +1,4 @@
-// lablare/src/app/api/lancamento-resultados/route.ts
+// Caminho: src/app/api/lancamento-resultados/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
 import { PrismaClient } from '../../../generated/prisma/index.js'; // Caminho ajustado
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Inicia uma transação para garantir atomicidade
-    const transactionResult = await prisma.$transaction(async (tx) => { // Renomeado 'result' para 'transactionResult'
+    const transactionResult = await prisma.$transaction(async (tx) => {
       // 1. Verifica se o ItemSolicitacao existe e está no status correto
       const itemSolicitacao = await tx.itemSolicitacao.findUnique({
         where: { id_item_solicitacao: parsedItemId },
@@ -54,11 +54,11 @@ export async function POST(req: NextRequest) {
       });
 
       if (!itemSolicitacao) {
-        // Se não encontrado, LANÇA um erro, que será pego pelo catch externo da API
         throw new Error('Item de solicitação não encontrado. Verifique o ID.');
       }
 
-      if (itemSolicitacao.status_item !== 'Recebida pela área técnica') {
+      // CORREÇÃO: Altera o status esperado para 'Amostra Recebida'
+      if (itemSolicitacao.status_item !== 'Amostra Recebida') {
         throw new Error(`A amostra não está pronta para lançamento de resultados. Status atual: "${itemSolicitacao.status_item}".`);
       }
 
@@ -96,20 +96,16 @@ export async function POST(req: NextRequest) {
         data: { status_item: 'Pendente de Validação' },
       });
 
-      // Retorna o resultado esperado da transação
       return { newLaudo, updatedItemSolicitacao: itemSolicitacao };
     });
 
-    // Se a transação foi bem-sucedida, 'transactionResult' terá 'newLaudo'
     return NextResponse.json({
       message: 'Resultados lançados com sucesso e amostra enviada para validação!',
-      laudoId: transactionResult.newLaudo.id_laudo, // Agora TypeScript entende que newLaudo existe
+      laudoId: transactionResult.newLaudo.id_laudo,
     }, { status: 200 });
 
   } catch (error: any) {
     console.error('Erro ao lançar resultados:', error);
-    // Erros lançados dentro da transação ou outros erros serão capturados aqui
-    // Se o erro foi lançado com uma mensagem específica, use-a.
     return NextResponse.json({ message: error.message || 'Erro interno do servidor ao lançar resultados.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
