@@ -1,165 +1,114 @@
+// Caminho: src/components/ExameSelection/ExameSelection.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { XCircleIcon, PlusCircleIcon } from '@heroicons/react/24/solid';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Dispatch, SetStateAction } from 'react';
+import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
-
-// Hook customizado para "atrasar" a busca enquanto o usuário digita
-const useDebounce = (value: string, delay: number) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-  return debouncedValue;
-};
-
-// Interface que define a estrutura de um objeto de exame
+// Interface para o formato do Exame
 interface Exame {
-  id_exame_catalogo: number;
-  codigo_pardini: string | null;
-  codigo_lare: string | null;
-  nome_exame: string;
-  origem: 'PARDINI' | 'LARE';
-  preco: number;
+    id_exame_catalogo: number;
+    nome_exame: string;
+    preco: number;
 }
 
+// --- MODIFICAÇÃO 1: Definir a Interface de Props ---
+// Dizemos ao componente quais propriedades ele vai receber
 interface ExameSelectionProps {
-  onExamesSelected: (exames: Exame[]) => void;
-  initialSelectedExams?: Exame[];
+    examesSelecionados: Exame[];
+    setExamesSelecionados: Dispatch<SetStateAction<Exame[]>>;
 }
 
-export default function ExameSelection({ onExamesSelected, initialSelectedExams = [] }: ExameSelectionProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [suggestions, setSuggestions] = useState<Exame[]>([]);
-  const [selectedExams, setSelectedExams] = useState<Exame[]>(initialSelectedExams);
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  const router = useRouter();
+// --- MODIFICAÇÃO 2: Aceitar as props ---
+export default function ExameSelection({ examesSelecionados, setExamesSelecionados }: ExameSelectionProps) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<Exame[]>([]);
+    const [loading, setLoading] = useState(false);
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 400);
+    // Debounce para a busca de exames
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (searchTerm.trim().length > 2) {
+                setLoading(true);
+                fetch(`/api/exames/search?term=${searchTerm}`)
+                    .then(res => res.json())
+                    .then(data => setSearchResults(data))
+                    .catch(err => console.error("Erro ao buscar exames:", err))
+                    .finally(() => setLoading(false));
+            } else {
+                setSearchResults([]);
+            }
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
 
-  useEffect(() => {
-    if (debouncedSearchTerm.length > 1) {
-      setLoading(true);
-      fetch(`/api/exames/search?q=${debouncedSearchTerm}`, { cache: 'no-store' })
-        .then(res => res.json())
-        .then((data: Exame[]) => setSuggestions(data))
-        .catch(error => console.error("Erro ao buscar exames:", error))
-        .finally(() => setLoading(false));
-    } else {
-      setSuggestions([]);
-    }
-  }, [debouncedSearchTerm]);
+    // Função para adicionar um exame à lista principal
+    const handleAddExame = (exame: Exame) => {
+        if (!examesSelecionados.find(e => e.id_exame_catalogo === exame.id_exame_catalogo)) {
+            setExamesSelecionados([...examesSelecionados, exame]);
+            setSearchTerm('');
+            setSearchResults([]);
+        } else {
+            toast.warn('Este exame já foi adicionado.');
+        }
+    };
 
-  const handleSelectExam = (exame: Exame) => {
-    if (!selectedExams.find(e => e.id_exame_catalogo === exame.id_exame_catalogo)) {
-      const newSelectedExams = [...selectedExams, exame];
-      setSelectedExams(newSelectedExams);
-      onExamesSelected(newSelectedExams);
-    }
-    setSearchTerm('');
-    setSuggestions([]);
-  };
+    // Função para remover um exame da lista principal
+    const handleRemoveExame = (id: number) => {
+        setExamesSelecionados(examesSelecionados.filter(e => e.id_exame_catalogo !== id));
+    };
 
-  const handleRemoveExam = (exameId: number) => {
-    const newSelectedExams = selectedExams.filter(e => e.id_exame_catalogo !== exameId);
-    setSelectedExams(newSelectedExams);
-    onExamesSelected(newSelectedExams);
-  };
-  
-  const handleNewExamSuccess = (novoExame: Exame) => {
-    const newSelectedExams = [...selectedExams, novoExame];
-    setSelectedExams(newSelectedExams);
-    onExamesSelected(newSelectedExams);
-    setIsModalOpen(false);
-  };
-  
-  const formattedPrice = (price: number | undefined) => {
-    const numericPrice = parseFloat(String(price || 0));
-    return numericPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
-
-  return (
-    <>
-      <div className="space-y-4">
-        <label htmlFor="exame-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar Exame</label>
-        <div className="relative flex items-center gap-x-2">
-            <div className="relative flex-grow">
+    return (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md space-y-6">
+            <div>
+                <label htmlFor="exame-search" className="block text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Adicionar Exames</label>
                 <input
-                    type="text"
                     id="exame-search"
+                    type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Digite 2 ou mais letras do nome do exame..."
-                    autoComplete="off"
-                    className="w-full pl-4 pr-24 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    placeholder="Digite o nome do exame..."
+                    className="w-full max-w-lg p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
                 />
-                {loading && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">Buscando...</div>}
-                
-                {suggestions.length > 0 && (
-                    <ul className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                    {suggestions.map((exame) => (
-                        <li
-                            key={exame.id_exame_catalogo}
-                            onClick={() => handleSelectExam(exame)}
-                            className="px-4 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700"
-                        >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                              <div className="mb-1 sm:mb-0">
-                                <p className="font-semibold dark:text-gray-200">{exame.nome_exame}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Código: {exame.codigo_lare || exame.codigo_pardini || 'N/A'}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Preço: {formattedPrice(exame.preco)}
-                                </p>
-                              </div>
-                              <div>
-                                {exame.origem === 'PARDINI' ? (
-                                  <span className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Pardini</span>
-                                ) : (
-                                  <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">LARE</span>
-                                )}
-                              </div>
-                            </div>
-                        </li>
-                    ))}
+                {loading && <p className="text-sm text-gray-500 mt-2">Buscando...</p>}
+                {searchResults.length > 0 && (
+                    <ul className="mt-2 border border-gray-200 dark:border-gray-600 rounded-md max-h-60 overflow-y-auto">
+                        {searchResults.map(exame => (
+                            <li
+                                key={exame.id_exame_catalogo}
+                                onClick={() => handleAddExame(exame)}
+                                className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center border-b dark:border-gray-600 last:border-b-0"
+                            >
+                                <span>{exame.nome_exame}</span>
+                                <PlusIcon className="h-5 w-5 text-green-500" />
+                            </li>
+                        ))}
                     </ul>
                 )}
             </div>
-            <button type="button" title="Adicionar Novo Exame ao Catálogo" onClick={() => setIsModalOpen(true)} className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer">
-              <PlusCircleIcon className="h-8 w-8" />
-            </button>
-        </div>
 
-        <div>
-          <h4 className="text-md font-medium text-gray-800 dark:text-gray-200 mt-6 border-t dark:border-gray-700 pt-4">
-            Exames do Pedido ({selectedExams.length})
-          </h4>
-          {selectedExams.length > 0 ? (
-            <ul className="mt-2 space-y-2">
-              {selectedExams.map(exame => (
-                <li key={exame.id_exame_catalogo} className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-2 rounded-md">
-                  <div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{exame.nome_exame}</span>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Preço: {formattedPrice(exame.preco)}
-                    </p>
-                  </div>
-                  <button type="button" onClick={() => handleRemoveExam(exame.id_exame_catalogo)} title="Remover Exame" className="cursor-pointer">
-                    <XCircleIcon className="h-6 w-6 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Nenhum exame adicionado.</p>
-          )}
+            <div>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Exames Selecionados ({examesSelecionados.length})</h3>
+                {examesSelecionados.length > 0 ? (
+                    <ul className="space-y-2">
+                        {examesSelecionados.map(exame => (
+                            <li key={exame.id_exame_catalogo} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+                                <div>
+                                    <p className="font-medium text-gray-900 dark:text-gray-200">{exame.nome_exame}</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        {Number(exame.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </p>
+                                </div>
+                                <button type="button" onClick={() => handleRemoveExame(exame.id_exame_catalogo)}>
+                                    <XMarkIcon className="h-5 w-5 text-red-500 hover:text-red-700" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-gray-500 dark:text-gray-400">Nenhum exame selecionado.</p>
+                )}
+            </div>
         </div>
-      </div>
-    </>
-  );
+    );
 }

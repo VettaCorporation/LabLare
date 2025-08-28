@@ -16,8 +16,9 @@ interface Paciente {
   nome_completo: string;
   cpf: string;
   data_nascimento: string;
-  sexo: string | null;
+  sexo?: string | null;
   email?: string | null;
+  contato?: string | null; // <-- Adicionado Contato
 }
 
 // --- SUB-COMPONENTES COM LÓGICA E JSX 100% COMPLETOS ---
@@ -163,6 +164,7 @@ export default function PacientesPage() {
       'Data de Nascimento': new Date(p.data_nascimento).toLocaleDateString('pt-BR'),
       'Sexo': p.sexo,
       'E-mail': p.email,
+      'Contato': p.contato,
     }));
     const worksheet = utils.json_to_sheet(dataToExport);
     const workbook = utils.book_new();
@@ -293,6 +295,7 @@ export default function PacientesPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Data de Nasc.</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Sexo</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">E-mail</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Contato</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Ações</th>
                     </tr>
                   </thead>
@@ -306,6 +309,7 @@ export default function PacientesPage() {
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{new Date(paciente.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.sexo || 'N/A'}</td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.email || 'N/A'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.contato || 'N/A'}</td>
                         <td className="px-6 py-4 text-center">
                           {(isAdmin || isRecepcionista) && (
                             <Link href={`/dashboard/solicitar-exame?pacienteId=${paciente.id_paciente}`} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mx-2 cursor-pointer" title="Solicitar Exame">
