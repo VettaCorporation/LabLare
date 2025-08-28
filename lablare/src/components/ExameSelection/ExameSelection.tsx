@@ -1,9 +1,10 @@
-// Caminho: src/components/ExameSelection/ExameSelection.tsx
 'use client';
 
-import { useState, useEffect, Dispatch, SetStateAction } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction, useCallback } from 'react';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
+import { formatCurrency } from '@/utils/currencyFormatter';
+import { TableSkeleton } from '@/components/skeletons/TableSkeleton';
 
 // Interface para o formato do Exame
 interface Exame {
@@ -13,39 +14,52 @@ interface Exame {
 }
 
 // --- MODIFICAÇÃO 1: Definir a Interface de Props ---
-// Dizemos ao componente quais propriedades ele vai receber
+// Agora as props esperadas são onExamesSelected e selectedExams, como no pai.
 interface ExameSelectionProps {
-    examesSelecionados: Exame[];
-    setExamesSelecionados: Dispatch<SetStateAction<Exame[]>>;
+    selectedExams: Exame[];
+    onExamesSelected: (exames: Exame[]) => void;
 }
 
-// --- MODIFICAÇÃO 2: Aceitar as props ---
-export default function ExameSelection({ examesSelecionados, setExamesSelecionados }: ExameSelectionProps) {
+export default function ExameSelection({ selectedExams, onExamesSelected }: ExameSelectionProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<Exame[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Debounce para a busca de exames
+    const fetchExames = useCallback(async (term: string) => {
+        if (term.trim().length > 2) {
+            setLoading(true);
+            try {
+                // CORREÇÃO: A URL da API foi ajustada para o endpoint de busca correto.
+                const response = await fetch(`/api/exames/search?term=${encodeURIComponent(term)}`);
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar exames');
+                }
+                const data = await response.json();
+                setSearchResults(data);
+            } catch (err: any) {
+                console.error("Erro ao buscar exames:", err);
+                toast.error("Erro ao buscar exames.");
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            setSearchResults([]);
+        }
+    }, []);
+
     useEffect(() => {
         const handler = setTimeout(() => {
-            if (searchTerm.trim().length > 2) {
-                setLoading(true);
-                fetch(`/api/exames/search?term=${searchTerm}`)
-                    .then(res => res.json())
-                    .then(data => setSearchResults(data))
-                    .catch(err => console.error("Erro ao buscar exames:", err))
-                    .finally(() => setLoading(false));
-            } else {
-                setSearchResults([]);
-            }
+            fetchExames(searchTerm);
         }, 500);
         return () => clearTimeout(handler);
-    }, [searchTerm]);
+    }, [searchTerm, fetchExames]);
+
 
     // Função para adicionar um exame à lista principal
     const handleAddExame = (exame: Exame) => {
-        if (!examesSelecionados.find(e => e.id_exame_catalogo === exame.id_exame_catalogo)) {
-            setExamesSelecionados([...examesSelecionados, exame]);
+        if (!selectedExams.find(e => e.id_exame_catalogo === exame.id_exame_catalogo)) {
+            onExamesSelected([...selectedExams, exame]);
             setSearchTerm('');
             setSearchResults([]);
         } else {
@@ -55,7 +69,7 @@ export default function ExameSelection({ examesSelecionados, setExamesSelecionad
 
     // Função para remover um exame da lista principal
     const handleRemoveExame = (id: number) => {
-        setExamesSelecionados(examesSelecionados.filter(e => e.id_exame_catalogo !== id));
+        onExamesSelected(selectedExams.filter(e => e.id_exame_catalogo !== id));
     };
 
     return (
@@ -88,10 +102,10 @@ export default function ExameSelection({ examesSelecionados, setExamesSelecionad
             </div>
 
             <div>
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Exames Selecionados ({examesSelecionados.length})</h3>
-                {examesSelecionados.length > 0 ? (
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Exames Selecionados ({selectedExams.length})</h3>
+                {selectedExams.length > 0 ? (
                     <ul className="space-y-2">
-                        {examesSelecionados.map(exame => (
+                        {selectedExams.map(exame => (
                             <li key={exame.id_exame_catalogo} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
                                 <div>
                                     <p className="font-medium text-gray-900 dark:text-gray-200">{exame.nome_exame}</p>

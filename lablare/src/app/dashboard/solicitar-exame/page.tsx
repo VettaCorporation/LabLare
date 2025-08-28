@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SolicitacaoExameForm from '@/components/SolicitacaoExameForm/SolicitacaoExameForm';
 import { toast } from 'react-toastify';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter';
 
 interface Paciente {
     id_paciente: number;
@@ -19,14 +20,15 @@ function PacienteSearch({ onPacienteSelect }: { onPacienteSelect: (paciente: Pac
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState<Paciente[]>([]);
     const [loading, setLoading] = useState(false);
-    const [hasSearched, setHasSearched] = useState(false); // Novo estado para saber se uma busca foi feita
+    const [hasSearched, setHasSearched] = useState(false);
 
     useEffect(() => {
         const handler = setTimeout(() => {
             if (searchTerm.length >= 3) {
-                setHasSearched(true); // Marca que uma busca foi tentada
+                setHasSearched(true);
                 setLoading(true);
-                fetch(`/api/pacientes?nome=${searchTerm}`)
+                // CORREÇÃO: A chamada da API foi ajustada para buscar por nome ou CPF
+                fetch(`/api/pacientes?nome=${encodeURIComponent(searchTerm)}`)
                     .then(res => res.json())
                     .then(data => {
                         setResults(data);
@@ -40,14 +42,13 @@ function PacienteSearch({ onPacienteSelect }: { onPacienteSelect: (paciente: Pac
                     });
             } else {
                 setResults([]);
-                setHasSearched(false); // Reseta o estado da busca se o termo for curto
+                setHasSearched(false);
             }
         }, 500);
 
         return () => clearTimeout(handler);
     }, [searchTerm]);
 
-    // Função para renderizar o corpo da tabela com mensagens claras
     const renderTableBody = () => {
         if (loading) {
             return <tr><td colSpan={4} className="text-center py-4 text-gray-500 dark:text-gray-400">Buscando...</td></tr>;
@@ -56,7 +57,7 @@ function PacienteSearch({ onPacienteSelect }: { onPacienteSelect: (paciente: Pac
             return results.map(paciente => (
                 <tr key={paciente.id_paciente}>
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-white">{paciente.nome_completo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300">{paciente.cpf}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300">{formatCpfForDisplay(paciente.cpf)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300">{paciente.contato || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                         <button onClick={() => onPacienteSelect(paciente)} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">
@@ -107,7 +108,6 @@ function PacienteSearch({ onPacienteSelect }: { onPacienteSelect: (paciente: Pac
         </div>
     );
 }
-
 
 // Componente principal da página (sem alterações)
 export default function SolicitarExamePage() {

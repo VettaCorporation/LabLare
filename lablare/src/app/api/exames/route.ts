@@ -1,7 +1,6 @@
 // lablare/src/app/api/exames/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-// CORREÇÃO: Importação correta do PrismaClient e dos tipos de enumeração
 import { PrismaClient, OrigemExame } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
@@ -17,21 +16,34 @@ function generateLareCode(): string {
 
 // --- MÉTODO GET: Lista todos os exames disponíveis no catálogo ---
 /**
- * Manipula requisições GET para listar todos os exames disponíveis no catálogo.
+ * Manipula requisições GET para listar todos os exames disponíveis no catálogo,
+ * com suporte a busca por nome.
  * @param {NextRequest} req - O objeto de requisição do Next.js.
  * @returns {NextResponse} Uma resposta JSON contendo a lista de exames ou um erro.
  */
 export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const searchTerm = searchParams.get('term'); // CORREÇÃO: Usa o nome do parâmetro 'term'
+
+    const whereClause: any = searchTerm ? {
+      nome_exame: {
+        contains: searchTerm,
+        // CORREÇÃO: O argumento 'mode' foi removido para evitar o erro do Prisma.
+      }
+    } : {};
+
     const exames = await prisma.exameCatalogo.findMany({
+      where: whereClause,
       orderBy: {
-        nome_exame: 'asc', // Ordena os exames por nome alfabeticamente
+        nome_exame: 'asc',
       },
-      select: { // Seleciona apenas os campos necessários
+      select: {
         id_exame_catalogo: true,
         nome_exame: true,
         preco: true,
         descricao: true,
+        origem: true,
       }
     });
 
@@ -49,7 +61,6 @@ export async function GET(req: NextRequest) {
 // --- MÉTODO POST: Cadastra um novo exame no catálogo ---
 /**
  * Manipula requisições POST para cadastrar um novo exame no catálogo.
- * Apenas Administradores podem cadastrar exames.
  * @param {NextRequest} req - O objeto de requisição do Next.js.
  * @returns {NextResponse} Uma resposta JSON indicando sucesso ou erro.
  */
@@ -67,7 +78,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Acesso negado. Apenas perfis autorizados podem cadastrar exames.' }, { status: 403 });
     }
 
-    const { nome_exame, preco, origem, codigo_pardini } = await req.json();
+    const { nome_exame, preco, origem, codigo_pardini, descricao } = await req.json();
 
     if (!nome_exame || preco === undefined || preco === null || !origem) {
       return NextResponse.json({ message: 'Nome do exame, preço e origem são obrigatórios.' }, { status: 400 });
@@ -81,7 +92,7 @@ export async function POST(req: NextRequest) {
     let dataToCreate: any = {
       nome_exame,
       preco: numericPreco,
-      descricao: null,
+      descricao: descricao,
     };
     
     const origemEnum: OrigemExame = origem as OrigemExame;
@@ -92,10 +103,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Código Pardini é obrigatório para exames desta origem.' }, { status: 400 });
       }
       dataToCreate.codigo_pardini = codigo_pardini;
-      delete dataToCreate.codigo_lare; 
+      dataToCreate.codigo_lare = null;
     } else if (origemEnum === OrigemExame.LARE) {
       dataToCreate.codigo_lare = generateLareCode();
-      delete dataToCreate.codigo_pardini;
+      dataToCreate.codigo_pardini = null;
     }
     
     const newExame = await prisma.exameCatalogo.create({

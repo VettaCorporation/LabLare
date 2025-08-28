@@ -4,9 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { FormSkeleton } from '@/components/skeletons/FormSkeleton'; // <-- NOVO IMPORT
+import { FormSkeleton } from '@/components/skeletons/FormSkeleton';
+import { toast } from 'react-toastify';
 
-// Interface completa do Exame
 interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
@@ -27,7 +27,7 @@ export default function EditarExamePage() {
         nome_exame: '',
         descricao: '',
         preco: '',
-        codigo: '', // Campo unificado para código
+        codigo: '',
     });
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function EditarExamePage() {
             setFormData({
                 nome_exame: data.nome_exame || '',
                 descricao: data.descricao || '',
-                preco: String(data.preco) || '0',
+                preco: new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(data.preco) || '0,00',
                 codigo: data.origem === 'LARE' ? (data.codigo_lare || '') : (data.codigo_pardini || ''),
             });
         } catch (err) {
@@ -67,11 +67,14 @@ export default function EditarExamePage() {
         e.preventDefault();
         setMessage('');
         setIsLoading(true);
+        
+        // Converte o preço formatado para um número para o payload
+        const numericPreco = parseFloat(formData.preco.replace('.', '').replace(',', '.'));
 
         const submissionData = {
             nome_exame: formData.nome_exame,
             descricao: formData.descricao,
-            preco: parseFloat(formData.preco.replace(',', '.')) || 0,
+            preco: numericPreco,
             codigo_lare: exame?.origem === 'LARE' ? formData.codigo : exame?.codigo_lare,
             codigo_pardini: exame?.origem === 'PARDINI' ? formData.codigo : exame?.codigo_pardini,
         };
@@ -85,19 +88,21 @@ export default function EditarExamePage() {
             const data = await response.json();
 
             if (response.ok) {
-                router.push('/dashboard/exames?success=Exame atualizado com sucesso!');
+                toast.success('Exame atualizado com sucesso!');
+                router.push('/dashboard/exames');
             } else {
-                setMessage(data.error || 'Erro ao atualizar o exame.');
+                setMessage(data.message || 'Erro ao atualizar o exame.');
+                toast.error(data.message || 'Erro ao atualizar o exame.');
             }
         } catch (err: any) {
             setMessage(err.message || 'Ocorreu um erro inesperado.');
+            toast.error(err.message || 'Ocorreu um erro inesperado.');
         } finally {
             setIsLoading(false);
         }
     };
 
     if (isLoading) {
-        // Mostra o skeleton enquanto carrega
         return (
              <div className="p-4 sm:p-6 md:p-8">
                 <div className="max-w-4xl mx-auto">
@@ -137,7 +142,6 @@ export default function EditarExamePage() {
                             <input type="text" id="nome_exame" value={formData.nome_exame} onChange={handleChange} required className="mt-1 block w-full rounded-md dark:bg-gray-700 dark:border-gray-600"/>
                         </div>
                         
-                        {/* MUDANÇA: Campo de código unificado e inteligente */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor="codigo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">

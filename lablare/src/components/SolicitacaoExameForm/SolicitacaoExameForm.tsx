@@ -1,16 +1,16 @@
-// Caminho: src/components/SolicitacaoExameForm/SolicitacaoExameForm.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import ExameSelection from '@/components/ExameSelection/ExameSelection';
+import { useSession } from 'next-auth/react';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import ExameSelection from '@/components/ExameSelection/ExameSelection';
 
 // --- INTERFACE CORRIGIDA ---
-// Adicionamos 'nome_completo' que estava faltando.
 interface Paciente {
     id_paciente: number;
     nome_completo: string;
+    cpf: string;
 }
 
 interface Exame {
@@ -24,12 +24,16 @@ interface SolicitacaoExameFormProps {
     onClearSelection: () => void;
 }
 
+type FormaPagamento = 'PIX' | 'ESPECIE' | 'CARTAO' | 'CONVENIO';
+
 export default function SolicitacaoExameForm({ paciente, onClearSelection }: SolicitacaoExameFormProps) {
     const router = useRouter();
+    const { data: session } = useSession();
     const [medicoSolicitante, setMedicoSolicitante] = useState('');
     const [examesSelecionados, setExamesSelecionados] = useState<Exame[]>([]);
     const [valorTotal, setValorTotal] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('PIX');
 
     useEffect(() => {
         const total = examesSelecionados.reduce((acc, exame) => acc + Number(exame.preco), 0);
@@ -43,29 +47,22 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
             return;
         }
         setLoading(true);
-
-        const solicitacaoData = {
+        
+        const payload = {
             id_paciente: paciente.id_paciente,
+            id_usuario_solicitante: Number(session?.user?.id),
+            examesSelecionados: examesSelecionados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
             medico_solicitante: medicoSolicitante,
-            exames: examesSelecionados.map(ex => ex.id_exame_catalogo),
+            tipo_atendimento: 'Presencial',
+            forma_pagamento: formaPagamento,
+            valor_pago: valorTotal,
         };
 
         try {
-            // CORREÇÃO: O payload agora corresponde exatamente ao que a API espera
-            const payload = {
-                id_paciente: paciente.id_paciente,
-                id_usuario_solicitante: Number(session.user.id),
-                examesSelecionados: selectedExams.map(e => ({ id_exame_catalogo: e.id_exame_catalogo })),
-                medico_solicitante: medicoSolicitante,
-                tipo_atendimento: 'Presencial',
-                forma_pagamento: formaPagamento,
-                valor_pago: totalValue,
-            };
-
             const response = await fetch('/api/solicitacoes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(solicitacaoData),
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
@@ -115,8 +112,8 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
             </div>
 
             <ExameSelection
-                examesSelecionados={examesSelecionados}
-                setExamesSelecionados={setExamesSelecionados}
+                onExamesSelected={setExamesSelecionados}
+                selectedExams={examesSelecionados}
             />
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex justify-between items-center">

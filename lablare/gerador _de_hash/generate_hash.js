@@ -1,6 +1,6 @@
 // generate_hash.js
     const bcrypt = require('bcrypt');
-    const plainTextPassword = '1212'; // Altere esta senha para a que você deseja hashear
+    const plainTextPassword = 'testeadmin'; // Altere esta senha para a que você deseja hashear
 
     async function generateAndPrintHash() {
         const saltRounds = 10;

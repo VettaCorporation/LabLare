@@ -1,39 +1,40 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '../../../../generated/prisma/index.js';
 
 const prisma = new PrismaClient();
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q');
-
-  if (!query || query.length < 2) {
-    return NextResponse.json([]);
-  }
-
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const searchTerm = searchParams.get('term');
+    
+    if (!searchTerm) {
+        return NextResponse.json([], { status: 200 });
+    }
+
     const exames = await prisma.exameCatalogo.findMany({
       where: {
         nome_exame: {
-          contains: query,
+          contains: searchTerm,
         },
+      },
+      orderBy: {
+        nome_exame: 'asc',
       },
       select: {
         id_exame_catalogo: true,
         nome_exame: true,
         preco: true,
-        origem: true,
-        codigo_lare: true,
-        codigo_pardini: true,
-      },
-      take: 15,
+      }
     });
-    return NextResponse.json(exames);
-  } catch (error) {
-    console.error('Erro na API de busca de exames:', error);
-    return NextResponse.json(
-      { error: 'Não foi possível buscar os exames.' },
-      { status: 500 }
-    );
+
+    return NextResponse.json(exames, { status: 200 });
+
+  } catch (error: any) {
+    // CORREÇÃO: Removido 'params.id' do log, pois esta rota não tem parâmetros dinâmicos.
+    console.error('Erro ao buscar exames:', error);
+    return NextResponse.json({ message: 'Erro ao buscar exames.' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
