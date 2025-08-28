@@ -79,7 +79,7 @@ export default function RecebimentoAmostrasPage() {
   return (
     <div className="space-y-8">
       {/* MUDANÇA 2: Título principal agora tem cor escura em ambos os modos */}
-      <h1 className="text-3xl font-bold text-gray-800">Recebimento de Amostras</h1>
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Recebimento de Amostras</h1>
 
       {/* MUDANÇA 3: Card de "Registrar Recebimento" */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">

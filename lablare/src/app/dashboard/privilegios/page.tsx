@@ -142,7 +142,7 @@ export default function PrivilegiosPage() {
     <div className="space-y-8">
       <div className="flex items-center gap-4">
         <ShieldCheckIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-        <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Privilégios</h1>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Privilégios</h1>
       </div>
 
       

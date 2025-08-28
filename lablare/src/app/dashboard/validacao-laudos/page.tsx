@@ -207,7 +207,7 @@ export default function ValidacaoLaudosPage() {
   return (
     <div className="space-y-8">
       {/* MUDANÇA 5: Título principal */}
-      <h1 className="text-3xl font-bold text-gray-800">Validação de Laudos</h1>
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Validação de Laudos</h1>
 
       {message && (
         <div className={`p-4 rounded-md ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

@@ -260,7 +260,7 @@ export default function PacientesPage() {
       <main className="flex-1">
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-800">Gestão de Pacientes</h1>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gestão de Pacientes</h1>
             <div className="flex gap-3">
               {(isAdmin || isRecepcionista) && (
                 <button

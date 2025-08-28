@@ -81,7 +81,7 @@ export default function LancamentoResultadosPage() {
   return (
     <div className="space-y-8">
       {/* MUDANÇA 1: Título principal agora tem a cor escura correta */}
-      <h1 className="text-3xl font-bold text-gray-800">Lançamento de Resultados de Exames</h1>
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Lançamento de Resultados de Exames</h1>
 
       {selectedItem ? (
         // MUDANÇA 2: Card do formulário de lançamento

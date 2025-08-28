@@ -118,7 +118,7 @@ export default function ColaboradoresPage() {
       ) : (
         <>
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-800">Gerenciamento de Colaboradores</h1>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Colaboradores</h1>
             <button onClick={() => setIsAdding(true)} className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
               <PlusIcon className="h-5 w-5" /> Adicionar Colaborador
             </button>
