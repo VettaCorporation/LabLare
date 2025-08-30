@@ -5,9 +5,10 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml';
 import { formatCpfForDisplay } from '@/utils/cpfFormatter';
+import { toast } from 'react-toastify';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
-// As tipagens e a lógica interna permanecem as mesmas.
-
+// Tipagens
 interface PacienteData {
   id_paciente: number;
   nome_completo: string;
@@ -23,6 +24,7 @@ interface ExameCatalogoData {
 interface ItemSolicitacaoData {
   id_item_solicitacao: number;
   exame_catalogo: ExameCatalogoData;
+  solicitacao_id: number;
 }
 interface SolicitacaoData {
   id_solicitacao: number;
@@ -139,6 +141,10 @@ export default function EtiquetaPage() {
     if (printWindow) {
       printWindow.document.write(etiquetaHtml);
       printWindow.document.close();
+      printWindow.print();
+      printWindow.onafterprint = () => {
+        printWindow.close();
+      };
     } else {
       alert('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.');
     }
@@ -225,6 +231,7 @@ export default function EtiquetaPage() {
     <div className="space-y-8">
       <h1 className="text-3xl font-bold dark:text-gray-100">Impressão de Etiquetas</h1>
 
+      {/* Seção de Busca de Paciente */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Buscar Paciente</h2>
         <div className="flex items-center gap-4 mb-4">
@@ -261,11 +268,11 @@ export default function EtiquetaPage() {
         )}
       </div>
 
+      {/* Seção de Solicitações do Paciente */}
       {selectedPatient && (
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
           <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Solicitações de: <span className="text-blue-700 dark:text-blue-400">{selectedPatient.nome_completo}</span></h2>
           <p className="text-gray-700 dark:text-gray-400 mb-4">Selecione uma solicitação para imprimir as etiquetas.</p>
-
           {loadingSolicitacoes ? (
             <p className="text-gray-500 dark:text-gray-400">Carregando solicitações...</p>
           ) : solicitacoesDoPaciente.length === 0 ? (
@@ -294,7 +301,7 @@ export default function EtiquetaPage() {
                         <ul className="list-disc list-inside">
                           {solicitacao.itens_solicitacao.map((item) => (
                             <li key={item.id_item_solicitacao}>
-                             {item.exame_catalogo.nome_exame}
+                             <span className="font-bold">ID {item.id_item_solicitacao}:</span> {item.exame_catalogo.nome_exame}
                             </li>
                           ))}
                         </ul>
@@ -317,6 +324,7 @@ export default function EtiquetaPage() {
         </div>
       )}
 
+      {/* Seção de Últimas Solicitações Globais */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
         <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Últimas Solicitações Globais</h2>
         {loadingGlobalSolicitations ? (
@@ -356,7 +364,7 @@ export default function EtiquetaPage() {
                       <ul className="list-disc list-inside">
                         {solicitacao.itens_solicitacao.map((item) => (
                           <li key={item.id_item_solicitacao}>
-                            {item.exame_catalogo.nome_exame}
+                            <span className="font-bold">ID {item.id_item_solicitacao}:</span> {item.exame_catalogo.nome_exame}
                           </li>
                         ))}
                       </ul>
