@@ -1,22 +1,25 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { useSession } from 'next-auth/react';
-import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowUturnLeftIcon, UserCircleIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import ExameSelection from '@/components/ExameSelection/ExameSelection';
 
-// --- Interfaces mantidas como no seu código ---
+// --- Interfaces ---
 interface Paciente {
     id_paciente: number;
     nome_completo: string;
     cpf: string;
 }
 
+// AQUI ESTÁ A CORREÇÃO: A interface agora é idêntica à do ExameSelection.tsx
 interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
     preco: number;
+    codigo_lare?: string | null;
+    codigo_pardini?: string | null;
+    origem: string; // <-- Campo 'origem' agora é obrigatório
 }
 
 interface SolicitacaoExameFormProps {
@@ -24,22 +27,11 @@ interface SolicitacaoExameFormProps {
     onClearSelection: () => void;
 }
 
-// O tipo FormaPagamento não é mais necessário aqui, pois não é enviado no formulário
-// type FormaPagamento = 'PIX' | 'ESPECIE' | 'CARTAO' | 'CONVENIO';
-
 export default function SolicitacaoExameForm({ paciente, onClearSelection }: SolicitacaoExameFormProps) {
     const router = useRouter();
-    const { data: session } = useSession();
     const [medicoSolicitante, setMedicoSolicitante] = useState('');
     const [examesSelecionados, setExamesSelecionados] = useState<Exame[]>([]);
-    const [valorTotal, setValorTotal] = useState(0);
     const [loading, setLoading] = useState(false);
-    // const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('PIX'); // Não é mais necessário
-
-    useEffect(() => {
-        const total = examesSelecionados.reduce((acc, exame) => acc + Number(exame.preco), 0);
-        setValorTotal(total);
-    }, [examesSelecionados]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,8 +41,6 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
         }
         setLoading(true);
         
-        // --- ALTERAÇÃO 1: Payload Simplificado para o novo fluxo ---
-        // Agora enviamos apenas os dados essenciais. Pagamento será feito na aprovação.
         const payload = {
             id_paciente: paciente.id_paciente,
             examesSelecionados: examesSelecionados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
@@ -70,14 +60,11 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
                 throw new Error(data.message || 'Falha ao criar a solicitação.');
             }
             
-            // --- ALTERAÇÃO 2: Lógica de Sucesso Atualizada ---
-            // 1. Exibe a mensagem de sucesso que vem da nova API
             toast.success(data.message);
-
-            // 2. Redireciona para a página de "Pedidos" para o usuário ver o histórico
             router.push('/dashboard/pedidos');
 
-        } catch (error: any) {
+        } catch (error: any)
+{
             console.error(error);
             toast.error(error.message);
         } finally {
@@ -85,11 +72,29 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
         }
     };
 
-    // O seu JSX/formulário está perfeito e foi mantido.
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Informações da Solicitação</h2>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700 flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Nova Solicitação de Exame</h2>
+                    <p className="text-gray-600 dark:text-gray-400">Paciente: <span className="font-semibold">{paciente.nome_completo}</span></p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onClearSelection}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                >
+                    <ArrowUturnLeftIcon className="h-5 w-5" />
+                    Trocar Paciente
+                </button>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
+                <div className="flex items-center gap-3 mb-6">
+                    <UserCircleIcon className="h-7 w-7 text-blue-600" />
+                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Dados da Solicitação</h3>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="paciente" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Paciente</label>
@@ -98,7 +103,7 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
                             id="paciente"
                             value={paciente.nome_completo}
                             disabled
-                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                            className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
                         />
                     </div>
                     <div>
@@ -108,42 +113,31 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
                             id="medico"
                             value={medicoSolicitante}
                             onChange={(e) => setMedicoSolicitante(e.target.value)}
-                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                            className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
                         />
                     </div>
                 </div>
             </div>
 
-            <ExameSelection
-                onExamesSelected={setExamesSelecionados} // Prop mantida conforme seu código
-                selectedExams={examesSelecionados}
-            />
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex justify-between items-center">
-                <div>
-                    <span className="text-lg font-medium text-gray-600 dark:text-gray-300">Valor Total (informativo):</span>
-                    <span className="text-2xl font-bold text-gray-900 dark:text-white ml-2">
-                        {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
+                <div className="flex items-center gap-3 mb-6">
+                    <BeakerIcon className="h-7 w-7 text-blue-600" />
+                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Exames</h3>
                 </div>
-                <div className="flex gap-4">
-                    <button
-                        type="button"
-                        onClick={onClearSelection}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
-                    >
-                        <ArrowUturnLeftIcon className="h-5 w-5" />
-                        Voltar
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={loading || examesSelecionados.length === 0}
-                        className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? 'Enviando para Aprovação...' : 'Finalizar Solicitação'}
-                    </button>
-                </div>
+                <ExameSelection
+                    onExamesSelected={setExamesSelecionados}
+                    selectedExams={examesSelecionados}
+                />
+            </div>
+            
+            <div className="p-4 flex justify-end">
+                <button
+                    type="submit"
+                    disabled={loading || examesSelecionados.length === 0}
+                    className="px-8 py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 shadow-lg"
+                >
+                    {loading ? 'Enviando...' : 'Finalizar Solicitação'}
+                </button>
             </div>
         </form>
     );
