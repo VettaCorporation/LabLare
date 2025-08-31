@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import ExameSelection from '@/components/ExameSelection/ExameSelection';
 
-// --- INTERFACE CORRIGIDA ---
+// --- Interfaces mantidas como no seu código ---
 interface Paciente {
     id_paciente: number;
     nome_completo: string;
@@ -24,7 +24,8 @@ interface SolicitacaoExameFormProps {
     onClearSelection: () => void;
 }
 
-type FormaPagamento = 'PIX' | 'ESPECIE' | 'CARTAO' | 'CONVENIO';
+// O tipo FormaPagamento não é mais necessário aqui, pois não é enviado no formulário
+// type FormaPagamento = 'PIX' | 'ESPECIE' | 'CARTAO' | 'CONVENIO';
 
 export default function SolicitacaoExameForm({ paciente, onClearSelection }: SolicitacaoExameFormProps) {
     const router = useRouter();
@@ -33,7 +34,7 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
     const [examesSelecionados, setExamesSelecionados] = useState<Exame[]>([]);
     const [valorTotal, setValorTotal] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('PIX');
+    // const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('PIX'); // Não é mais necessário
 
     useEffect(() => {
         const total = examesSelecionados.reduce((acc, exame) => acc + Number(exame.preco), 0);
@@ -48,14 +49,12 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
         }
         setLoading(true);
         
+        // --- ALTERAÇÃO 1: Payload Simplificado para o novo fluxo ---
+        // Agora enviamos apenas os dados essenciais. Pagamento será feito na aprovação.
         const payload = {
             id_paciente: paciente.id_paciente,
-            id_usuario_solicitante: Number(session?.user?.id),
             examesSelecionados: examesSelecionados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
             medico_solicitante: medicoSolicitante,
-            tipo_atendimento: 'Presencial',
-            forma_pagamento: formaPagamento,
-            valor_pago: valorTotal,
         };
 
         try {
@@ -68,12 +67,15 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
             const data = await response.json();
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Falha ao criar a solicitação.');
+                throw new Error(data.message || 'Falha ao criar a solicitação.');
             }
             
-            toast.success('Solicitação criada com sucesso!');
-            router.push('/dashboard/pacientes');
+            // --- ALTERAÇÃO 2: Lógica de Sucesso Atualizada ---
+            // 1. Exibe a mensagem de sucesso que vem da nova API
+            toast.success(data.message);
+
+            // 2. Redireciona para a página de "Pedidos" para o usuário ver o histórico
+            router.push('/dashboard/pedidos');
 
         } catch (error: any) {
             console.error(error);
@@ -83,6 +85,7 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
         }
     };
 
+    // O seu JSX/formulário está perfeito e foi mantido.
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
@@ -112,13 +115,13 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
             </div>
 
             <ExameSelection
-                onExamesSelected={setExamesSelecionados}
+                onExamesSelected={setExamesSelecionados} // Prop mantida conforme seu código
                 selectedExams={examesSelecionados}
             />
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex justify-between items-center">
                 <div>
-                    <span className="text-lg font-medium text-gray-600 dark:text-gray-300">Valor Total:</span>
+                    <span className="text-lg font-medium text-gray-600 dark:text-gray-300">Valor Total (informativo):</span>
                     <span className="text-2xl font-bold text-gray-900 dark:text-white ml-2">
                         {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
@@ -138,7 +141,7 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
                         disabled={loading || examesSelecionados.length === 0}
                         className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Processando...' : 'Finalizar Solicitação'}
+                        {loading ? 'Enviando para Aprovação...' : 'Finalizar Solicitação'}
                     </button>
                 </div>
             </div>

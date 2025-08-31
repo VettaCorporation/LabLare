@@ -16,13 +16,15 @@ import {
   BeakerIcon,
   ClipboardDocumentCheckIcon,
   PlusCircleIcon,
-  CheckBadgeIcon, 
+  CheckBadgeIcon,
+  ClipboardDocumentListIcon, // Importado para o novo item
+  QueueListIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
   name: string;
   href: string;
-  icon: React.ElementType; 
+  icon: React.ElementType;
 }
 
 function classNames(...classes: string[]) {
@@ -32,7 +34,7 @@ function classNames(...classes: string[]) {
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  
+
   const userProfile = (session?.user as any)?.nome_perfil;
   const userPrivileges = (session?.user as any)?.privilegios || [];
 
@@ -40,17 +42,19 @@ export default function Sidebar() {
     { name: 'Painel', href: '/dashboard', icon: HomeIcon },
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
     { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
-    { name: 'Solicitar Exame', href: '/dashboard/solicitar-exame', icon: ClipboardDocumentCheckIcon }, // Ícone alterado
+    { name: 'Solicitar Exame', href: '/dashboard/solicitar-exame', icon: ClipboardDocumentCheckIcon },
+    { name: 'Aprovar Solicitações', href: '/dashboard/aprovar-solicitacoes', icon: ClipboardDocumentListIcon },
+    { name: 'Pedidos', href: '/dashboard/pedidos', icon: QueueListIcon },
     { name: 'Etiquetas de Amostras', href: '/dashboard/etiqueta', icon: TicketIcon },
     { name: 'Recebimento de Amostras', href: '/dashboard/recebimento-amostras', icon: BeakerIcon },
-    { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: ClipboardDocumentCheckIcon },
+    { name: 'Lançamento de Resultados', href: '/dashboard/lancamento-resultados', icon: PlusCircleIcon },
     { name: 'Validação de Laudos', href: '/dashboard/validacao-laudos', icon: CheckBadgeIcon },
-    { name: 'Exames', href: '/dashboard/exames', icon: PlusCircleIcon },
-    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },   
+    { name: 'Exames', href: '/dashboard/exames', icon: BeakerIcon }, 
+    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: UserGroupIcon },
     { name: 'Configurações', href: '/dashboard/configuracoes', icon: Cog6ToothIcon },
     { name: 'Privilégios', href: '/dashboard/privilegios', icon: ShieldCheckIcon },
   ];
-  
+
   const filteredNavigation = allNavItems.filter(item => {
     if (userProfile === 'Administrador') {
       return true;
@@ -82,17 +86,15 @@ export default function Sidebar() {
           <li>
             <ul role="list" className="-mx-2 space-y-1">
               {filteredNavigation.map((item) => {
-                
-                let isActive = false;
-                
-                // MUDANÇA: Adicionada regra especial para Pacientes -> solicitar-exame
-                if (item.href === '/dashboard/pacientes') {
-                  isActive = pathname.startsWith('/dashboard/pacientes') || pathname.startsWith('/dashboard/pacientes');
-                } else if (item.href === '/dashboard') {
-                  isActive = pathname === item.href;
-                } else {
-                  isActive = pathname.startsWith(item.href);
-                }
+
+                // --- LÓGICA DE ATIVAÇÃO CORRIGIDA ---
+                // A regra agora é simples e robusta:
+                // 1. Se o link for para o 'Painel' ('/dashboard'), ele só fica ativo se a URL for EXATAMENTE essa.
+                // 2. Para todos os outros links, o item fica ativo se a URL ATUAL começar com o link do item.
+                //    Isso garante que `/dashboard/pacientes/123` ainda ative o link `/dashboard/pacientes`.
+                const isActive = item.href === '/dashboard'
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href);
 
                 return (
                   <li key={item.name}>

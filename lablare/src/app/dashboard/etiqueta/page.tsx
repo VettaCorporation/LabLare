@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation';
 import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml';
 import { formatCpfForDisplay } from '@/utils/cpfFormatter';
 import { toast } from 'react-toastify';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
-// Tipagens
+// Tipagens (mantidas como no seu código)
 interface PacienteData {
   id_paciente: number;
   nome_completo: string;
@@ -19,12 +18,10 @@ interface PacienteData {
 }
 interface ExameCatalogoData {
   nome_exame: string;
-  preco: number;
 }
 interface ItemSolicitacaoData {
   id_item_solicitacao: number;
   exame_catalogo: ExameCatalogoData;
-  solicitacao_id: number;
 }
 interface SolicitacaoData {
   id_solicitacao: number;
@@ -34,7 +31,6 @@ interface SolicitacaoData {
   paciente: PacienteData;
   recepcionista: {
     nome_completo: string;
-    email: string;
   };
   itens_solicitacao: ItemSolicitacaoData[];
 }
@@ -47,9 +43,58 @@ const debounce = (func: (...args: any[]) => void, delay: number) => {
   };
 };
 
+// Componente reutilizável para a tabela de solicitações
+const SolicitacoesTable = ({ solicitacoes, onPrint }: { solicitacoes: SolicitacaoData[], onPrint: (s: SolicitacaoData) => void }) => {
+    // Adiciona o cursor-pointer aos itens clicáveis
+    return (
+        <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data/Hora</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paciente</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exames</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                    {solicitacoes.map((solicitacao) => (
+                        <tr key={solicitacao.id_solicitacao}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{solicitacao.id_solicitacao}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{solicitacao.paciente.nome_completo}</td>
+                            <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                <ul className="list-disc list-inside">
+                                    {solicitacao.itens_solicitacao.map((item) => (
+                                        <li key={item.id_item_solicitacao}>{item.exame_catalogo.nome_exame}</li>
+                                    ))}
+                                </ul>
+                            </td>
+                            <td className="px-6 py-4 text-center text-sm font-medium">
+                                <button
+                                    onClick={() => onPrint(solicitacao)}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out cursor-pointer"
+                                    title="Imprimir Etiquetas">
+                                    Imprimir Etiquetas
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+
 export default function EtiquetaPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // --- ESTADOS NOVOS E ATUALIZADOS ---
+  const [solicitacoesImprimiveis, setSolicitacoesImprimiveis] = useState<SolicitacaoData[]>([]);
+  const [loadingInitialList, setLoadingInitialList] = useState(true);
 
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [patientSearchResults, setPatientSearchResults] = useState<PacienteData[]>([]);
@@ -58,12 +103,6 @@ export default function EtiquetaPage() {
   const [loadingPatientSearch, setLoadingPatientSearch] = useState(false);
   const [loadingSolicitacoes, setLoadingSolicitacoes] = useState(false);
   const [error, setError] = useState('');
-  const [latestGlobalSolicitations, setLatestGlobalSolicitations] = useState<SolicitacaoData[]>([]);
-  const [loadingGlobalSolicitations, setLoadingGlobalSolicitations] = useState(true);
-
-  const canAccessPage = session?.user?.nome_perfil === 'Recepcionista' ||
-                        session?.user?.nome_perfil === 'Administrador' ||
-                        session?.user?.nome_perfil === 'Técnico de Laboratório';
 
   const calculateAge = useCallback((birthDateString: string): number => {
     const today = new Date();
@@ -76,6 +115,23 @@ export default function EtiquetaPage() {
     return age;
   }, []);
 
+  // --- NOVA FUNÇÃO PARA BUSCAR A LISTA INICIAL ---
+  const fetchPrintableSolicitations = useCallback(async () => {
+    setLoadingInitialList(true);
+    try {
+        // Busca todas as solicitações prontas para coleta
+        const response = await fetch('/api/solicitacoes?status=AGUARDANDO_COLETA');
+        if (!response.ok) throw new Error('Erro ao buscar etiquetas para impressão.');
+        const data = await response.json();
+        setSolicitacoesImprimiveis(data);
+    } catch (err: any) {
+        toast.error(err.message);
+        setError('Não foi possível carregar a lista de etiquetas.');
+    } finally {
+        setLoadingInitialList(false);
+    }
+  }, []);
+  
   const fetchPatients = useCallback(debounce(async (term: string) => {
     if (term.length < 3) {
       setPatientSearchResults([]);
@@ -88,8 +144,7 @@ export default function EtiquetaPage() {
       const data = await response.json();
       setPatientSearchResults(data);
     } catch (err: any) {
-      console.error('Falha na busca:', err);
-      setError('Não foi possível buscar os pacientes.');
+        toast.error(err.message);
     } finally {
       setLoadingPatientSearch(false);
     }
@@ -98,74 +153,50 @@ export default function EtiquetaPage() {
   const fetchSolicitacoesByPatient = useCallback(async (patientId: number) => {
     setLoadingSolicitacoes(true);
     try {
-      const response = await fetch(`/api/solicitacoes?pacienteId=${patientId}`);
-      if (!response.ok) throw new Error('Erro ao buscar solicitações.');
-      const data = await response.json();
-      setSolicitacoesDoPaciente(data);
+        // Filtra também por status para pegar apenas as imprimíveis do paciente
+        const response = await fetch(`/api/solicitacoes?pacienteId=${patientId}&status=AGUARDANDO_COLETA`);
+        if (!response.ok) throw new Error('Erro ao buscar solicitações do paciente.');
+        const data = await response.json();
+        setSolicitacoesDoPaciente(data);
     } catch (err: any) {
-      console.error('Falha ao buscar solicitações:', err);
-      setError('Não foi possível carregar as solicitações do paciente.');
+        toast.error(err.message);
     } finally {
       setLoadingSolicitacoes(false);
     }
   }, []);
-
-  const fetchLatestGlobalSolicitations = useCallback(async () => {
-    setLoadingGlobalSolicitations(true);
-    try {
-      const response = await fetch('/api/solicitacoes');
-      if (!response.ok) throw new Error('Erro ao buscar solicitações globais.');
-      const data = await response.json();
-      setLatestGlobalSolicitations(data.slice(0, 5)); // Exibe as 5 últimas
-    } catch (err: any) {
-      console.error('Falha ao buscar solicitações globais:', err);
-      setError('Não foi possível carregar as últimas solicitações.');
-    } finally {
-      setLoadingGlobalSolicitations(false);
-    }
-  }, []);
-
+  
   const handlePrintEtiquetas = useCallback((solicitacao: SolicitacaoData) => {
     if (!solicitacao.paciente || !solicitacao.itens_solicitacao.length) {
       alert('Não é possível imprimir etiquetas. Dados da solicitação incompletos.');
       return;
     }
-
     const idadePaciente = calculateAge(solicitacao.paciente.data_nascimento);
     const examesParaEtiqueta = solicitacao.itens_solicitacao.map(item => ({
       nome_exame: item.exame_catalogo.nome_exame,
     }));
-
     const etiquetaHtml = generateLabelHtml(solicitacao.paciente, idadePaciente, examesParaEtiqueta);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(etiquetaHtml);
       printWindow.document.close();
       printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
     } else {
       alert('Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.');
     }
   }, [calculateAge]);
   
   useEffect(() => {
-    if (patientSearchTerm.length >= 3) {
-      fetchPatients(patientSearchTerm);
-    } else {
-      setPatientSearchResults([]);
-    }
+    fetchPatients(patientSearchTerm);
   }, [patientSearchTerm, fetchPatients]);
 
   useEffect(() => {
-    if (status === 'authenticated' && canAccessPage) {
-      fetchLatestGlobalSolicitations();
+    if (status === 'authenticated') {
+      fetchPrintableSolicitations(); // Busca a lista principal ao carregar
     }
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [status, canAccessPage, router, fetchLatestGlobalSolicitations]);
+  }, [status, router, fetchPrintableSolicitations]);
 
   const handleSelectPatient = (patient: PacienteData) => {
     setSelectedPatient(patient);
@@ -173,216 +204,71 @@ export default function EtiquetaPage() {
     setPatientSearchResults([]);
     fetchSolicitacoesByPatient(patient.id_paciente);
   };
-
-  const getStatusBadge = (status: string) => {
-    let baseClasses = 'px-2 py-1 rounded-full text-xs font-semibold';
-    let lightClasses = '';
-    let darkClasses = '';
-    switch (status) {
-      case 'AGUARDANDO_PAGAMENTO':
-      case 'AGUARDANDO_COLETA':
-        lightClasses = 'bg-yellow-100 text-yellow-800';
-        darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
-        break;
-      case 'AMOSTRA_RECEBIDA':
-        lightClasses = 'bg-blue-100 text-blue-800';
-        darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
-        break;
-      case 'PENDENTE_DE_VALIDACAO':
-        lightClasses = 'bg-orange-100 text-orange-800';
-        darkClasses = 'dark:bg-orange-900/50 dark:text-orange-300';
-        break;
-      case 'VALIDADO':
-        lightClasses = 'bg-green-100 text-green-800';
-        darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
-        break;
-      case 'LIBERADA':
-        lightClasses = 'bg-purple-100 text-purple-800';
-        darkClasses = 'dark:bg-purple-900/50 dark:text-purple-300';
-        break;
-      default:
-        lightClasses = 'bg-gray-200 text-gray-800';
-        darkClasses = 'dark:bg-gray-700 dark:text-gray-200';
-        break;
-    }
-    return (
-      <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>
-        {status.replace(/_/g, ' ')}
-      </span>
-    );
-  };
   
-  if (status === 'loading') {
-    return <div className="text-center text-xl mt-10 dark:text-gray-300">Verificando autenticação...</div>;
-  }
-  if (status === 'unauthenticated') {
-    router.push('/login');
-    return null;
-  }
-  if (!canAccessPage) {
-    return (
-      <div className="text-center text-xl mt-10 p-5 bg-yellow-100 text-yellow-800 rounded-md">
-        Você não tem permissão para acessar esta página.
-      </div>
-    );
+  const handleClearPatient = () => {
+    setSelectedPatient(null);
+    setPatientSearchTerm('');
+    setSolicitacoesDoPaciente([]);
   }
 
+  if (status === 'loading') {
+    return <div className="text-center p-8">Verificando autenticação...</div>;
+  }
+  
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 sm:p-6 lg:p-8">
       <h1 className="text-3xl font-bold dark:text-gray-100">Impressão de Etiquetas</h1>
 
       {/* Seção de Busca de Paciente */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Buscar Paciente</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Filtrar por Paciente (Opcional)</h2>
         <div className="flex items-center gap-4 mb-4">
           <input
             type="text"
             value={patientSearchTerm}
             onChange={(e) => setPatientSearchTerm(e.target.value)}
-            placeholder="Digite o nome ou CPF do paciente"
+            placeholder="Digite o nome ou CPF do paciente para filtrar"
             className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
           />
           {loadingPatientSearch && <p className="text-gray-500 dark:text-gray-400">Buscando...</p>}
         </div>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-        {patientSearchResults.length > 0 && patientSearchTerm.length >= 3 && (
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-2 dark:text-gray-200">Resultados da Busca:</h3>
-            <ul>
-              {patientSearchResults.map((patient) => (
-                <li
-                  key={patient.id_paciente}
-                  onClick={() => handleSelectPatient(patient)}
-                  className="cursor-pointer p-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-md border-b dark:border-gray-700 last:border-b-0 dark:text-gray-300"
-                >
-                  <strong>{patient.nome_completo}</strong> (CPF: {formatCpfForDisplay(patient.cpf)})
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {patientSearchTerm.length >= 3 && !loadingPatientSearch && patientSearchResults.length === 0 && (
-          <p className="text-gray-600 dark:text-gray-400 mt-4">Nenhum paciente encontrado com este termo.</p>
+        
+        {patientSearchResults.length > 0 && (
+          <ul className="mt-2 border border-gray-200 dark:border-gray-700 rounded-md max-h-60 overflow-y-auto">
+            {patientSearchResults.map((patient) => (
+              <li
+                key={patient.id_paciente}
+                onClick={() => handleSelectPatient(patient)}
+                className="cursor-pointer p-3 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-b dark:border-gray-700 last:border-b-0 dark:text-gray-300">
+                <strong>{patient.nome_completo}</strong> (CPF: {formatCpfForDisplay(patient.cpf)})
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
-      {/* Seção de Solicitações do Paciente */}
-      {selectedPatient && (
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Solicitações de: <span className="text-blue-700 dark:text-blue-400">{selectedPatient.nome_completo}</span></h2>
-          <p className="text-gray-700 dark:text-gray-400 mb-4">Selecione uma solicitação para imprimir as etiquetas.</p>
-          {loadingSolicitacoes ? (
-            <p className="text-gray-500 dark:text-gray-400">Carregando solicitações...</p>
-          ) : solicitacoesDoPaciente.length === 0 ? (
-            <p className="text-gray-600 dark:text-gray-400">Nenhuma solicitação encontrada para este paciente.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data/Hora</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Médico</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exames</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {solicitacoesDoPaciente.map((solicitacao) => (
-                    <tr key={solicitacao.id_solicitacao}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{solicitacao.id_solicitacao}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{solicitacao.medico_solicitante || 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{getStatusBadge(solicitacao.status)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <ul className="list-disc list-inside">
-                          {solicitacao.itens_solicitacao.map((item) => (
-                            <li key={item.id_item_solicitacao}>
-                             <span className="font-bold">ID {item.id_item_solicitacao}:</span> {item.exame_catalogo.nome_exame}
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                      <td className="px-6 py-4 text-center text-sm font-medium">
-                        <button
-                          onClick={() => handlePrintEtiquetas(solicitacao)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out cursor-pointer"
-                          title="Imprimir Etiquetas"
-                        >
-                          Imprimir Etiquetas
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Seção de Últimas Solicitações Globais */}
+      {/* --- SEÇÃO DE VISUALIZAÇÃO DA LISTA --- */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800 mt-6">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Últimas Solicitações Globais</h2>
-        {loadingGlobalSolicitations ? (
-          <p className="text-gray-500 dark:text-gray-400">Carregando...</p>
-        ) : latestGlobalSolicitations.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400">Nenhuma solicitação recente encontrada.</p>
+        {selectedPatient ? (
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">
+                    Etiquetas para: <span className="text-blue-700 dark:text-blue-400">{selectedPatient.nome_completo}</span>
+                </h2>
+                <button onClick={handleClearPatient} className="text-sm text-blue-600 hover:underline">Limpar filtro</button>
+            </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data/Hora</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paciente</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recepcionista</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exames</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {latestGlobalSolicitations.map((solicitacao) => (
-                  <tr key={solicitacao.id_solicitacao}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{solicitacao.id_solicitacao}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {solicitacao.paciente.nome_completo} <br />
-                      <span className="text-xs">CPF: {solicitacao.paciente.cpf}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {solicitacao.recepcionista.nome_completo}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {getStatusBadge(solicitacao.status)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                      <ul className="list-disc list-inside">
-                        {solicitacao.itens_solicitacao.map((item) => (
-                          <li key={item.id_item_solicitacao}>
-                            <span className="font-bold">ID {item.id_item_solicitacao}:</span> {item.exame_catalogo.nome_exame}
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                    <td className="px-6 py-4 text-center text-sm font-medium">
-                      <button
-                        onClick={() => handlePrintEtiquetas(solicitacao)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded-md text-xs transition duration-200 ease-in-out cursor-pointer"
-                        title="Imprimir Etiquetas"
-                      >
-                        Imprimir Etiquetas
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Todas as Etiquetas Prontas para Impressão</h2>
+        )}
+        
+        {loadingInitialList || loadingSolicitacoes ? (
+            <p className="text-gray-500 dark:text-gray-400">Carregando etiquetas...</p>
+        ) : (selectedPatient ? solicitacoesDoPaciente : solicitacoesImprimiveis).length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400">Nenhuma etiqueta encontrada com os filtros atuais.</p>
+        ) : (
+            <SolicitacoesTable 
+                solicitacoes={selectedPatient ? solicitacoesDoPaciente : solicitacoesImprimiveis} 
+                onPrint={handlePrintEtiquetas} 
+            />
         )}
       </div>
     </div>
