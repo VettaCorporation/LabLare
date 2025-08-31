@@ -1,7 +1,7 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // <-- 1. IMPORTADO useSearchParams
 import { toast } from 'react-toastify';
 import SolicitacaoExameForm from '@/components/SolicitacaoExameForm/SolicitacaoExameForm';
 import { formatCpfForDisplay } from '@/utils/cpfFormatter';
@@ -22,20 +22,56 @@ const debounce = (func: (...args: any[]) => void, delay: number) => {
   };
 };
 
-export default function SolicitarExamePage() {
+// --- COMPONENTE PRINCIPAL ---
+function SolicitarExamePageComponent() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams(); // <-- 2. HOOK PARA LER A URL
 
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [patientSearchResults, setPatientSearchResults] = useState<PacienteData[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PacienteData | null>(null);
-  const [loadingPatientSearch, setLoadingPatientSearch] = useState(true);
+  const [loadingPatientSearch, setLoadingPatientSearch] = useState(false); // Mudado para false
   const [error, setError] = useState('');
 
   const canAccessPage = session?.user?.nome_perfil === 'Recepcionista' ||
                         session?.user?.nome_perfil === 'Administrador';
 
+  // --- 3. NOVA FUNÇÃO PARA BUSCAR UM PACIENTE ESPECÍFICO PELO ID ---
+  const fetchPatientById = useCallback(async (id: string) => {
+    setLoadingPatientSearch(true);
+    try {
+        // Supondo que sua API de pacientes aceite um ID no final da URL
+        const response = await fetch(`/api/pacientes/${id}`);
+        if (!response.ok) {
+            throw new Error('Paciente não encontrado com o ID fornecido.');
+        }
+        const data = await response.json();
+        setSelectedPatient(data); // Seleciona o paciente automaticamente
+    } catch (err: any) {
+        toast.error(err.message);
+        // Se der erro, limpa o ID da URL e volta para a busca normal
+        router.replace('/dashboard/solicitar-exame');
+    } finally {
+        setLoadingPatientSearch(false);
+    }
+  }, [router]);
+
+  // --- 4. NOVO useEffect PARA LER O ID DA URL QUANDO A PÁGINA CARREGA ---
+  useEffect(() => {
+    const pacienteId = searchParams.get('pacienteId');
+    // Se houver um ID na URL e nenhum paciente estiver selecionado ainda, busca os dados.
+    if (pacienteId && !selectedPatient) {
+      fetchPatientById(pacienteId);
+    }
+  }, [searchParams, selectedPatient, fetchPatientById]);
+
+
   const fetchPatients = useCallback(debounce(async (term: string) => {
+    if (term.trim() === '') {
+        setPatientSearchResults([]);
+        return;
+    }
     setLoadingPatientSearch(true);
     try {
       const response = await fetch(`/api/pacientes?nome=${encodeURIComponent(term)}`);
@@ -68,10 +104,12 @@ export default function SolicitarExamePage() {
   const handleClearSelection = () => {
     setSelectedPatient(null);
     setPatientSearchTerm('');
+    // Limpa a URL para permitir nova busca
+    router.replace('/dashboard/solicitar-exame');
   };
   
-  if (status === 'loading') {
-    return <div className="text-center text-xl mt-10 dark:text-gray-300">Verificando autenticação...</div>;
+  if (status === 'loading' || loadingPatientSearch) {
+    return <div className="text-center text-xl mt-10 dark:text-gray-300">Carregando dados...</div>;
   }
   
   if (!canAccessPage) {
@@ -83,55 +121,60 @@ export default function SolicitarExamePage() {
   }
 
   return (
-    <>
-      <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-        {!selectedPatient ? (
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Buscar ou Selecionar Paciente</h2>
-            <div className="flex items-center gap-4 mb-4">
-              <input
-                type="text"
-                value={patientSearchTerm}
-                onChange={(e) => setPatientSearchTerm(e.target.value)}
-                placeholder="Digite o nome ou CPF do paciente"
-                className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-              />
-              {loadingPatientSearch && <p className="text-gray-500 dark:text-gray-400">Buscando...</p>}
-            </div>
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-            {patientSearchResults.length > 0 ? (
-              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
-                <h3 className="text-lg font-semibold mb-2 dark:text-gray-200">Resultados da Busca:</h3>
-                <ul>
-                  {patientSearchResults.map((patient) => (
-                    <li
-                      key={patient.id_paciente}
-                      className="flex justify-between items-center p-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-md border-b dark:border-gray-700 last:border-b-0 dark:text-gray-300"
-                    >
-                      <span>
-                        <strong>{patient.nome_completo}</strong> (CPF: {formatCpfForDisplay(patient.cpf)})
-                      </span>
-                      <button
-                        onClick={() => handleSelectPatient(patient)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-sm transition duration-200"
-                      >
-                        Selecionar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : patientSearchTerm.length > 0 && !loadingPatientSearch ? (
-              <p className="text-gray-600 dark:text-gray-400 mt-4">Nenhum paciente encontrado com este termo.</p>
-            ) : (
-              <p className="text-gray-600 dark:text-gray-400 mt-4">Digite para buscar pacientes.</p>
-            )}
+    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+      {!selectedPatient ? (
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Buscar ou Selecionar Paciente</h2>
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              type="text"
+              value={patientSearchTerm}
+              onChange={(e) => setPatientSearchTerm(e.target.value)}
+              placeholder="Digite o nome ou CPF do paciente"
+              className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            />
           </div>
-        ) : (
-          <SolicitacaoExameForm paciente={selectedPatient} onClearSelection={handleClearSelection} />
-        )}
-      </main>
-    </>
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+          {patientSearchResults.length > 0 ? (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
+              <h3 className="text-lg font-semibold mb-2 dark:text-gray-200">Resultados da Busca:</h3>
+              <ul>
+                {patientSearchResults.map((patient) => (
+                  <li key={patient.id_paciente} className="flex justify-between items-center p-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-md border-b dark:border-gray-700 last:border-b-0 dark:text-gray-300">
+                    <span>
+                      <strong>{patient.nome_completo}</strong> (CPF: {formatCpfForDisplay(patient.cpf)})
+                    </span>
+                    <button
+                      onClick={() => handleSelectPatient(patient)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-sm transition duration-200 cursor-pointer">
+                      Selecionar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : patientSearchTerm.length > 0 && !loadingPatientSearch ? (
+            <p className="text-gray-600 dark:text-gray-400 mt-4">Nenhum paciente encontrado.</p>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-400 mt-4">Digite para buscar pacientes.</p>
+          )}
+        </div>
+      ) : (
+        <SolicitacaoExameForm paciente={selectedPatient} onClearSelection={handleClearSelection} />
+      )}
+    </main>
   );
+}
+
+
+// --- COMPONENTE EXPORTADO (Wrapper) ---
+// O hook useSearchParams precisa de um <Suspense> boundary.
+// Envolver o componente principal em outro que use Suspense é a maneira correta no Next.js App Router.
+export default function SolicitarExamePage() {
+    return (
+        <Suspense fallback={<div>Carregando...</div>}>
+            <SolicitarExamePageComponent />
+        </Suspense>
+    );
 }

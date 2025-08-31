@@ -84,7 +84,7 @@ export default function AprovarSolicitacoesPage() {
                                     <td className="px-6 py-4 text-center">
                                         <button 
                                             onClick={() => handleVisualizarClick(s.id_solicitacao)}
-                                            className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm font-semibold">
+                                            className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm font-semibold cursor-pointer">
                                             Visualizar
                                         </button>
                                     </td>
