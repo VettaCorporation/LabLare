@@ -1,69 +1,42 @@
-// lablare/src/app/api/solicitacoes/[id]/route.ts
-
+// Caminho: src/app/api/solicitacoes/[id]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
+import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
-/**
- * Manipula requisições GET para buscar uma única solicitação por ID.
- * Inclui dados do paciente, recepcionista e os exames associados.
- * @param {NextRequest} req - O objeto de requisição do Next.js.
- * @param {object} context - Objeto de contexto contendo os parâmetros da rota.
- * @param {object} context.params - Parâmetros dinâmicos da rota.
- * @param {string} context.params.id - O ID da solicitação a ser buscada.
- * @returns {NextResponse} Uma resposta JSON contendo a solicitação ou um erro.
- */
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
+interface RouteParams {
+    params: {
+        id: string;
+    }
+}
+
+// --- MÉTODO GET CORRIGIDO ---
+export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    // 1. Verificação de Sessão e Permissão
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
     }
-    const allowedProfiles = ['Administrador', 'Recepcionista', 'Técnico de Laboratório', 'Biomédico', 'Responsável Financeira'];
-    const userProfile = session.user?.nome_perfil;
-    if (!userProfile || !allowedProfiles.includes(userProfile)) {
-      return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para visualizar solicitações.' }, { status: 403 });
-    }
 
-    const solicitacaoId = parseInt(context.params.id);
-
+    const solicitacaoId = parseInt(params.id, 10);
     if (isNaN(solicitacaoId)) {
       return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
     }
 
-    // 2. Busca a solicitação no banco de dados
     const solicitacao = await prisma.solicitacao.findUnique({
       where: { id_solicitacao: solicitacaoId },
       include: {
-        paciente: {
-          select: {
-            nome_completo: true,
-            cpf: true,
-            data_nascimento: true, // Inclui data de nascimento para calcular idade
-            email: true, // Inclui email
-            sexo: true, // Inclui sexo
-          },
-        },
-        recepcionista: {
-          select: {
-            nome_completo: true,
-            email: true,
-          },
-        },
+        paciente: true,
+        recepcionista: { select: { nome_completo: true } },
+        aprovador: { select: { nome_completo: true } },
         itens_solicitacao: {
           include: {
-            exame_catalogo: {
-              select: {
-                nome_exame: true,
-                preco: true,
-              },
-            },
+            exame_catalogo: true,
           },
         },
+        pagamentos: true,
       },
     });
 
@@ -74,9 +47,54 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
     return NextResponse.json(solicitacao, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao buscar solicitação por ID:', error);
-    return NextResponse.json({ message: 'Erro interno do servidor ao buscar solicitação.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
+    console.error(`Erro ao buscar solicitação ${params.id}:`, error);
+    return NextResponse.json({ message: 'Erro interno do servidor ao buscar solicitação.' }, { status: 500 });
   } finally {
+    // A desconexão do Prisma deve estar em cada função.
     await prisma.$disconnect();
   }
+}
+
+// --- MÉTODO PUT PARA EDITAR ---
+export async function PUT(req: NextRequest, { params }: RouteParams) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
+            return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
+        }
+
+        const solicitacaoId = parseInt(params.id, 10);
+        if (isNaN(solicitacaoId)) {
+            return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
+        }
+
+        const { examesSelecionados } = await req.json();
+        if (!examesSelecionados || !Array.isArray(examesSelecionados)) {
+            return NextResponse.json({ message: 'Lista de exames inválida.' }, { status: 400 });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.itemSolicitacao.deleteMany({
+                where: { id_solicitacao: solicitacaoId },
+            });
+
+            if (examesSelecionados.length > 0) {
+                const novosItensData = examesSelecionados.map((exame: { id_exame_catalogo: number }) => ({
+                    id_solicitacao: solicitacaoId,
+                    id_exame_catalogo: exame.id_exame_catalogo,
+                }));
+                await tx.itemSolicitacao.createMany({
+                    data: novosItensData,
+                });
+            }
+        });
+
+        return NextResponse.json({ message: 'Solicitação atualizada com sucesso!' }, { status: 200 });
+
+    } catch (error: any) {
+        console.error(`Erro ao atualizar solicitação ${params.id}:`, error);
+        return NextResponse.json({ message: 'Erro interno do servidor ao atualizar a solicitação.' }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
+    }
 }
