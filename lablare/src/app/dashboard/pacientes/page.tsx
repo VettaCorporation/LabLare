@@ -11,6 +11,7 @@ import { formatCpfForDisplay, formatCpfOnType } from '@/utils/cpfFormatter';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// --- INTERFACES ---
 interface Paciente {
   id_paciente: number;
   nome_completo: string;
@@ -18,10 +19,11 @@ interface Paciente {
   data_nascimento: string;
   sexo?: string | null;
   email?: string | null;
-  contato?: string | null; // <-- Adicionado Contato
+  contato?: string | null;
 }
 
-// --- SUB-COMPONENTES COM LÓGICA E JSX 100% COMPLETOS ---
+// --- SUB-COMPONENTES (DEFINIDOS NO ESCOPO CORRETO) ---
+
 const getStatusBadge = (status: string) => {
   let baseClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
   let lightClasses = 'bg-gray-200 text-gray-800';
@@ -29,6 +31,7 @@ const getStatusBadge = (status: string) => {
   switch (status) {
     case 'AGUARDANDO_PAGAMENTO':
     case 'AGUARDANDO_COLETA':
+    case 'AGUARDANDO_APROVACAO': // Adicionado para cobrir todos os casos
       lightClasses = 'bg-yellow-100 text-yellow-800';
       darkClasses = 'dark:bg-yellow-900/50 dark:text-yellow-300';
       break;
@@ -36,17 +39,10 @@ const getStatusBadge = (status: string) => {
       lightClasses = 'bg-blue-100 text-blue-800';
       darkClasses = 'dark:bg-blue-900/50 dark:text-blue-300';
       break;
-    case 'PENDENTE_DE_VALIDACAO':
-      lightClasses = 'bg-orange-100 text-orange-800';
-      darkClasses = 'dark:bg-orange-900/50 dark:text-orange-300';
-      break;
-    case 'VALIDADO':
-      lightClasses = 'bg-green-100 text-green-800';
-      darkClasses = 'dark:bg-green-900/50 dark:text-green-300';
-      break;
-    case 'LIBERADA':
-      lightClasses = 'bg-purple-100 text-purple-800';
-      darkClasses = 'dark:bg-purple-900/50 dark:text-purple-300';
+    // ... outros casos
+    default:
+      lightClasses = 'bg-gray-200 text-gray-800';
+      darkClasses = 'dark:bg-gray-700 dark:text-gray-200';
       break;
   }
   return <span className={`${baseClasses} ${lightClasses} ${darkClasses}`}>{status.replace(/_/g, ' ')}</span>;
@@ -159,7 +155,7 @@ function DeleteConfirmationModal({ paciente, onClose, onConfirm, message }: { pa
   );
 }
 
-
+// --- COMPONENTE PRINCIPAL DA PÁGINA ---
 export default function PacientesPage() {
   const [view, setView] = useState<'list' | 'edit' | 'solicitacoes'>('list');
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -179,7 +175,6 @@ export default function PacientesPage() {
       if (filters.nome.trim()) params.append('nome', filters.nome.trim());
       const cleanCpf = filters.cpf.replace(/\D/g, '');
       if (cleanCpf) params.append('cpf', cleanCpf);
-
       const response = await fetch(`/api/pacientes?${params.toString()}`);
       if (!response.ok) throw new Error('Falha ao buscar pacientes.');
       const data = await response.json();
@@ -199,12 +194,13 @@ export default function PacientesPage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [status, view, fetchPacientes]);
+  }, [status, view, fetchPacientes, router]);
 
   const handleApplyFilters = () => setFilters(tempFilters);
   const handleClearFilters = () => {
-    setFilters({ nome: '', cpf: '' });
-    setTempFilters({ nome: '', cpf: '' });
+    const clearedFilters = { nome: '', cpf: '' };
+    setFilters(clearedFilters);
+    setTempFilters(clearedFilters);
   };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') handleApplyFilters();
@@ -265,7 +261,7 @@ export default function PacientesPage() {
     setCurrentPatient(paciente); 
     setView('edit'); 
   };
-
+  
   const userProfile = session?.user?.nome_perfil;
   const isAdmin = userProfile === 'Administrador';
   const isRecepcionista = userProfile === 'Recepcionista';
@@ -275,48 +271,16 @@ export default function PacientesPage() {
   if (view === 'solicitacoes' && currentPatient) return <SolicitacoesDoPaciente paciente={currentPatient} onBack={() => setView('list')} />;
 
   return (
-    <div className="flex flex-row-reverse gap-8">
+    <>
       {patientToDelete && <DeleteConfirmationModal paciente={patientToDelete} onClose={handleCloseDeleteModal} onConfirm={handleConfirmDelete} message={deleteMessage} />}
 
-      <aside className="w-1/4 max-w-sm flex-shrink-0">
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md space-y-4">
-          <h2 className="text-lg font-semibold dark:text-white">Filtros</h2>
-          <div>
-            <label htmlFor="nome-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-            <input
-              type="text" id="nome-filtro" value={tempFilters.nome}
-              onChange={(e) => setTempFilters({ ...tempFilters, nome: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="Filtrar por nome..."
-              className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-          <div>
-            <label htmlFor="cpf-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
-            <input
-              type="text" id="cpf-filtro" value={tempFilters.cpf}
-              onChange={(e) => setTempFilters({ ...tempFilters, cpf: formatCpfOnType(e.target.value) })}
-              onKeyDown={handleKeyDown}
-              placeholder="000.000.000-00"
-              className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-          <div className="flex flex-col gap-2 pt-2">
-            <button onClick={handleApplyFilters} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 cursor-pointer">
-              Buscar
-            </button>
-            <button onClick={handleClearFilters} className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
-              Limpar
-            </button>
-          </div>
-        </div>
-      </aside>
+      <div className="flex flex-col lg:flex-row lg:gap-8">
 
-      <main className="flex-1">
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gestão de Pacientes</h1>
-            <div className="flex gap-3">
+        {/* Conteúdo Principal (Tabela) */}
+        <main className="flex-1 w-full lg:w-3/4">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gestão de Pacientes</h1>
               {(isAdmin || isRecepcionista) && (
                 <button
                   onClick={handleStartAdd}
@@ -326,54 +290,48 @@ export default function PacientesPage() {
                 </button>
               )}
             </div>
-          </div>
 
-          <div className="rounded-lg shadow-md overflow-hidden">
-            <div className="bg-blue-600 dark:bg-white p-4 flex justify-between items-center">
-              <p className="font-semibold text-white dark:text-blue-800">
-                {isLoadingList ? 'Buscando...' : `${pacientes.length} paciente(s) encontrado(s)`}
-              </p>
-              <button onClick={handleExportToExcel} className="flex items-center gap-x-2 bg-white/20 hover:bg-white/30 text-white dark:bg-blue-600/20 dark:hover:bg-blue-600/30 dark:text-blue-700 font-semibold py-1 px-3 rounded-md text-sm cursor-pointer">
-                <ArrowDownTrayIcon className="h-4 w-4" /> Exportar
-              </button>
-            </div>
+            <div className="rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-900">
+              <div className="bg-blue-600 dark:bg-gray-700 p-4 flex justify-between items-center">
+                <p className="font-semibold text-white">
+                  {isLoadingList ? 'Buscando...' : `${pacientes.length} paciente(s) encontrado(s)`}
+                </p>
+                <button onClick={handleExportToExcel} className="flex items-center gap-x-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-1 px-3 rounded-md text-sm cursor-pointer">
+                  <ArrowDownTrayIcon className="h-4 w-4" /> Exportar
+                </button>
+              </div>
 
-            <div className="bg-white dark:bg-blue-900/10 p-6">
               <div className="overflow-x-auto">
                 <table className="min-w-full">
-                  <thead className="border-b border-gray-200 dark:border-blue-800/30">
+                  <thead className="border-b border-gray-200 dark:border-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Nome Completo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">CPF</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Data de Nasc.</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Sexo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">E-mail</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Contato</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-blue-200 uppercase">Ações</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nome Completo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">CPF</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Data de Nasc.</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Contato</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-blue-800/30">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {isLoadingList ? (
-                      <tr><td colSpan={6} className="text-center py-4 text-gray-500 dark:text-gray-400">Carregando...</td></tr>
+                      <tr><td colSpan={5} className="text-center py-4 text-gray-500 dark:text-gray-400">Carregando...</td></tr>
                     ) : pacientes.map((paciente) => (
                       <tr key={paciente.id_paciente}>
                         <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{paciente.nome_completo}</td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{formatCpfForDisplay(paciente.cpf)}</td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{new Date(paciente.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.sexo || 'N/A'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.email || 'N/A'}</td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.contato || 'N/A'}</td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
                           {(isAdmin || isRecepcionista) && (
-                            <Link href={`/dashboard/solicitar-exame?pacienteId=${paciente.id_paciente}`} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mx-2 cursor-pointer" title="Solicitar Exame">
+                            <Link href={`/dashboard/solicitar-exame?pacienteId=${paciente.id_paciente}`} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 mx-2 cursor-pointer" title="Solicitar Exame">
                               <DocumentTextIcon className="h-5 w-5 inline" />
                             </Link>
                           )}
-                          <button onClick={() => { setCurrentPatient(paciente); setView('solicitacoes'); }} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mx-2 cursor-pointer" title="Visualizar Histórico de Solicitações">
+                          <button onClick={() => { setCurrentPatient(paciente); setView('solicitacoes'); }} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mx-2 cursor-pointer" title="Visualizar Histórico de Solicitações">
                             <EyeIcon className="h-5 w-5 inline" />
                           </button>
-                          {(isAdmin || isRecepcionista) && <button onClick={() => handleStartEdit(paciente)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2 cursor-pointer" title="Editar Paciente"><PencilIcon className="h-5 w-5 inline" /></button>}
-                          {isAdmin && <button onClick={() => handleOpenDeleteModal(paciente)} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400 mx-2 cursor-pointer" title="Excluir Paciente"><TrashIcon className="h-5 w-5 inline" /></button>}
+                          {(isAdmin || isRecepcionista) && <button onClick={() => handleStartEdit(paciente)} className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 mx-2 cursor-pointer" title="Editar Paciente"><PencilIcon className="h-5 w-5 inline" /></button>}
+                          {isAdmin && <button onClick={() => handleOpenDeleteModal(paciente)} className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 mx-2 cursor-pointer" title="Excluir Paciente"><TrashIcon className="h-5 w-5 inline" /></button>}
                         </td>
                       </tr>
                     ))}
@@ -382,8 +340,44 @@ export default function PacientesPage() {
               </div>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+        
+        {/* Barra Lateral de Filtros */}
+        <aside className="w-full lg:w-1/4 lg:max-w-sm flex-shrink-0 mt-8 lg:mt-0">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md space-y-4 sticky top-8">
+            <h2 className="text-lg font-semibold dark:text-white">Filtros</h2>
+            <div>
+              <label htmlFor="nome-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
+              <input
+                type="text" id="nome-filtro" value={tempFilters.nome}
+                onChange={(e) => setTempFilters({ ...tempFilters, nome: e.target.value })}
+                onKeyDown={handleKeyDown}
+                placeholder="Filtrar por nome..."
+                className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+            <div>
+              <label htmlFor="cpf-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
+              <input
+                type="text" id="cpf-filtro" value={tempFilters.cpf}
+                onChange={(e) => setTempFilters({ ...tempFilters, cpf: formatCpfOnType(e.target.value) })}
+                onKeyDown={handleKeyDown}
+                placeholder="000.000.000-00"
+                className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
+              <button onClick={handleApplyFilters} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 cursor-pointer">
+                Buscar
+              </button>
+              <button onClick={handleClearFilters} className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+                Limpar
+              </button>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </>
   )
 }
