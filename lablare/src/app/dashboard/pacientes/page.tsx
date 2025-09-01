@@ -131,22 +131,28 @@ function SolicitacoesDoPaciente({ paciente, onBack }: { paciente: Paciente; onBa
   );
 }
 
-function DeleteConfirmationModal({ paciente, onClose, onConfirm, message }: { paciente: Paciente, onClose: () => void, onConfirm: () => void, message: string }) {
+function DeleteConfirmationModal(props: { paciente: Paciente, onClose: () => void, onConfirm: () => void, message: string }) {
+  // A verificação abaixo garante que o componente não quebre se 'paciente' for nulo
+  if (!props.paciente) {
+    return null;
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-xl text-center max-w-md w-full">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Confirmar Exclusão</h2>
         <p className="text-gray-700 dark:text-gray-300 mb-6">
-          Tem certeza que deseja excluir o paciente <span className="font-bold">{paciente.nome_completo}</span>?
+          {/* AQUI A CORREÇÃO: Acessando o nome diretamente do objeto props */}
+          Tem certeza que deseja excluir o paciente <span className="font-bold">{props.paciente.nome_completo}</span>?
           <br />
           <span className="font-bold text-red-600">Esta ação não pode ser desfeita.</span>
         </p>
-        {message && <p className="mb-4 text-red-600">{message}</p>}
+        {props.message && <p className="mb-4 text-red-600">{props.message}</p>}
         <div className="flex justify-center gap-4">
-          <button onClick={onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+          <button onClick={props.onClose} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
             Cancelar
           </button>
-          <button onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer">
+          <button onClick={props.onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer">
             Confirmar Exclusão
           </button>
         </div>

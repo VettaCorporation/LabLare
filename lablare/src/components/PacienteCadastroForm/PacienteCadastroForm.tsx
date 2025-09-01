@@ -141,7 +141,9 @@ export default function PacienteCadastroForm({ onPatientSaved, onCancel, initial
       }
     } catch (error: any) {
       console.error("Erro ao salvar paciente:", error);
-      toast.error(error.message || 'Ocorreu um erro inesperado.');
+      const errorMessage = error.response?.data?.message || 'Não foi possível salvar o paciente. Tente novamente.';
+    
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
