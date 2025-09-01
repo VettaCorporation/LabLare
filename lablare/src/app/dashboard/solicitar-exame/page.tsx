@@ -4,14 +4,15 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-toastify';
 import SolicitacaoExameForm from '@/components/SolicitacaoExameForm/SolicitacaoExameForm';
-import { formatCpfForDisplay } from '@/utils/cpfFormatter';
-import { UserSearch, ClipboardPlus } from 'lucide-react';
+import { formatCpfForDisplay, formatCpfOnType } from '@/utils/cpfFormatter';
+import { ClipboardPlus } from 'lucide-react';
 
 interface PacienteData {
   id_paciente: number;
   nome_completo: string;
   cpf: string;
   data_nascimento: string;
+  contato?: string | null;
 }
 
 const debounce = (func: (...args: any[]) => void, delay: number) => {
@@ -27,17 +28,21 @@ function SolicitarExamePageComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [patientSearchTerm, setPatientSearchTerm] = useState('');
-  const [patientSearchResults, setPatientSearchResults] = useState<PacienteData[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PacienteData | null>(null);
-  const [loadingPatientSearch, setLoadingPatientSearch] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const [pacientes, setPacientes] = useState<PacienteData[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [filters, setFilters] = useState({ nome: '', cpf: '' });
+  const [tempFilters, setTempFilters] = useState({ nome: '', cpf: '' });
+
 
   const canAccessPage = session?.user?.nome_perfil === 'Recepcionista' ||
                         session?.user?.nome_perfil === 'Administrador';
 
   const fetchPatientById = useCallback(async (id: string) => {
-    setLoadingPatientSearch(true);
+    setLoading(true);
     try {
       const response = await fetch(`/api/pacientes/${id}`);
       if (!response.ok) {
@@ -49,9 +54,28 @@ function SolicitarExamePageComponent() {
       toast.error(err.message);
       router.replace('/dashboard/solicitar-exame');
     } finally {
-      setLoadingPatientSearch(false);
+      setLoading(false);
     }
   }, [router]);
+
+  const fetchPacientes = useCallback(async () => {
+    setIsLoadingList(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.nome.trim()) params.append('nome', filters.nome.trim());
+      const cleanCpf = filters.cpf.replace(/\D/g, '');
+      if (cleanCpf) params.append('cpf', cleanCpf);
+      const response = await fetch(`/api/pacientes?${params.toString()}`);
+      if (!response.ok) throw new Error('Falha ao buscar pacientes.');
+      const data = await response.json();
+      setPacientes(data);
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error);
+      toast.error("Erro ao carregar pacientes.");
+    } finally {
+      setIsLoadingList(false);
+    }
+  }, [filters]);
 
   useEffect(() => {
     const pacienteId = searchParams.get('pacienteId');
@@ -60,29 +84,11 @@ function SolicitarExamePageComponent() {
     }
   }, [searchParams, selectedPatient, fetchPatientById]);
 
-  const fetchPatients = useCallback(debounce(async (term: string) => {
-    if (term.trim() === '') {
-      setPatientSearchResults([]);
-      return;
-    }
-    setLoadingPatientSearch(true);
-    try {
-      const response = await fetch(`/api/pacientes?nome=${encodeURIComponent(term)}`);
-      if (!response.ok) throw new Error('Erro ao buscar pacientes.');
-      const data = await response.json();
-      setPatientSearchResults(data);
-      setError('');
-    } catch (err: any) {
-      console.error('Falha na busca:', err);
-      setError('Não foi possível buscar os pacientes.');
-    } finally {
-      setLoadingPatientSearch(false);
-    }
-  }, 300), []);
-
   useEffect(() => {
-    fetchPatients(patientSearchTerm);
-  }, [patientSearchTerm, fetchPatients]);
+    if (status === 'authenticated' && !selectedPatient) {
+      fetchPacientes();
+    }
+  }, [status, selectedPatient, fetchPacientes]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -96,11 +102,20 @@ function SolicitarExamePageComponent() {
 
   const handleClearSelection = () => {
     setSelectedPatient(null);
-    setPatientSearchTerm('');
     router.replace('/dashboard/solicitar-exame');
   };
+  
+  const handleApplyFilters = () => setFilters(tempFilters);
+  const handleClearFilters = () => {
+    const clearedFilters = { nome: '', cpf: '' };
+    setFilters(clearedFilters);
+    setTempFilters(clearedFilters);
+  };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') handleApplyFilters();
+  };
 
-  if (status === 'loading' || loadingPatientSearch) {
+  if (status === 'loading' || loading) {
     return <div className="text-center text-xl mt-10 dark:text-gray-300">Carregando dados...</div>;
   }
 
@@ -115,54 +130,93 @@ function SolicitarExamePageComponent() {
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       {!selectedPatient ? (
-        // AQUI: Removido 'max-w-4xl mx-auto' para ocupar a largura total
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 w-full">
-          <div className="flex items-center gap-4 mb-6">
-            <ClipboardPlus className="h-8 w-8 text-blue-600" />
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Solicitar Exame</h2>
-          </div>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Para iniciar, busque pelo nome ou CPF do paciente que deseja atender.
-          </p>
-
-          <div className="relative mb-4">
-            <UserSearch className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              value={patientSearchTerm}
-              onChange={(e) => setPatientSearchTerm(e.target.value)}
-              placeholder="Digite o nome ou CPF do paciente"
-              className="w-full p-4 pl-12 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white transition-shadow hover:shadow-md"
-            />
-          </div>
-
-          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-          {patientSearchResults.length > 0 ? (
-            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 max-h-72 overflow-y-auto">
-              <h3 className="text-lg font-semibold mb-3 dark:text-gray-200">Resultados da Busca:</h3>
-              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                {patientSearchResults.map((patient) => (
-                  <li key={patient.id_paciente} className="flex justify-between items-center p-4 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-md transition-colors">
-                    <div>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">{patient.nome_completo}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">CPF: {formatCpfForDisplay(patient.cpf)}</p>
-                    </div>
-                    <button
-                      onClick={() => handleSelectPatient(patient)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-transform hover:scale-105">
-                      Selecionar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : patientSearchTerm.length > 0 && !loadingPatientSearch ? (
-            <p className="text-center text-gray-600 dark:text-gray-400 mt-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">Nenhum paciente encontrado.</p>
-          ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 mt-6">Aguardando sua busca...</p>
-          )}
-        </div>
+         <div className="flex flex-col lg:flex-row lg:gap-8">
+         <main className="flex-1 w-full lg:w-3/4">
+           <div className="space-y-6">
+             <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                    <ClipboardPlus className="h-8 w-8 text-blue-600" />
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Solicitar Exame</h1>
+                </div>
+             </div>
+ 
+             <div className="rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-900">
+               <div className="bg-blue-600 dark:bg-gray-700 p-4 flex justify-between items-center">
+                 <p className="font-semibold text-white">
+                   {isLoadingList ? 'Buscando...' : `${pacientes.length} paciente(s) encontrado(s)`}
+                 </p>
+               </div>
+ 
+               <div className="overflow-x-auto">
+                 <table className="min-w-full">
+                   <thead className="border-b border-gray-200 dark:border-gray-700">
+                     <tr>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nome Completo</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">CPF</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Data de Nasc.</th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Contato</th>
+                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                     {isLoadingList ? (
+                       <tr><td colSpan={5} className="text-center py-4 text-gray-500 dark:text-gray-400">Carregando...</td></tr>
+                     ) : pacientes.map((paciente) => (
+                       <tr key={paciente.id_paciente}>
+                         <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{paciente.nome_completo}</td>
+                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{formatCpfForDisplay(paciente.cpf)}</td>
+                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{new Date(paciente.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{paciente.contato || 'N/A'}</td>
+                         <td className="px-6 py-4 text-center whitespace-nowrap">
+                            <button
+                                onClick={() => handleSelectPatient(paciente)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-transform hover:scale-105">
+                                Selecionar
+                            </button>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+             </div>
+           </div>
+         </main>
+         
+         <aside className="w-full lg:w-1/4 lg:max-w-sm flex-shrink-0 mt-8 lg:mt-0">
+           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md space-y-4 sticky top-8">
+             <h2 className="text-lg font-semibold dark:text-white">Filtros</h2>
+             <div>
+               <label htmlFor="nome-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
+               <input
+                 type="text" id="nome-filtro" value={tempFilters.nome}
+                 onChange={(e) => setTempFilters({ ...tempFilters, nome: e.target.value })}
+                 onKeyDown={handleKeyDown}
+                 placeholder="Filtrar por nome..."
+                 className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+               />
+             </div>
+             <div>
+               <label htmlFor="cpf-filtro" className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
+               <input
+                 type="text" id="cpf-filtro" value={tempFilters.cpf}
+                 onChange={(e) => setTempFilters({ ...tempFilters, cpf: formatCpfOnType(e.target.value) })}
+                 onKeyDown={handleKeyDown}
+                 placeholder="000.000.000-00"
+                 className="mt-1 block w-full rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+               />
+             </div>
+             <div className="flex flex-col gap-2 pt-2">
+               <button onClick={handleApplyFilters} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 cursor-pointer">
+                 Buscar
+               </button>
+               <button onClick={handleClearFilters} className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+                 Limpar
+               </button>
+             </div>
+           </div>
+         </aside>
+       </div>
       ) : (
         <SolicitacaoExameForm paciente={selectedPatient} onClearSelection={handleClearSelection} />
       )}
