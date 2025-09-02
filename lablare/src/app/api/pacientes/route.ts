@@ -1,6 +1,5 @@
 // Caminho: src/app/api/pacientes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-// Importação corrigida para o padrão do Prisma
 import { PrismaClient } from '@prisma/client'; 
 import { isValidCPF } from '../../../utils/cpfValidator';
 import bcrypt from 'bcrypt';
@@ -9,7 +8,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
-// ... (A função POST continua a mesma, sem alterações)
+// A função POST permanece a mesma, pois sua lógica está correta.
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,6 +22,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { nome_completo, cpf, data_nascimento, sexo, email, contato } = await request.json();
+    
+    // --- Validações Iniciais ---
     if (!nome_completo || !cpf || !data_nascimento) {
       return NextResponse.json({ message: 'Nome completo, CPF e Data de Nascimento são obrigatórios.' }, { status: 400 });
     }
@@ -33,26 +34,45 @@ export async function POST(request: NextRequest) {
     if (isNaN(parsedDate.getTime())) {
       return NextResponse.json({ message: 'O formato da data de nascimento é inválido.' }, { status: 400 });
     }
+    
     const cleanCpf = cpf.replace(/\D/g, '');
+
+    // --- ▼▼▼ MELHORIA PRINCIPAL AQUI ▼▼▼ ---
+
+    // 1. Verifica se o CPF já existe na tabela de Pacientes
     const pacienteExistente = await prisma.paciente.findUnique({
       where: { cpf: cleanCpf },
     });
     if (pacienteExistente) {
+      // Mensagem específica para CPF de paciente duplicado
       return NextResponse.json({ message: 'Este CPF já está cadastrado como paciente.' }, { status: 409 });
     }
+
+    // 2. Verifica se o CPF já existe como login na tabela de Usuários
+    const usuarioExistente = await prisma.usuario.findUnique({
+        where: { email: cleanCpf }, // Lembre-se: o campo 'email' do usuário guarda o CPF
+    });
+    if (usuarioExistente) {
+        // Mensagem específica para "login" (CPF) de usuário duplicado
+        return NextResponse.json({ message: 'Já existe um usuário de login cadastrado com este CPF.' }, { status: 409 });
+    }
+
+    // --- FIM DA MELHORIA ---
 
     const day = String(parsedDate.getUTCDate()).padStart(2, '0');
     const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
     const year = parsedDate.getUTCFullYear();
     const initialPassword = `${day}${month}${year}`;
     const hash_senha_inicial = await bcrypt.hash(initialPassword, 10);
+    
     const patientProfile = await prisma.perfil.findUnique({
       where: { nome_perfil: 'Paciente' },
     });
     if (!patientProfile) {
-      return NextResponse.json({ error: 'Erro de configuração: Perfil "Paciente" não encontrado.' }, { status: 500 });
+      return NextResponse.json({ message: 'Erro de configuração: Perfil "Paciente" não encontrado.' }, { status: 500 });
     }
 
+    // A transação agora é mais segura, pois as verificações já foram feitas
     const newPatientAndUser = await prisma.$transaction(async (tx) => {
       const newPatient = await tx.paciente.create({
         data: {
@@ -80,16 +100,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Erro ao cadastrar o paciente:', error);
-    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
-      return NextResponse.json({ error: 'Já existe um usuário de login com este CPF.' }, { status: 409 });
-    }
-    return NextResponse.json({ message: 'Erro interno do servidor.', details: error.message }, { status: 500 });
+    // Erro genérico para qualquer outra falha inesperada
+    return NextResponse.json({ message: 'Erro interno do servidor ao tentar cadastrar o paciente.' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-
+// A função GET é a que foi corrigida.
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -111,6 +129,7 @@ export async function GET(request: NextRequest) {
         if (nome) {
             whereClause.nome_completo = {
                 contains: nome,
+                mode: 'insensitive', // Melhoria: Busca por nome sem diferenciar maiúsculas/minúsculas
             };
         }
 
@@ -120,25 +139,17 @@ export async function GET(request: NextRequest) {
             };
         }
 
-        // --- ▼▼▼ MODIFICAÇÃO PRINCIPAL AQUI ▼▼▼ ---
-        // Adicionamos 'contato: true' para garantir que ele seja enviado na resposta da API.
+        // --- ▼▼▼ AQUI ESTÁ A CORREÇÃO PRINCIPAL ▼▼▼ ---
+        // A cláusula 'select' foi removida. Agora, a consulta retornará
+        // todos os campos do modelo 'paciente', incluindo 'contato', 'sexo', etc.
         const pacientes = await prisma.paciente.findMany({
             where: whereClause,
-            select: {
-                id_paciente: true,
-                nome_completo: true,
-                cpf: true,
-                data_nascimento: true,
-                sexo: true,
-                email: true,
-                contato: true, // <-- AQUI ESTÁ A CORREÇÃO
-            },
             orderBy: {
                 nome_completo: 'asc',
             },
             take: 50,
         });
-        // --- ▲▲▲ FIM DA MODIFICAÇÃO ▲▲▲ ---
+        // --- ▲▲▲ FIM DA CORREÇÃO ▲▲▲ ---
 
         return NextResponse.json(pacientes, { status: 200 });
     } catch (error: any) {
