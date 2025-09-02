@@ -67,7 +67,8 @@ CREATE TABLE `Solicitacao` (
     `medico_solicitante` VARCHAR(255) NULL,
     `id_paciente` INTEGER NOT NULL,
     `id_recepcionista` INTEGER NOT NULL,
-    `status` VARCHAR(50) NOT NULL DEFAULT 'AGUARDANDO_PAGAMENTO',
+    `id_aprovador` INTEGER NULL,
+    `status` ENUM('AGUARDANDO_APROVACAO', 'AGUARDANDO_COLETA', 'FINALIZAR_PAGAMENTO', 'AGUARDANDO_PAGAMENTO', 'FINALIZADO', 'CANCELADO') NOT NULL DEFAULT 'AGUARDANDO_APROVACAO',
 
     PRIMARY KEY (`id_solicitacao`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -170,6 +171,9 @@ ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_paciente_fkey` FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_recepcionista_fkey` FOREIGN KEY (`id_recepcionista`) REFERENCES `Usuario`(`id_usuario`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_aprovador_fkey` FOREIGN KEY (`id_aprovador`) REFERENCES `Usuario`(`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `ItemSolicitacao` ADD CONSTRAINT `ItemSolicitacao_id_solicitacao_fkey` FOREIGN KEY (`id_solicitacao`) REFERENCES `Solicitacao`(`id_solicitacao`) ON DELETE RESTRICT ON UPDATE CASCADE;
