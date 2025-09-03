@@ -62,6 +62,7 @@ export default function GerenciamentoExamesPage() {
     const [pagination, setPagination] = useState<PaginationInfo | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
+    const [origemFilter, setOrigemFilter] = useState<'LARE' | 'PARDINI' | 'all'>('all');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [exameToDelete, setExameToDelete] = useState<Exame | null>(null);
@@ -73,7 +74,13 @@ export default function GerenciamentoExamesPage() {
     const fetchExames = useCallback(async () => {
         setIsLoading(true);
         setError(null);
-        const params = new URLSearchParams({ page: currentPage.toString(), pageSize: '15', search: debouncedSearchTerm });
+        const params = new URLSearchParams({ page: currentPage.toString(), pageSize: '15' });
+        if (debouncedSearchTerm) {
+            params.append('search', debouncedSearchTerm);
+        }
+        if (origemFilter !== 'all') {
+            params.append('origem', origemFilter);
+        }
         try {
             const response = await fetch(`/api/exames-catalogo?${params.toString()}`);
             if (!response.ok) throw new Error('Falha ao buscar os exames.');
@@ -85,7 +92,7 @@ export default function GerenciamentoExamesPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [currentPage, debouncedSearchTerm]);
+    }, [currentPage, debouncedSearchTerm, origemFilter]);
 
     useEffect(() => { fetchExames(); }, [fetchExames]);
 
@@ -137,8 +144,29 @@ export default function GerenciamentoExamesPage() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="mb-4">
-                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou código do exame..." className="w-full max-w-md p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500" />
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1); // Reset page on search
+                        }}
+                        placeholder="Buscar por nome ou código do exame..."
+                        className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <select
+                        value={origemFilter}
+                        onChange={(e) => {
+                            setOrigemFilter(e.target.value as 'LARE' | 'PARDINI' | 'all');
+                            setCurrentPage(1); // Reset page on filter change
+                        }}
+                        className="w-full sm:w-auto p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="all">Todas as Origens</option>
+                        <option value="LARE">LARE</option>
+                        <option value="PARDINI">Pardini</option>
+                    </select>
                 </div>
 
                 <div className="overflow-x-auto">
