@@ -41,7 +41,7 @@ export default function Sidebar() {
   const allNavItems: NavItem[] = [
     { name: 'Painel', href: '/dashboard', icon: HomeIcon },
     { name: 'Pacientes', href: '/dashboard/pacientes', icon: UsersIcon },
-    { name: 'Orçamento', href: '/dashboard/orcamento', icon: CalculatorIcon },
+    { name: 'Financeiro', href: '/dashboard/orcamento', icon: CalculatorIcon },
     { name: 'Solicitar Exame', href: '/dashboard/solicitar-exame', icon: ClipboardDocumentCheckIcon },
     { name: 'Aprovar Solicitações', href: '/dashboard/aprovar-solicitacoes', icon: ClipboardDocumentListIcon },
     { name: 'Pedidos', href: '/dashboard/pedidos', icon: QueueListIcon },
