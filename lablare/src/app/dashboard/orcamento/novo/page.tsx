@@ -17,6 +17,7 @@ interface Exame {
   id_exame_catalogo: number;
   nome_exame: string;
   preco: number;
+  origem: string; // Adicionado para corresponder à interface Exame em SolicitacaoExameForm.tsx
 }
 
 const debounce = (func: Function, delay: number) => {
@@ -133,7 +134,7 @@ export default function NovoOrcamentoPage() {
     <div className="space-y-6 p-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Criar Novo Orçamento</h1>
-        <Link href="/dashboard/orcamento" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
+        <Link href="/dashboard/solicitar-exame" className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
           Voltar para a Lista
         </Link>
       </div>
@@ -164,8 +165,10 @@ export default function NovoOrcamentoPage() {
         {/* Seção de Exames */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">2. Exames</h2>
-            {/* O componente ExameSelection precisa ser adaptado para o dark mode internamente se ainda não foi */}
-            <ExameSelection onExamesSelected={setExamesSelecionados} />
+            <ExameSelection
+                selectedExams={examesSelecionados} // Pass the state as a prop
+                onExamesSelected={setExamesSelecionados}
+            />
         </div>
 
         {/* Seção de Valores e Validade */}

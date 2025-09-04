@@ -7,19 +7,20 @@ import { toast } from 'react-toastify';
 import ExameSelection from '@/components/ExameSelection/ExameSelection';
 
 // Interfaces
-interface ExameItem {
+interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
     preco: number;
+    origem?: string; // Adicionado para compatibilidade com ExameSelection
 }
 interface SolicitacaoDetalhada {
     id_solicitacao: number;
     status: string;
     medico_solicitante: string | null;
     data_hora_solicitacao: string;
-    paciente: { nome_completo: string };
+    paciente: { nome_completo: string; id_paciente: number; };
     recepcionista: { nome_completo: string };
-    itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: ExameItem }[];
+    itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: Exame }[];
 }
 
 export default function SolicitacaoDetalhePage() {
@@ -32,7 +33,7 @@ export default function SolicitacaoDetalhePage() {
     const [loading, setLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [examesEditados, setExamesEditados] = useState<ExameItem[]>([]);
+    const [examesEditados, setExamesEditados] = useState<Exame[]>([]);
 
     const fetchDetalhes = useCallback(async () => {
         if (!id || sessionStatus !== 'authenticated') return;
@@ -44,8 +45,10 @@ export default function SolicitacaoDetalhePage() {
                 throw new Error(errorData.message || 'Falha ao buscar detalhes.');
             }
             const data: SolicitacaoDetalhada = await response.json();
+            // Ensure the 'origem' property is present for compatibility with ExameSelection, even if optional
+            const mappedExames = data.itens_solicitacao.map(item => ({ ...item.exame_catalogo, origem: 'catalogo' }));
             setSolicitacao(data);
-            setExamesEditados(data.itens_solicitacao.map(item => item.exame_catalogo));
+            setExamesEditados(mappedExames);
         } catch (err: any) {
             toast.error(err.message);
             setSolicitacao(null);
@@ -81,7 +84,7 @@ export default function SolicitacaoDetalhePage() {
     const handleCancelEdit = () => {
         // Restaura os exames originais ao cancelar
         if (solicitacao) {
-            setExamesEditados(solicitacao.itens_solicitacao.map(item => item.exame_catalogo));
+            setExamesEditados(solicitacao.itens_solicitacao.map(item => ({ ...item.exame_catalogo, origem: 'catalogo' })));
         }
         setIsEditing(false);
     };
@@ -140,14 +143,14 @@ export default function SolicitacaoDetalhePage() {
                 <div className="bg-white rounded-lg shadow p-6 space-y-4">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-800">Paciente</h2>
-                        <p>{solicitacao.paciente.nome_completo}</p>
+                        <p><a href={`/dashboard/pacientes/${solicitacao.paciente.id_paciente}`} className="text-blue-600 hover:underline">{solicitacao.paciente.nome_completo}</a></p>
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-gray-800">Exames Solicitados</h2>
                         {isEditing ? (
                             <div className="mt-4">
-                                <ExameSelection 
-                                    selectedExams={examesEditados}
+                                <ExameSelection
+                                    selectedExams={examesEditados as any}
                                     onExamesSelected={setExamesEditados} 
                                 />
                             </div>

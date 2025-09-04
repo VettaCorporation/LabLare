@@ -7,10 +7,10 @@ import { useRouter } from 'next/navigation';
 import { ChartBarIcon, UserGroupIcon, CurrencyDollarIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 import KpiCard from '@/components/dashboard/KpiCard';
-import MonthlyRevenueLineChart from '@/components/dashboard/MonthlyRevenueLineChart';
 import RecentRequests from '@/components/dashboard/RecentRequests';
 import RecentPatients from '@/components/dashboard/RecentPatients';
 import InfoPieChart from '@/components/dashboard/InfoPieChart';
+import MonthlyOrcamentoChart from '@/components/dashboard/MonthlyOrcamentoChart';
 
 interface DashboardStats {
   kpis: {
@@ -22,15 +22,12 @@ interface DashboardStats {
   recentRequests: any[];
   recentPatients: any[];
   chartData: {
-    monthlyRevenue: { name: string; Faturamento: number }[];
+    monthlyOrcamentos: { name: string; Orçamentos: number }[];
     topExams: { name: string; value: number }[];
     revenueByType: { name: string; value: number }[];
   };
 }
 
-// Gera uma lista de anos (ex: [2025, 2024, 2023])
-const currentYear = new Date().getFullYear();
-const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -39,34 +36,30 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Estados para os filtros
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [startMonth, setStartMonth] = useState<number>(1);
-  const [endMonth, setEndMonth] = useState<number>(12);
-
   
   const fetchDashboardData = useCallback(async () => {
-    // Constrói a URL com os parâmetros de filtro
-    const params = new URLSearchParams({
-        year: selectedYear.toString(),
-        startMonth: startMonth.toString(),
-        endMonth: endMonth.toString(),
-    });
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
-      if (!response.ok) {
+      // Busca os dados de orçamentos e os dados gerais do dashboard
+      const [dashboardRes, orcamentoRes] = await Promise.all([
+        fetch(`/api/dashboard/stats`),
+        fetch(`/api/orcamentos/stats`)
+      ]);
+      if (!dashboardRes.ok || !orcamentoRes.ok) {
         throw new Error('Falha ao carregar os dados do dashboard.');
       }
-      const data = await response.json();
-      setStats(data);
+      const dashboardData = await dashboardRes.json();
+      const orcamentoData = await orcamentoRes.json();
+
+      // Combina os dados, pegando o gráfico de barras dos orçamentos
+      setStats({ ...dashboardData, chartData: { ...dashboardData.chartData, monthlyOrcamentos: orcamentoData.barChart } });
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, startMonth, endMonth]); // A função depende desses estados
+  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -98,16 +91,7 @@ export default function DashboardPage() {
       {/* Seção principal com gráfico de faturamento */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-3">
-            <MonthlyRevenueLineChart 
-                data={stats.chartData.monthlyRevenue}
-                selectedYear={selectedYear}
-                setSelectedYear={setSelectedYear}
-                startMonth={startMonth}
-                setStartMonth={setStartMonth}
-                endMonth={endMonth}
-                setEndMonth={setEndMonth}
-                availableYears={availableYears}
-            />
+            <MonthlyOrcamentoChart data={stats.chartData.monthlyOrcamentos} />
         </div>
       </div>
       

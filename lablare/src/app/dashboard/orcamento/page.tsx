@@ -8,12 +8,12 @@ import {
     PlusIcon, EyeIcon, ArrowUpOnSquareIcon, TrashIcon, PrinterIcon, 
     DocumentChartBarIcon, CheckCircleIcon, BanknotesIcon, ChartPieIcon 
 } from '@heroicons/react/24/outline';
-import { generateOrcamentoHtml } from '@/utils/printTemplates/generateOrcamentoHtml';
 
 // Importando os componentes de dashboard que já temos
 import KpiCard from '@/components/dashboard/KpiCard';
 import InfoPieChart from '@/components/dashboard/InfoPieChart';
-import MonthlyOrcamentoChart from '@/components/dashboard/MonthlyOrcamentoChart';
+import MonthlyRevenueLineChart from '@/components/dashboard/MonthlyRevenueLineChart';
+import { generateOrcamentoHtml } from '@/utils/printTemplates/generateOrcamentoHtml';
 
 // --- Tipagens ---
 interface Orcamento {
@@ -34,8 +34,14 @@ interface OrcamentoStats {
         taxaConversao: number;
     };
     pieChart: { name: string, value: number }[];
-    barChart: { name: string, Orçamentos: number }[];
+    chartData?: { monthlyRevenue: { name: string, Faturamento: number }[] };
 }
+
+// Gera uma lista de anos (ex: [2025, 2024, 2023])
+const currentYear = new Date().getFullYear();
+const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+
 
 
 // --- Componentes Auxiliares (100% IMPLEMENTADOS) ---
@@ -136,34 +142,48 @@ export default function OrcamentoPage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>();
 
+  // Estados para os filtros do gráfico de linha
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [startMonth, setStartMonth] = useState<number>(1);
+  const [endMonth, setEndMonth] = useState<number>(12);
+
   const [orcamentoToDelete, setOrcamentoToDelete] = useState<Orcamento | null>(null);
   const [orcamentoToView, setOrcamentoToView] = useState<OrcamentoCompleto | null>(null);
 
   const canAccessPage = session?.user?.nome_perfil === 'Administrador' || session?.user?.nome_perfil === 'Recepcionista';
-
+  
   const fetchData = useCallback(async () => {
     setLoading(true);
+    const params = new URLSearchParams({
+        year: selectedYear.toString(),
+        startMonth: startMonth.toString(),
+        endMonth: endMonth.toString(),
+    });
+
     try {
-      const [orcamentosRes, statsRes] = await Promise.all([
+      const [orcamentosRes, orcamentoStatsRes, dashboardStatsRes] = await Promise.all([
         fetch('/api/orcamentos'),
-        fetch('/api/orcamentos/stats')
+        fetch('/api/orcamentos/stats'),
+        fetch(`/api/dashboard/stats?${params.toString()}`)
       ]);
 
       if (!orcamentosRes.ok) throw new Error('Falha ao buscar orçamentos.');
-      if (!statsRes.ok) throw new Error('Falha ao buscar estatísticas.');
+      if (!orcamentoStatsRes.ok) throw new Error('Falha ao buscar estatísticas de orçamentos.');
+      if (!dashboardStatsRes.ok) throw new Error('Falha ao buscar estatísticas do dashboard.');
 
       const orcamentosData = await orcamentosRes.json();
-      const statsData = await statsRes.json();
+      const orcamentoStatsData = await orcamentoStatsRes.json();
+      const dashboardStatsData = await dashboardStatsRes.json();
 
       setOrcamentos(orcamentosData);
-      setStatsData(statsData);
+      setStatsData({ ...orcamentoStatsData, chartData: dashboardStatsData.chartData });
       
     } catch (err: any) {
       setMessage(err.message); setMessageType('error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedYear, startMonth, endMonth]);
 
   useEffect(() => {
     if (status === 'authenticated' && canAccessPage) { 
@@ -225,37 +245,48 @@ export default function OrcamentoPage() {
       {orcamentoToDelete && <DeleteModal orcamento={orcamentoToDelete} onClose={() => setOrcamentoToDelete(null)} onConfirm={handleConfirmDelete} />}
       {orcamentoToView && <ViewModal orcamento={orcamentoToView} onClose={() => setOrcamentoToView(null)} />}
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gerenciamento de Orçamentos</h1>
-        <Link href="/dashboard/orcamento/novo" className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
-          <PlusIcon className="h-5 w-5" />
-          Criar Novo Orçamento
-        </Link>
-      </div>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Relatório do Financeiro</h1>
       
       {message && <div className={`p-4 rounded-md text-sm ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{message}</div>}
 
       {statsData && (
         <>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard title="Orçamentos Pendentes" value={statsData.kpis.pendentes} icon={DocumentChartBarIcon} colorClass="bg-yellow-500" />
-            <KpiCard title="Aprovados (30 dias)" value={statsData.kpis.aprovadosMes} icon={CheckCircleIcon} colorClass="bg-green-500" />
-            <KpiCard title="Valor Total Pendente" value={statsData.kpis.valorPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={BanknotesIcon} colorClass="bg-blue-500" />
-            <KpiCard title="Taxa de Conversão (Mês)" value={`${statsData.kpis.taxaConversao.toFixed(1)}%`} icon={ChartPieIcon} colorClass="bg-purple-500" />
-          </div>
+          {statsData.kpis && (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard title="Orçamentos Pendentes" value={statsData.kpis.pendentes} icon={DocumentChartBarIcon} colorClass="bg-yellow-500" />
+              <KpiCard title="Aprovados (30 dias)" value={statsData.kpis.aprovadosMes} icon={CheckCircleIcon} colorClass="bg-green-500" />
+              <KpiCard title="Valor Total Pendente" value={statsData.kpis.valorPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={BanknotesIcon} colorClass="bg-blue-500" />
+              <KpiCard title="Taxa de Conversão (Mês)" value={`${statsData.kpis.taxaConversao.toFixed(1)}%`} icon={ChartPieIcon} colorClass="bg-purple-500" />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1">
+            {statsData.pieChart && (
+              <div className="lg:col-span-1">
                 <InfoPieChart title="Orçamentos por Status" data={statsData.pieChart} />
-            </div>
-            <div className="lg:col-span-2">
-                <MonthlyOrcamentoChart data={statsData.barChart} />
-            </div>
+              </div>
+            )}
+            {statsData.chartData?.monthlyRevenue && (
+              <div className="lg:col-span-2">
+                <MonthlyRevenueLineChart
+                  data={statsData.chartData.monthlyRevenue}
+                  selectedYear={selectedYear}
+                  setSelectedYear={setSelectedYear}
+                  startMonth={startMonth}
+                  setStartMonth={setStartMonth}
+                  endMonth={endMonth}
+                  setEndMonth={setEndMonth}
+                  availableYears={availableYears}
+                />
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Lista de Orçamentos</h2>
-            {orcamentos.length === 0 ? (<p className="text-gray-500 dark:text-gray-400">Nenhum orçamento encontrado.</p>) : (
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Faturamento</h2>
+            {orcamentos.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400">Nenhum orçamento encontrado.</p>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800">
