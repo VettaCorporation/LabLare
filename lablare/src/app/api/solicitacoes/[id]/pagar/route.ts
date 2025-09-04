@@ -1,21 +1,14 @@
 // Caminho: src/app/api/solicitacoes/[id]/pagar/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient, SolicitacaoStatus } from '@prisma/client';
+import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { generateLabelHtml } from '../../../../../utils/printTemplates/generateLabelHtml';
-
-const prisma = new PrismaClient();
-
-interface PagarRouteParams {
-    params: {
-        id: string;
-    }
-}
+import prisma from '@/lib/prisma'; // Use a instância centralizada
 
 // --- MÉTODO POST para registrar o pagamento de uma solicitação ---
-export async function POST(req: NextRequest, { params }: PagarRouteParams) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -107,7 +100,5 @@ export async function POST(req: NextRequest, { params }: PagarRouteParams) {
     console.error(`Erro ao processar pagamento da solicitação ${params.id}:`, error.message);
     // Retorna a mensagem de erro específica para o frontend (ex: "Solicitação não encontrada.")
     return NextResponse.json({ message: error.message || 'Erro interno do servidor.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

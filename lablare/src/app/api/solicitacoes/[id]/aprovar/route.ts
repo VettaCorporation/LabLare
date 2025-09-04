@@ -1,20 +1,13 @@
 // Caminho: src/app/api/solicitacoes/[id]/aprovar/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient, SolicitacaoStatus } from '@prisma/client';
+import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
-
-interface AprovarRouteParams {
-    params: {
-        id: string;
-    }
-}
+import prisma from '@/lib/prisma'; // Use a instância centralizada
 
 // --- MÉTODO POST para aprovar uma solicitação ---
 // Agora apenas muda o status, sem lidar com pagamento.
-export async function POST(req: NextRequest, { params }: AprovarRouteParams) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
@@ -57,7 +50,5 @@ export async function POST(req: NextRequest, { params }: AprovarRouteParams) {
   } catch (error: any) {
     console.error(`Erro ao aprovar solicitação ${params.id}:`, error);
     return NextResponse.json({ message: error.message || 'Erro interno do servidor.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

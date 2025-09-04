@@ -74,8 +74,14 @@ export default function VisualizarExamesPage() {
         const data: SolicitacaoExamesData = await response.json();
         setSolicitacao(data);
 
-        const pardini = data.itens_solicitacao.filter((item) => item.exame_catalogo.origem === 'pardini');
-        const lare = data.itens_solicitacao.filter((item) => item.exame_catalogo.origem === 'lare');
+        // CORREÇÃO: Converter a origem para minúsculas antes de comparar
+        // Isso garante que o filtro funcione independentemente de ser 'PARDINI' ou 'pardini'.
+        const pardini = data.itens_solicitacao.filter(
+          (item) => item.exame_catalogo.origem?.toLowerCase() === 'pardini'
+        );
+        const lare = data.itens_solicitacao.filter(
+          (item) => item.exame_catalogo.origem?.toLowerCase() === 'lare'
+        );
         setExamesPardini(pardini);
         setExamesLare(lare);
 
@@ -172,7 +178,14 @@ export default function VisualizarExamesPage() {
 
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8 dark:bg-gray-950 min-h-screen">
-      <h1 className="text-3xl font-bold dark:text-gray-100">Exames da Solicitação #{solicitacao.id_solicitacao}</h1>
+      <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => router.back()}
+          className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition duration-200 ease-in-out">
+          &larr; Voltar
+        </button>
+        <h1 className="text-3xl font-bold dark:text-gray-100">Exames da Solicitação #{solicitacao.id_solicitacao}</h1>
+      </div>
 
       <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
         <p className="text-lg text-gray-700 dark:text-gray-200"><strong>Paciente:</strong> {solicitacao.paciente.nome_completo}</p>
