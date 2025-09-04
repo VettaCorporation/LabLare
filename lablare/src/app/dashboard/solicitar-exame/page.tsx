@@ -3,9 +3,10 @@ import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-toastify';
+import Link from 'next/link';
 import SolicitacaoExameForm from '@/components/SolicitacaoExameForm/SolicitacaoExameForm';
 import { formatCpfForDisplay, formatCpfOnType } from '@/utils/cpfFormatter';
-import { ClipboardPlus } from 'lucide-react';
+import { ClipboardPlus, PlusIcon } from 'lucide-react';
 
 interface PacienteData {
   id_paciente: number;
@@ -138,6 +139,10 @@ function SolicitarExamePageComponent() {
                     <ClipboardPlus className="h-8 w-8 text-blue-600" />
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Solicitar Exame</h1>
                 </div>
+                <Link href="/dashboard/orcamento/novo" className="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
+                    <PlusIcon className="h-5 w-5" />
+                    Criar Novo Orçamento
+                </Link>
              </div>
  
              <div className="rounded-lg shadow-md overflow-hidden bg-white dark:bg-gray-900">

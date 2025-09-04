@@ -21,7 +21,7 @@ const MonthlyOrcamentoChart: React.FC<MonthlyOrcamentoChartProps> = ({ data }) =
   return (
     // Card principal adaptado para o modo escuro
     <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md h-96 flex flex-col">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Orçamentos Criados por Mês</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Faturamento do Mês</h3>
         <ResponsiveContainer width="100%" height="100%">
             <BarChart
                 data={data}
