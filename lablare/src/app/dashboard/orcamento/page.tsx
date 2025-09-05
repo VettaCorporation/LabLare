@@ -5,9 +5,13 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-    PlusIcon, EyeIcon, ArrowUpOnSquareIcon, TrashIcon, PrinterIcon, 
-    DocumentChartBarIcon, CheckCircleIcon, BanknotesIcon, ChartPieIcon 
+    EyeIcon, ArrowUpOnSquareIcon, TrashIcon, PrinterIcon,
+    DocumentChartBarIcon, CheckCircleIcon, BanknotesIcon, ChartPieIcon, ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
+import jsPDF from 'jspdf'; // Importar jspdf
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas'; // Importar html2canvas
+import { toast } from 'react-toastify';
 
 // Importando os componentes de dashboard que já temos
 import KpiCard from '@/components/dashboard/KpiCard';
@@ -151,6 +155,7 @@ export default function OrcamentoPage() {
   const [orcamentoToView, setOrcamentoToView] = useState<OrcamentoCompleto | null>(null);
 
   const canAccessPage = session?.user?.nome_perfil === 'Administrador' || session?.user?.nome_perfil === 'Recepcionista';
+  const isAdmin = session?.user?.nome_perfil === 'Administrador';
   
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -236,6 +241,91 @@ export default function OrcamentoPage() {
        setMessage(err.message); setMessageType('error');
     }
   };
+
+  const handleExportPdf = async () => {
+    if (!statsData) {
+        toast.warn('Aguarde os dados carregarem para gerar o relatório.');
+        return;
+    }
+
+    toast.info('Gerando relatório em PDF...');
+
+    const doc = new jsPDF();
+    const pageTitle = "Relatório Financeiro";
+    const reportDate = `Gerado em: ${new Date().toLocaleDateString('pt-BR')}`;
+    const filterDate = `Período: ${startMonth}/1/${selectedYear} a 12/31/${selectedYear}`;
+
+    // Título
+    doc.setFontSize(18);
+    doc.text(pageTitle, 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(reportDate, 14, 30);
+    doc.text(filterDate, 14, 36);
+
+    // KPIs
+    const kpiY = 50;
+    doc.setFontSize(12);
+    doc.text("Indicadores Chave de Performance (KPIs)", 14, kpiY);
+    doc.setFontSize(10);
+    doc.text(`- Orçamentos Pendentes: ${statsData.kpis.pendentes}`, 16, kpiY + 7);
+    doc.text(`- Aprovados (30 dias): ${statsData.kpis.aprovadosMes}`, 16, kpiY + 14);
+    doc.text(`- Valor Total Pendente: ${statsData.kpis.valorPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 16, kpiY + 21);
+    doc.text(`- Taxa de Conversão (Mês): ${statsData.kpis.taxaConversao.toFixed(1)}%`, 16, kpiY + 28);
+
+    // Gráficos
+    try {
+        const pieChartElement = document.getElementById('pie-chart-container');
+        const lineChartElement = document.getElementById('line-chart-container');
+
+        if (pieChartElement && lineChartElement) {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const bgColor = isDarkMode ? '#1f2937' : '#ffffff'; // Corresponds to dark:bg-gray-800 and bg-white
+
+            // Temporarily set a simple background to avoid oklch parsing errors
+            pieChartElement.style.backgroundColor = bgColor;
+            lineChartElement.style.backgroundColor = bgColor;
+
+            try {
+                const canvasOptions = { scale: 2, backgroundColor: bgColor };
+                
+                const pieCanvas = await html2canvas(pieChartElement, canvasOptions);
+                const lineCanvas = await html2canvas(lineChartElement, canvasOptions);
+                
+                const pieImgData = pieCanvas.toDataURL('image/png');
+                const lineImgData = lineCanvas.toDataURL('image/png');
+
+                doc.addPage();
+                doc.setFontSize(16);
+                doc.text("Visualização Gráfica", 14, 22);
+                doc.addImage(pieImgData, 'PNG', 14, 30, 80, 80);
+                doc.addImage(lineImgData, 'PNG', 100, 30, 100, 75);
+
+            } finally {
+                // Clean up the temporary styles
+                pieChartElement.style.backgroundColor = '';
+                lineChartElement.style.backgroundColor = '';
+            }
+
+        }
+    } catch (error) {
+        console.error("Erro ao converter gráficos para imagem:", error);
+        toast.error("Não foi possível incluir os gráficos no PDF.");
+    }
+
+    // Tabela de Orçamentos
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.text("Lista de Orçamentos", 14, 22);
+    autoTable(doc, {
+        startY: 30,
+        head: [['ID', 'Paciente', 'Data', 'Valor', 'Status']],
+        body: orcamentos.map(o => [o.id_orcamento, o.paciente.nome_completo, new Date(o.data_criacao).toLocaleDateString('pt-BR'), o.valor_final.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), o.status]),
+    });
+
+    doc.save(`relatorio_financeiro_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Relatório PDF gerado com sucesso!');
+  };
   
   if (status === 'loading' || loading) { return <div className="p-8 dark:text-gray-300">Carregando...</div>; }
   if (status === 'unauthenticated') { router.push('/login'); return null; }
@@ -245,7 +335,15 @@ export default function OrcamentoPage() {
       {orcamentoToDelete && <DeleteModal orcamento={orcamentoToDelete} onClose={() => setOrcamentoToDelete(null)} onConfirm={handleConfirmDelete} />}
       {orcamentoToView && <ViewModal orcamento={orcamentoToView} onClose={() => setOrcamentoToView(null)} />}
 
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Relatório do Financeiro</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Relatório do Financeiro</h1>
+        {isAdmin && (
+            <button onClick={handleExportPdf} className="flex items-center gap-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer">
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Exportar Relatório (PDF)
+            </button>
+        )}
+      </div>
       
       {message && <div className={`p-4 rounded-md text-sm ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{message}</div>}
 
@@ -262,12 +360,12 @@ export default function OrcamentoPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {statsData.pieChart && (
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1" id="pie-chart-container">
                 <InfoPieChart title="Orçamentos por Status" data={statsData.pieChart} />
               </div>
             )}
             {statsData.chartData?.monthlyRevenue && (
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2" id="line-chart-container">
                 <MonthlyRevenueLineChart
                   data={statsData.chartData.monthlyRevenue}
                   selectedYear={selectedYear}
@@ -283,7 +381,10 @@ export default function OrcamentoPage() {
           </div>
 
           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Faturamento</h2>
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Orçamentos Recentes</h2>
+                <Link href="/dashboard/orcamento/novo" className="text-sm text-blue-600 hover:underline dark:text-blue-400">Criar Novo Orçamento</Link>
+            </div>
             {orcamentos.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400">Nenhum orçamento encontrado.</p>
             ) : (
