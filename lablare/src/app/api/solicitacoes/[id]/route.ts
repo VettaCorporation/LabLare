@@ -1,10 +1,8 @@
 // Caminho: src/app/api/solicitacoes/[id]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma'; // Use a instância centralizada
 
 interface RouteParams {
     params: {
@@ -47,11 +45,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json(solicitacao, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Erro ao buscar solicitação ${params.id}:`, error);
-    return NextResponse.json({ message: 'Erro interno do servidor ao buscar solicitação.' }, { status: 500 });
-  } finally {
-    // A desconexão do Prisma deve estar em cada função.
-    await prisma.$disconnect();
+    console.error(`Erro ao buscar solicitação:`, error); // Removido params.id para segurança no log
+    return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
   }
 }
 
@@ -62,7 +57,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
             return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
         }
-
         const solicitacaoId = parseInt(params.id, 10);
         if (isNaN(solicitacaoId)) {
             return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
@@ -93,8 +87,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     } catch (error: any) {
         console.error(`Erro ao atualizar solicitação ${params.id}:`, error);
-        return NextResponse.json({ message: 'Erro interno do servidor ao atualizar a solicitação.' }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
+        return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
     }
 }
