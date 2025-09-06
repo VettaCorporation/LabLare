@@ -127,13 +127,15 @@ export default function MeusPedidosPage() {
             <div className="space-y-4">
                 <div className="border-b pb-2">
                     <h3 className="font-semibold text-lg">Resumo do Pedido</h3>
-                    <ul className="list-none mt-2 space-y-1">
-                        {pedido.itens_solicitacao.map((item, index) => (
-                            <li key={index} className="flex justify-between">
-                                <span>{item.exame_catalogo.nome_exame}</span>
-                            </li>
-                        ))}
-                    </ul>
+                    <div className="max-h-40 overflow-y-auto"> {/* Adicionado overflow-y-auto */}
+                        <ul className="list-none mt-2 space-y-1">
+                            {pedido.itens_solicitacao.map((item, index) => (
+                                <li key={index} className="flex justify-between">
+                                    <span>{item.exame_catalogo.nome_exame}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
                 <div className="text-right space-y-1 font-semibold text-gray-700">
                     <p>Subtotal: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}</p>
@@ -202,7 +204,7 @@ export default function MeusPedidosPage() {
                         backdropFilter: 'blur(4px)',
                     }}
                 >
-                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md animate-fade-in">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md animate-fade-in overflow-hidden">
                         <h2 className="text-xl font-bold mb-4">Finalizar Pagamento do Pedido #{pedidoSelecionado.id_solicitacao}</h2>
                         {getModalContent(pedidoSelecionado)}
                         <form onSubmit={handlePaymentSubmit} className="mt-4">
