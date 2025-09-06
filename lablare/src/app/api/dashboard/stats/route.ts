@@ -6,6 +6,17 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
+// Função auxiliar para calcular a idade a partir da data de nascimento
+const calculateAge = (birthDate: string | Date): number => {
+    const today = new Date();
+    const birthDateObj = new Date(birthDate);
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const monthDifference = today.getMonth() - birthDateObj.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDateObj.getDate())) {
+        age--;
+    }
+    return age;
+};
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
@@ -100,7 +111,15 @@ export async function GET(request: NextRequest) {
         });
         // --- ▲▲▲ FIM DA MODIFICAÇÃO ▲▲▲ ---
 
-        const recentPatients = recentPatientsData.map(p => ({ ...p, ultima_solicitacao: p.solicitacoes[0]?.data_hora_solicitacao || null }));
+        // CORREÇÃO: Mapeia os dados do paciente para a estrutura que o componente PatientActivityTimeline espera
+        const recentPatients = recentPatientsData.map(p => ({
+            id: p.id_paciente.toString(),
+            name: p.nome_completo,
+            age: calculateAge(p.data_nascimento),
+            email: p.email || 'N/A',
+            contact: p.contato || 'N/A',
+            lastRequest: p.solicitacoes[0]?.data_hora_solicitacao ? new Date(p.solicitacoes[0].data_hora_solicitacao).toLocaleDateString('pt-BR') : 'Nenhuma',
+        }));
 
         const recentRequestsRaw = await prisma.solicitacao.findMany({
             take: 5,
@@ -112,19 +131,20 @@ export async function GET(request: NextRequest) {
             }
         });
 
+        // CORREÇÃO: Mapeia os dados da solicitação para a estrutura que o componente RecentRequests espera
         const recentRequests = recentRequestsRaw.map(req => {
             let valor = 0;
             if (req.pagamentos && req.pagamentos.length > 0) {
                 valor = req.pagamentos.reduce((acc, p) => acc + Number(p.valor_pago), 0);
             } else {
-                valor = req.itens_solicitacao.reduce((acc, item) => acc + Number(item.exame_catalogo.preco), 0);
+                valor = req.itens_solicitacao.reduce((acc, item) => acc + (item.exame_catalogo ? Number(item.exame_catalogo.preco) : 0), 0);
             }
             return {
-                id_solicitacao: req.id_solicitacao,
-                data_hora_solicitacao: req.data_hora_solicitacao,
+                id: req.id_solicitacao.toString(),
+                patientName: req.paciente.nome_completo,
+                date: new Date(req.data_hora_solicitacao).toLocaleDateString('pt-BR'),
                 status: req.status,
-                paciente: req.paciente,
-                valor: valor
+                value: valor
             };
         });
 

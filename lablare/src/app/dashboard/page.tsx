@@ -1,16 +1,36 @@
 // src/app/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ChartBarIcon, UserGroupIcon, CurrencyDollarIcon, ClockIcon } from '@heroicons/react/24/outline';
-
+import Link from 'next/link'; // Importando o Link
+ 
+// Importação dos componentes do dashboard
 import KpiCard from '@/components/dashboard/KpiCard';
-import MonthlyRevenueLineChart from '@/components/dashboard/MonthlyRevenueLineChart';
 import RecentRequests from '@/components/dashboard/RecentRequests';
-import RecentPatients from '@/components/dashboard/RecentPatients';
+import PatientActivityTimeline from '@/components/dashboard/PatientActivityTimeline'; // O novo componente de timeline
 import InfoPieChart from '@/components/dashboard/InfoPieChart';
+import MonthlyOrcamentoChart from '@/components/dashboard/MonthlyOrcamentoChart';
+
+// Definição da estrutura de dados esperada pela página
+interface Patient {
+  id: string;
+  name: string;
+  age: number;
+  email: string;
+  contact: string;
+  lastRequest: string;
+}
+
+interface Request {
+    id: string;
+    patientName: string;
+    date: string;
+    status: string; // FINALIZADO, AGUARDANDO COLETA, AGUARDANDO APROVAÇÃO
+    value: number | null | undefined; // Permite que o valor seja nulo ou indefinido
+}
 
 interface DashboardStats {
   kpis: {
@@ -19,18 +39,29 @@ interface DashboardStats {
     requests: number;
     avgTurnaroundTime: number;
   };
-  recentRequests: any[];
-  recentPatients: any[];
+  recentRequests: Request[]; 
+  recentPatients: Patient[]; 
   chartData: {
-    monthlyRevenue: { name: string; Faturamento: number }[];
+    monthlyOrcamentos: { name: string; Orçamentos: number }[];
     topExams: { name: string; value: number }[];
     revenueByType: { name: string; value: number }[];
   };
 }
 
-// Gera uma lista de anos (ex: [2025, 2024, 2023])
-const currentYear = new Date().getFullYear();
-const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
+// Componente de Card genérico para envolver os módulos do dashboard
+const DashboardCard = ({ title, children, viewAllLink }: { title: string, children: ReactNode, viewAllLink?: string }) => (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{title}</h2>
+            {viewAllLink && (
+                <Link href={viewAllLink} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                    Ver todos
+                </Link>
+            )}
+        </div>
+        <div className="flex-grow">{children}</div>
+    </div>
+);
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -39,34 +70,37 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Estados para os filtros
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [startMonth, setStartMonth] = useState<number>(1);
-  const [endMonth, setEndMonth] = useState<number>(12);
-
-  
   const fetchDashboardData = useCallback(async () => {
-    // Constrói a URL com os parâmetros de filtro
-    const params = new URLSearchParams({
-        year: selectedYear.toString(),
-        startMonth: startMonth.toString(),
-        endMonth: endMonth.toString(),
-    });
-
     try {
       setLoading(true);
-      const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
-      if (!response.ok) {
+      setError(''); // Limpa erros anteriores
+      
+      const [dashboardRes, orcamentoRes] = await Promise.all([
+        fetch(`/api/dashboard/stats`),
+        fetch(`/api/orcamentos/stats`)
+      ]);
+
+      if (!dashboardRes.ok || !orcamentoRes.ok) {
         throw new Error('Falha ao carregar os dados do dashboard.');
       }
-      const data = await response.json();
-      setStats(data);
+
+      const dashboardData = await dashboardRes.json();
+      const orcamentoData = await orcamentoRes.json();
+
+      setStats({
+        ...dashboardData,
+        chartData: {
+          ...dashboardData.chartData,
+          monthlyOrcamentos: orcamentoData.barChart
+        }
+      });
     } catch (err: any) {
       setError(err.message);
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, startMonth, endMonth]); // A função depende desses estados
+  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -77,51 +111,61 @@ export default function DashboardPage() {
     }
   }, [status, fetchDashboardData, router]);
 
-  if (status === 'loading' || !stats) {
+  // Tela de Carregamento
+  if (status === 'loading' || loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-lg text-gray-700">Carregando dashboard...</p>
+        <p className="text-lg text-gray-400">Carregando dashboard...</p>
+        {/* Opcional: Adicionar um spinner aqui */}
       </div>
     );
   }
-  
-  return (
-    <div className="space-y-8 p-8">
-      {/* Seção de KPIs */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Faturamento (30 dias)" value={stats.kpis.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={CurrencyDollarIcon} colorClass="bg-green-500" />
-        <KpiCard title="Novos Pacientes (30 dias)" value={stats.kpis.newPatients} icon={UserGroupIcon} colorClass="bg-blue-500" />
-        <KpiCard title="Solicitações (30 dias)" value={stats.kpis.requests} icon={ChartBarIcon} colorClass="bg-purple-500" />
-        <KpiCard title="Entrega de Laudos (Média)" value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`} icon={ClockIcon} colorClass="bg-orange-500" />
+
+  // Tela de Erro
+  if (error) {
+     return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-lg text-red-400">Erro ao carregar dados: {error}</p>
       </div>
-      
-      {/* Seção principal com gráfico de faturamento */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    );
+  }
+
+  // Tela de Dashboard (quando os dados estão prontos)
+  if (stats) {
+    return (
+      <div className="space-y-8 p-4 sm:p-8"> {/* Padding ajustado para telas menores */}
+        {/* Seção de KPIs */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard title="Faturamento (30 dias)" value={stats.kpis.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={CurrencyDollarIcon} colorClass="bg-green-500" />
+          <KpiCard title="Novos Pacientes (30 dias)" value={stats.kpis.newPatients} icon={UserGroupIcon} colorClass="bg-blue-500" />
+          <KpiCard title="Solicitações (30 dias)" value={stats.kpis.requests} icon={ChartBarIcon} colorClass="bg-purple-500" />
+          <KpiCard title="Entrega de Laudos (Média)" value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`} icon={ClockIcon} colorClass="bg-orange-500" />
+        </div>
+        
+        {/* Seção principal com gráfico de faturamento */}
         <div className="lg:col-span-3">
-            <MonthlyRevenueLineChart 
-                data={stats.chartData.monthlyRevenue}
-                selectedYear={selectedYear}
-                setSelectedYear={setSelectedYear}
-                startMonth={startMonth}
-                setStartMonth={setStartMonth}
-                endMonth={endMonth}
-                setEndMonth={setEndMonth}
-                availableYears={availableYears}
-            />
+            <MonthlyOrcamentoChart data={stats.chartData.monthlyOrcamentos} />
+        </div>
+        
+        {/* Seção com os gráficos de pizza e a timeline de pacientes - CORRIGIDO O ALINHAMENTO */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+            <InfoPieChart title="Top 5 Exames Mais Solicitados" data={stats.chartData.topExams} />
+            <InfoPieChart title="Faturamento por Tipo de Atendimento" data={stats.chartData.revenueByType} />
+            <DashboardCard title="Atividade Recente de Pacientes" viewAllLink="/dashboard/pacientes">
+              <PatientActivityTimeline patients={stats.recentPatients || []} />
+            </DashboardCard>
+        </div>
+
+        {/* Seção da tabela de solicitações */}
+        <div className="mt-8 box-shadow rounded-md">
+            <DashboardCard title="Últimas Solicitações" viewAllLink="/dashboard/solicitar-exame">
+                <RecentRequests requests={stats.recentRequests || []} />
+            </DashboardCard>
         </div>
       </div>
-      
-      {/* Seção com os gráficos de pizza e a tabela de PACIENTES */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <InfoPieChart title="Top 5 Exames Mais Solicitados" data={stats.chartData.topExams} />
-        <InfoPieChart title="Faturamento por Tipo de Atendimento" data={stats.chartData.revenueByType} />
-        {/* ▼▼▼ ALTERAÇÃO FEITA AQUI ▼▼▼ */}
-        <RecentPatients patients={stats.recentPatients} />
-      </div>
+    );
+  }
 
-      <div>
-        <RecentRequests requests={stats.recentRequests} />
-      </div>
-    </div>
-  );
+  // Fallback caso não haja sessão ou stats
+  return null;
 }

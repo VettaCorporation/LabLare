@@ -55,29 +55,29 @@ export default function AprovarSolicitacoesPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <h1 className="text-2xl font-bold mb-6">Aprovar Solicitações Pendentes</h1>
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Aprovar Solicitações Pendentes</h1>
             {solicitacoes.length === 0 ? (
-                <p className="text-gray-500">Nenhuma solicitação aguardando aprovação.</p>
+                <p className="text-gray-500 dark:text-gray-400">Nenhuma solicitação aguardando aprovação.</p>
             ) : (
-                <div className="overflow-x-auto bg-white rounded-lg shadow">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg shadow-md border border-gray-200 dark:border-gray-800">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Solicitante</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exames</th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paciente</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Solicitante</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exames</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                             {solicitacoes.map((s) => (
                                 <tr key={s.id_solicitacao}>
-                                    <td className="px-6 py-4 text-sm font-medium">{s.id_solicitacao}</td>
-                                    <td className="px-6 py-4 text-sm">{s.paciente.nome_completo}</td>
-                                    <td className="px-6 py-4 text-sm">{s.recepcionista.nome_completo}</td>
-                                    <td className="px-6 py-4 text-sm">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{s.id_solicitacao}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{s.paciente.nome_completo}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{s.recepcionista.nome_completo}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                         {s.itens_solicitacao.map(item => item.exame_catalogo.nome_exame).join(', ')}
                                     </td>
                                     <td className="px-6 py-4 text-center">

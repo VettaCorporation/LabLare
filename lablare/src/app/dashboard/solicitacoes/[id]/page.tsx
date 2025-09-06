@@ -7,23 +7,31 @@ import { toast } from 'react-toastify';
 import ExameSelection from '@/components/ExameSelection/ExameSelection';
 
 // Interfaces
-interface ExameItem {
+interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
     preco: number;
+<<<<<<< HEAD
     origem: string;
+=======
+    origem?: string; // Adicionado para compatibilidade com ExameSelection
+>>>>>>> main
 }
 interface SolicitacaoDetalhada {
     id_solicitacao: number;
     status: string;
     medico_solicitante: string | null;
     data_hora_solicitacao: string;
-    paciente: { nome_completo: string };
+    paciente: { nome_completo: string; id_paciente: number; };
     recepcionista: { nome_completo: string };
+<<<<<<< HEAD
     aprovador: { nome_completo: string } | null; // Adicionando o aprovador à interface
     itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: ExameItem }[];
     desconto_percentual: number;
     valor_final: number;
+=======
+    itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: Exame }[];
+>>>>>>> main
 }
 
 export default function SolicitacaoDetalhePage() {
@@ -36,8 +44,12 @@ export default function SolicitacaoDetalhePage() {
     const [loading, setLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+<<<<<<< HEAD
     const [examesEditados, setExamesEditados] = useState<ExameItem[]>([]);
     const [desconto, setDesconto] = useState<number>(0);
+=======
+    const [examesEditados, setExamesEditados] = useState<Exame[]>([]);
+>>>>>>> main
 
     const fetchDetalhes = useCallback(async () => {
         if (!id || sessionStatus !== 'authenticated') return;
@@ -49,9 +61,15 @@ export default function SolicitacaoDetalhePage() {
                 throw new Error(errorData.message || 'Falha ao buscar detalhes.');
             }
             const data: SolicitacaoDetalhada = await response.json();
+            // Ensure the 'origem' property is present for compatibility with ExameSelection, even if optional
+            const mappedExames = data.itens_solicitacao.map(item => ({ ...item.exame_catalogo, origem: 'catalogo' }));
             setSolicitacao(data);
+<<<<<<< HEAD
             setExamesEditados(data.itens_solicitacao.map(item => item.exame_catalogo));
             setDesconto(data.desconto_percentual || 0);
+=======
+            setExamesEditados(mappedExames);
+>>>>>>> main
         } catch (err: any) {
             toast.error(err.message);
             setSolicitacao(null);
@@ -97,8 +115,12 @@ export default function SolicitacaoDetalhePage() {
     
     const handleCancelEdit = () => {
         if (solicitacao) {
+<<<<<<< HEAD
             setExamesEditados(solicitacao.itens_solicitacao.map(item => item.exame_catalogo));
             setDesconto(solicitacao.desconto_percentual || 0);
+=======
+            setExamesEditados(solicitacao.itens_solicitacao.map(item => ({ ...item.exame_catalogo, origem: 'catalogo' })));
+>>>>>>> main
         }
         setIsEditing(false);
     };
@@ -164,14 +186,14 @@ export default function SolicitacaoDetalhePage() {
                 <div className="bg-white rounded-lg shadow p-6 space-y-4">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-800">Paciente</h2>
-                        <p>{solicitacao.paciente.nome_completo}</p>
+                        <p><a href={`/dashboard/pacientes/${solicitacao.paciente.id_paciente}`} className="text-blue-600 hover:underline">{solicitacao.paciente.nome_completo}</a></p>
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-gray-800">Exames Solicitados</h2>
                         {isEditing ? (
                             <div className="mt-4">
-                                <ExameSelection 
-                                    selectedExams={examesEditados}
+                                <ExameSelection
+                                    selectedExams={examesEditados as any}
                                     onExamesSelected={setExamesEditados} 
                                 />
                                 <div className="mt-4 p-4 border rounded-md">
