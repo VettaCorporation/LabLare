@@ -1,25 +1,14 @@
 import { NextResponse, NextRequest } from 'next/server';
-<<<<<<< HEAD
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-    try {
-        const id = parseInt(params.id, 10);
-        if (isNaN(id)) {
-=======
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import prisma from '@/lib/prisma'; // Use a instância centralizada
+import prisma from '@/lib/prisma';
 
 interface RouteParams {
-    params: {
-        id: string;
-    }
+  params: {
+    id: string;
+  }
 }
 
-// --- MÉTODO GET CORRIGIDO ---
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
@@ -54,67 +43,63 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json(solicitacao, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Erro ao buscar solicitação:`, error); // Removido params.id para segurança no log
+    console.error(`Erro ao buscar solicitação:`, error);
     return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
   }
 }
 
-// --- MÉTODO PUT PARA EDITAR ---
 export async function PUT(req: NextRequest, { params }: RouteParams) {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
-            return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
-        }
-        const solicitacaoId = parseInt(params.id, 10);
-        if (isNaN(solicitacaoId)) {
->>>>>>> main
-            return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
-        }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
+      return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
+    }
+    
+    const solicitacaoId = parseInt(params.id, 10);
+    if (isNaN(solicitacaoId)) {
+      return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
+    }
 
-        const solicitacao = await prisma.solicitacao.findUnique({
-            where: { id_solicitacao: id },
-            include: {
-                paciente: {
-                    select: { nome_completo: true }
-                },
-                recepcionista: {
-                    select: { nome_completo: true }
-                },
-                aprovador: { // Incluindo o aprovador na busca
-                    select: { nome_completo: true }
-                },
-                itens_solicitacao: {
-                    select: {
-                        id_item_solicitacao: true,
-                        exame_catalogo: {
-                            select: {
-                                id_exame_catalogo: true,
-                                nome_exame: true,
-                                preco: true,
-                                origem: true,
-                            }
-                        }
-                    }
-                }
-            }
+    const { examesSelecionados, desconto_percentual, valor_final } = await req.json();
+
+    await prisma.$transaction(async (prismaTx) => {
+        // 1. Deletar os itens de solicitação antigos
+        await prismaTx.itemSolicitacao.deleteMany({
+            where: { id_solicitacao: solicitacaoId },
         });
 
-        if (!solicitacao) {
-            return NextResponse.json({ message: 'Solicitação não encontrada.' }, { status: 404 });
-        }
+        // 2. Criar os novos itens de solicitação
+        const novosItens = await Promise.all(
+            examesSelecionados.map(async (exame: { id_exame_catalogo: number }) => {
+                const exameCatalogo = await prismaTx.exameCatalogo.findUnique({
+                    where: { id_exame_catalogo: exame.id_exame_catalogo },
+                    select: { preco: true }
+                });
 
-<<<<<<< HEAD
-        return NextResponse.json(solicitacao);
-    } catch (error) {
-        console.error('Erro ao buscar detalhes da solicitação:', error);
-        return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
-=======
-    } catch (error: any) {
-        console.error(`Erro ao atualizar solicitação ${params.id}:`, error);
-        return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
->>>>>>> main
-    }
+                return prismaTx.itemSolicitacao.create({
+                    data: {
+                        id_solicitacao: solicitacaoId,
+                        id_exame_catalogo: exame.id_exame_catalogo,
+                        preco_item: exameCatalogo?.preco ?? 0
+                    }
+                });
+            })
+        );
+
+        // 3. Atualizar a solicitação com o novo desconto e valor final
+        await prismaTx.solicitacao.update({
+            where: { id_solicitacao: solicitacaoId },
+            data: {
+                desconto_percentual,
+                valor_final,
+            }
+        });
+    });
+
+    return NextResponse.json({ message: 'Solicitação atualizada com sucesso.' }, { status: 200 });
+
+  } catch (error: any) {
+    console.error(`Erro ao atualizar solicitação ${params.id}:`, error);
+    return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
+  }
 }

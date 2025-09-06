@@ -1,10 +1,9 @@
 // Caminho: src/app/api/solicitacoes/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient, SolicitacaoStatus } from '@prisma/client';
+import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma'; // Usando o cliente centralizado
 
 // GET: Lista solicitações com filtro de status
 export async function GET(request: NextRequest) {
@@ -16,10 +15,14 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const statusFilter = searchParams.get('status');
+        const recepcionistaId = searchParams.get('recepcionistaId');
 
         let whereCondition: any = {};
         if (statusFilter) {
             whereCondition.status = statusFilter;
+        }
+        if (recepcionistaId) {
+            whereCondition.id_recepcionista = parseInt(recepcionistaId, 10);
         }
 
         const solicitacoes = await prisma.solicitacao.findMany({
@@ -27,6 +30,7 @@ export async function GET(request: NextRequest) {
             include: {
                 paciente: { select: { nome_completo: true } },
                 recepcionista: { select: { nome_completo: true } },
+                aprovador: { select: { nome_completo: true } }, // Adicionando o aprovador
                 itens_solicitacao: {
                     select: {
                         exame_catalogo: {

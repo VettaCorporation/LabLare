@@ -11,12 +11,13 @@ interface Exame {
     id_exame_catalogo: number;
     nome_exame: string;
     preco: number;
-<<<<<<< HEAD
     origem: string;
-=======
-    origem?: string; // Adicionado para compatibilidade com ExameSelection
->>>>>>> main
 }
+
+interface ExameItem extends Exame {
+    id_item_solicitacao: number;
+}
+
 interface SolicitacaoDetalhada {
     id_solicitacao: number;
     status: string;
@@ -24,15 +25,18 @@ interface SolicitacaoDetalhada {
     data_hora_solicitacao: string;
     paciente: { nome_completo: string; id_paciente: number; };
     recepcionista: { nome_completo: string };
-<<<<<<< HEAD
-    aprovador: { nome_completo: string } | null; // Adicionando o aprovador à interface
+    aprovador: { nome_completo: string } | null;
     itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: ExameItem }[];
     desconto_percentual: number;
     valor_final: number;
-=======
-    itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: Exame }[];
->>>>>>> main
 }
+
+// Função para limpar e converter o input de desconto
+const parseDiscountInput = (inputString: string): number => {
+    if (!inputString) return 0;
+    const cleanedString = inputString.replace(/<|>|%|\s/g, '').replace(',', '.');
+    return parseFloat(cleanedString) || 0;
+};
 
 export default function SolicitacaoDetalhePage() {
     const router = useRouter();
@@ -44,12 +48,9 @@ export default function SolicitacaoDetalhePage() {
     const [loading, setLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-<<<<<<< HEAD
     const [examesEditados, setExamesEditados] = useState<ExameItem[]>([]);
     const [desconto, setDesconto] = useState<number>(0);
-=======
-    const [examesEditados, setExamesEditados] = useState<Exame[]>([]);
->>>>>>> main
+    const [descontoInput, setDescontoInput] = useState<string>('');
 
     const fetchDetalhes = useCallback(async () => {
         if (!id || sessionStatus !== 'authenticated') return;
@@ -61,15 +62,11 @@ export default function SolicitacaoDetalhePage() {
                 throw new Error(errorData.message || 'Falha ao buscar detalhes.');
             }
             const data: SolicitacaoDetalhada = await response.json();
-            // Ensure the 'origem' property is present for compatibility with ExameSelection, even if optional
             const mappedExames = data.itens_solicitacao.map(item => ({ ...item.exame_catalogo, origem: 'catalogo' }));
             setSolicitacao(data);
-<<<<<<< HEAD
             setExamesEditados(data.itens_solicitacao.map(item => item.exame_catalogo));
             setDesconto(data.desconto_percentual || 0);
-=======
-            setExamesEditados(mappedExames);
->>>>>>> main
+            setDescontoInput(data.desconto_percentual ? data.desconto_percentual.toString() : '');
         } catch (err: any) {
             toast.error(err.message);
             setSolicitacao(null);
@@ -82,11 +79,18 @@ export default function SolicitacaoDetalhePage() {
         fetchDetalhes();
     }, [fetchDetalhes]);
 
+    const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawInput = e.target.value;
+        setDescontoInput(rawInput);
+        const parsedValue = parseDiscountInput(rawInput);
+        setDesconto(parsedValue);
+    };
+
     const valorTotalOriginal = (isEditing ? examesEditados : (solicitacao?.itens_solicitacao || []).map(item => item.exame_catalogo))
         .reduce((acc, exame) => acc + (exame.preco ? Number(exame.preco) : 0), 0);
 
-    const subtotalComDesconto = valorTotalOriginal * (1 - desconto / 100);
-
+    const subtotalComDesconto = valorTotalOriginal * (1 - (desconto / 100));
+    
     const handleApprove = async () => {
         if (!solicitacao) return;
         setIsProcessing(true);
@@ -96,7 +100,9 @@ export default function SolicitacaoDetalhePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     desconto_percentual: desconto,
-                    valor_final: subtotalComDesconto
+                    valor_final: subtotalComDesconto,
+                    // Note: This API endpoint (aprovar) needs to handle this data.
+                    // The backend code I provided previously already does this.
                 })
             });
             const data = await response.json();
@@ -115,12 +121,9 @@ export default function SolicitacaoDetalhePage() {
     
     const handleCancelEdit = () => {
         if (solicitacao) {
-<<<<<<< HEAD
             setExamesEditados(solicitacao.itens_solicitacao.map(item => item.exame_catalogo));
             setDesconto(solicitacao.desconto_percentual || 0);
-=======
-            setExamesEditados(solicitacao.itens_solicitacao.map(item => ({ ...item.exame_catalogo, origem: 'catalogo' })));
->>>>>>> main
+            setDescontoInput(solicitacao.desconto_percentual ? solicitacao.desconto_percentual.toString() : '');
         }
         setIsEditing(false);
     };
@@ -131,7 +134,8 @@ export default function SolicitacaoDetalhePage() {
         try {
             const payload = {
                 examesSelecionados: examesEditados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
-                desconto_percentual: desconto
+                desconto_percentual: desconto,
+                valor_final: subtotalComDesconto,
             };
             const response = await fetch(`/api/solicitacoes/${solicitacao.id_solicitacao}`, {
                 method: 'PUT',
@@ -194,7 +198,7 @@ export default function SolicitacaoDetalhePage() {
                             <div className="mt-4">
                                 <ExameSelection
                                     selectedExams={examesEditados as any}
-                                    onExamesSelected={setExamesEditados} 
+                                    onExamesSelected={(exames) => setExamesEditados(exames as ExameItem[])}
                                 />
                                 <div className="mt-4 p-4 border rounded-md">
                                     <h3 className="text-md font-semibold">Resumo da Edição</h3>
@@ -228,11 +232,9 @@ export default function SolicitacaoDetalhePage() {
                                 <label htmlFor="desconto" className="text-gray-600">Desconto (%):</label>
                                 <input
                                     id="desconto"
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={desconto}
-                                    onChange={(e) => setDesconto(Number(e.target.value))}
+                                    type="text"
+                                    value={descontoInput}
+                                    onChange={handleDiscountChange}
                                     className="w-20 p-2 border rounded-md text-right"
                                 />
                             </div>

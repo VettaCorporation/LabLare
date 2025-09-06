@@ -1,4 +1,3 @@
-// Caminho: src/app/dashboard/pedidos/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -13,7 +12,9 @@ interface Solicitacao {
     status: string;
     paciente: { nome_completo: string };
     aprovador?: { nome_completo: string } | null;
-    itens_solicitacao: { exame_catalogo: { preco: number } }[];
+    itens_solicitacao: { exame_catalogo: { preco: number, nome_exame: string } }[];
+    desconto_percentual: number | null;
+    valor_final: number | null;
 }
 
 interface DadosPagamento {
@@ -22,7 +23,6 @@ interface DadosPagamento {
     tipo_atendimento: 'Presencial';
 }
 
-// Componente para o "badge" de status
 const getStatusBadge = (status: string) => {
     const statusMap: { [key: string]: string } = {
         AGUARDANDO_APROVACAO: 'bg-yellow-100 text-yellow-800',
@@ -39,14 +39,12 @@ const getStatusBadge = (status: string) => {
     );
 };
 
-
 export default function MeusPedidosPage() {
     const { data: session, status: sessionStatus } = useSession();
     const router = useRouter();
     const [pedidos, setPedidos] = useState<Solicitacao[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // --- NOVOS ESTADOS PARA O MODAL DE PAGAMENTO ---
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [pedidoSelecionado, setPedidoSelecionado] = useState<Solicitacao | null>(null);
     const [dadosPagamento, setDadosPagamento] = useState<DadosPagamento>({
@@ -80,14 +78,12 @@ export default function MeusPedidosPage() {
         }
     }, [session, sessionStatus, router, fetchPedidos]);
 
-    // --- NOVAS FUNÇÕES PARA O FLUXO DE PAGAMENTO ---
     const handleOpenPaymentModal = (pedido: Solicitacao) => {
-        const valorTotal = pedido.itens_solicitacao.reduce((acc, item) => acc + Number(item.exame_catalogo.preco), 0);
+        const valorTotalFinal = pedido.valor_final ?? pedido.itens_solicitacao.reduce((acc, item) => acc + Number(item.exame_catalogo.preco), 0);
         setPedidoSelecionado(pedido);
         setDadosPagamento({
-            valor_pago: valorTotal,
-            forma_pagamento: 'PIX',
-            tipo_atendimento: 'Presencial',
+            ...dadosPagamento,
+            valor_pago: valorTotalFinal,
         });
         setIsModalOpen(true);
     };
@@ -113,7 +109,7 @@ export default function MeusPedidosPage() {
                 router.push('/dashboard/etiqueta');
             } else {
                 setIsModalOpen(false);
-                fetchPedidos(Number(session?.user?.id)); // Atualiza a lista
+                fetchPedidos(Number(session?.user?.id));
             }
         } catch (err: any) {
             toast.error(err.message);
@@ -121,8 +117,33 @@ export default function MeusPedidosPage() {
             setIsProcessingPayment(false);
         }
     };
+    
+    const getModalContent = (pedido: Solicitacao) => {
+        const subtotal = pedido.itens_solicitacao.reduce((acc, item) => acc + Number(item.exame_catalogo.preco), 0);
+        const desconto = subtotal * (pedido.desconto_percentual ?? 0) / 100;
+        const valorTotal = pedido.valor_final ?? subtotal - desconto;
+        
+        return (
+            <div className="space-y-4">
+                <div className="border-b pb-2">
+                    <h3 className="font-semibold text-lg">Resumo do Pedido</h3>
+                    <ul className="list-none mt-2 space-y-1">
+                        {pedido.itens_solicitacao.map((item, index) => (
+                            <li key={index} className="flex justify-between">
+                                <span>{item.exame_catalogo.nome_exame}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div className="text-right space-y-1 font-semibold text-gray-700">
+                    <p>Subtotal: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}</p>
+                    <p className="text-green-600">Desconto: -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(desconto)}</p>
+                    <p className="text-xl font-bold">Total a Pagar: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}</p>
+                </div>
+            </div>
+        );
+    };
 
-    // ... (resto do seu componente, sem alterações)
     if (loading || sessionStatus === 'loading') {
         return <div className="p-8">Carregando seus pedidos...</div>;
     }
@@ -155,7 +176,6 @@ export default function MeusPedidosPage() {
                                         <td className="px-6 py-4 text-sm">{getStatusBadge(pedido.status)}</td>
                                         <td className="px-6 py-4 text-sm">{pedido.aprovador?.nome_completo || '---'}</td>
                                         <td className="px-6 py-4 text-center text-sm">
-                                            {/* --- BOTÃO CONDICIONAL --- */}
                                             {pedido.status === 'AGUARDANDO_PAGAMENTO' && (
                                                 <button
                                                     onClick={() => handleOpenPaymentModal(pedido)}
@@ -173,22 +193,27 @@ export default function MeusPedidosPage() {
                 )}
             </div>
 
-            {/* --- NOVO MODAL DE PAGAMENTO --- */}
+            {/* --- MODAL DE PAGAMENTO --- */}
             {isModalOpen && pedidoSelecionado && (
-                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                <div 
+                    className="fixed inset-0 flex items-center justify-center z-50 transition-opacity duration-300" 
+                    style={{ 
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        backdropFilter: 'blur(4px)',
+                    }}
+                >
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md animate-fade-in">
                         <h2 className="text-xl font-bold mb-4">Finalizar Pagamento do Pedido #{pedidoSelecionado.id_solicitacao}</h2>
-                        <form onSubmit={handlePaymentSubmit}>
+                        {getModalContent(pedidoSelecionado)}
+                        <form onSubmit={handlePaymentSubmit} className="mt-4">
                             <div className="mb-4">
                                 <label htmlFor="valor_pago" className="block text-sm font-medium">Valor Total a Pagar</label>
                                 <input
                                     id="valor_pago"
-                                    type="number"
-                                    step="0.01"
-                                    value={dadosPagamento.valor_pago}
-                                    onChange={(e) => setDadosPagamento({...dadosPagamento, valor_pago: parseFloat(e.target.value) || 0})}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                                    required
+                                    type="text"
+                                    value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dadosPagamento.valor_pago)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 cursor-not-allowed"
+                                    readOnly
                                 />
                             </div>
                             <div className="mb-6">

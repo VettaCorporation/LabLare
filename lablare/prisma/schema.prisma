@@ -111,13 +111,16 @@ model Solicitacao {
 }
 
 model ItemSolicitacao {
-  id_item_solicitacao Int             @id @default(autoincrement())
-  status_item         String          @default("Aguardando Coleta") @db.VarChar(50)
+  id_item_solicitacao Int                   @id @default(autoincrement())
+  status_item         String                @default("Aguardando Coleta") @db.VarChar(50)
   id_solicitacao      Int
   id_exame_catalogo   Int
-  solicitacao         Solicitacao     @relation(fields: [id_solicitacao], references: [id_solicitacao])
-  exame_catalogo      ExameCatalogo   @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
+  preco_item          Decimal               @default(0.00) @db.Decimal(10, 2) // <-- Campo corrigido
+
+  solicitacao         Solicitacao           @relation(fields: [id_solicitacao], references: [id_solicitacao])
+  exame_catalogo      ExameCatalogo         @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
   laudo               Laudo?
+  
   @@index([id_solicitacao])
 }
 
