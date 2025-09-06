@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "import:exames": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/importar-exames.ts",
+    "update:origem": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/atualizar-origem-pardini.ts",
     "postinstall": "prisma generate",
     "script:run": "ts-node --project tsconfig.scripts.json"
   },

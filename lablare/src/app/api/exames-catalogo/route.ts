@@ -20,12 +20,9 @@ export async function GET(request: Request) {
     const origemFilter = searchParams.get('origem') || 'all';
     const skip = (page - 1) * pageSize;
 
-    const whereConditions: any = [];
-
+    const whereConditions: any[] = [];
+    
     if (searchTerm) {
-      // Usando uma abordagem alternativa para a busca case-insensitive
-      // que é compatível com a sua versão do Prisma.
-      // Note que 'mode: insensitive' foi removido para evitar o erro.
       whereConditions.push({
         OR: [
           { nome_exame: { contains: searchTerm } },
@@ -58,11 +55,34 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Erro ao buscar exames:', error);
+    // Aqui garantimos que o erro é retornado de forma segura, sem expor o erro do Prisma
     return NextResponse.json({ error: 'Não foi possível buscar os exames.' }, { status: 500 });
   }
 }
 
 // POST: Cria um novo exame
 export async function POST(request: Request) {
-  // ... (código POST inalterado, pois o erro está no GET)
+  try {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.nome_perfil !== 'Administrador') {
+      return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 });
+    }
+    const body = await request.json();
+    const { nome_exame, preco, descricao, codigo_lare } = body;
+    if (!nome_exame || preco === undefined) {
+      return NextResponse.json({ error: 'Nome do exame e preço são obrigatórios.' }, { status: 400 });
+    }
+    const novoExame = await prisma.exameCatalogo.create({
+      data: {
+        nome_exame,
+        preco: parseFloat(preco),
+        descricao,
+        codigo_lare: codigo_lare || null,
+      },
+    });
+    return NextResponse.json(novoExame, { status: 201 });
+  } catch (error) {
+    console.error('Erro ao criar exame:', error);
+    return NextResponse.json({ error: 'Não foi possível criar o exame.' }, { status: 500 });
+  }
 }

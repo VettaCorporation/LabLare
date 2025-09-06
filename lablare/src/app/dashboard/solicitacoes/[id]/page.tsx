@@ -11,6 +11,7 @@ interface ExameItem {
     id_exame_catalogo: number;
     nome_exame: string;
     preco: number;
+    origem: string;
 }
 interface SolicitacaoDetalhada {
     id_solicitacao: number;
@@ -19,7 +20,10 @@ interface SolicitacaoDetalhada {
     data_hora_solicitacao: string;
     paciente: { nome_completo: string };
     recepcionista: { nome_completo: string };
+    aprovador: { nome_completo: string } | null; // Adicionando o aprovador à interface
     itens_solicitacao: { id_item_solicitacao: number, exame_catalogo: ExameItem }[];
+    desconto_percentual: number;
+    valor_final: number;
 }
 
 export default function SolicitacaoDetalhePage() {
@@ -33,6 +37,7 @@ export default function SolicitacaoDetalhePage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [examesEditados, setExamesEditados] = useState<ExameItem[]>([]);
+    const [desconto, setDesconto] = useState<number>(0);
 
     const fetchDetalhes = useCallback(async () => {
         if (!id || sessionStatus !== 'authenticated') return;
@@ -46,6 +51,7 @@ export default function SolicitacaoDetalhePage() {
             const data: SolicitacaoDetalhada = await response.json();
             setSolicitacao(data);
             setExamesEditados(data.itens_solicitacao.map(item => item.exame_catalogo));
+            setDesconto(data.desconto_percentual || 0);
         } catch (err: any) {
             toast.error(err.message);
             setSolicitacao(null);
@@ -58,12 +64,22 @@ export default function SolicitacaoDetalhePage() {
         fetchDetalhes();
     }, [fetchDetalhes]);
 
+    const valorTotalOriginal = (isEditing ? examesEditados : (solicitacao?.itens_solicitacao || []).map(item => item.exame_catalogo))
+        .reduce((acc, exame) => acc + (exame.preco ? Number(exame.preco) : 0), 0);
+
+    const subtotalComDesconto = valorTotalOriginal * (1 - desconto / 100);
+
     const handleApprove = async () => {
         if (!solicitacao) return;
         setIsProcessing(true);
         try {
             const response = await fetch(`/api/solicitacoes/${solicitacao.id_solicitacao}/aprovar`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    desconto_percentual: desconto,
+                    valor_final: subtotalComDesconto
+                })
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
@@ -78,10 +94,11 @@ export default function SolicitacaoDetalhePage() {
     };
     
     const handleEditClick = () => setIsEditing(true);
+    
     const handleCancelEdit = () => {
-        // Restaura os exames originais ao cancelar
         if (solicitacao) {
             setExamesEditados(solicitacao.itens_solicitacao.map(item => item.exame_catalogo));
+            setDesconto(solicitacao.desconto_percentual || 0);
         }
         setIsEditing(false);
     };
@@ -92,6 +109,7 @@ export default function SolicitacaoDetalhePage() {
         try {
             const payload = {
                 examesSelecionados: examesEditados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
+                desconto_percentual: desconto
             };
             const response = await fetch(`/api/solicitacoes/${solicitacao.id_solicitacao}`, {
                 method: 'PUT',
@@ -103,12 +121,16 @@ export default function SolicitacaoDetalhePage() {
 
             toast.success('Solicitação atualizada com sucesso!');
             setIsEditing(false);
-            fetchDetalhes(); // Re-busca os dados para mostrar a lista atualizada
+            fetchDetalhes();
         } catch (err: any) {
             toast.error(err.message);
         } finally {
             setIsProcessing(false);
         }
+    };
+
+    const handleVoltar = () => {
+        router.push('/dashboard/aprovar-solicitacoes');
     };
 
     if (loading || sessionStatus === 'loading') {
@@ -119,9 +141,6 @@ export default function SolicitacaoDetalhePage() {
         return <div className="p-8 text-center text-red-500">Não foi possível carregar os dados da solicitação. Tente novamente.</div>;
     }
 
-    const valorTotal = (isEditing ? examesEditados : solicitacao.itens_solicitacao.map(item => item.exame_catalogo))
-                       .reduce((acc, exame) => acc + Number(exame.preco), 0);
-
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-6">
             <div className="flex justify-between items-start">
@@ -130,10 +149,15 @@ export default function SolicitacaoDetalhePage() {
                     <p className="text-gray-500">
                         Solicitado por {solicitacao.recepcionista.nome_completo} em {new Date(solicitacao.data_hora_solicitacao).toLocaleString('pt-BR')}
                     </p>
+                    {solicitacao.aprovador && (
+                        <p className="text-gray-500">
+                            Aprovado por {solicitacao.aprovador.nome_completo}
+                        </p>
+                    )}
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800`}>
-                    {solicitacao.status.replace(/_/g, ' ')}
-                </span>
+                <button onClick={handleVoltar} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
+                    Voltar para Aprovações
+                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -150,19 +174,52 @@ export default function SolicitacaoDetalhePage() {
                                     selectedExams={examesEditados}
                                     onExamesSelected={setExamesEditados} 
                                 />
+                                <div className="mt-4 p-4 border rounded-md">
+                                    <h3 className="text-md font-semibold">Resumo da Edição</h3>
+                                    <ul className="list-disc list-inside space-y-1 mt-2">
+                                        {examesEditados.map(item => (
+                                            <li key={item.id_exame_catalogo} className="flex justify-between items-center">
+                                                <span>{item.nome_exame}</span>
+                                                <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
                         ) : (
                             <ul className="list-disc list-inside space-y-1 mt-2">
                                 {solicitacao.itens_solicitacao.map(item => (
-                                    <li key={item.id_item_solicitacao}>{item.exame_catalogo.nome_exame}</li>
+                                    <li key={item.id_item_solicitacao} className="flex justify-between items-center">
+                                        <span>{item.exame_catalogo.nome_exame}</span>
+                                        <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.exame_catalogo.preco)}</span>
+                                    </li>
                                 ))}
                             </ul>
                         )}
                     </div>
-                     <div className="border-t pt-4 mt-4">
-                        <p className="text-right text-lg font-bold">
-                            Valor Total: {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    <div className="border-t pt-4 mt-4 space-y-2">
+                        <p className="text-right text-lg font-bold text-gray-700">
+                            Valor Total Original: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotalOriginal)}
                         </p>
+                        {isEditing && (
+                            <div className="flex items-center justify-end gap-2">
+                                <label htmlFor="desconto" className="text-gray-600">Desconto (%):</label>
+                                <input
+                                    id="desconto"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={desconto}
+                                    onChange={(e) => setDesconto(Number(e.target.value))}
+                                    className="w-20 p-2 border rounded-md text-right"
+                                />
+                            </div>
+                        )}
+                        {desconto > 0 && (
+                            <p className="text-right text-lg font-bold text-green-600">
+                                Subtotal com Desconto: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalComDesconto)}
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -175,15 +232,15 @@ export default function SolicitacaoDetalhePage() {
                             </p>
                             <div className="flex gap-4 border-t pt-4 mt-4">
                                {isEditing ? (
-                                   <>
-                                    <button onClick={handleSaveEdit} disabled={isProcessing} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 cursor-pointer">{isProcessing ? 'Salvando...' : 'Salvar'}</button>
+                                    <>
+                                    <button onClick={handleSaveEdit} disabled={isProcessing} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 cursor-pointer">{isProcessing ? 'Salvando...' : 'Salvar Edição'}</button>
                                     <button onClick={handleCancelEdit} disabled={isProcessing} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 cursor-pointer">Cancelar</button>
-                                   </>
+                                    </>
                                ) : (
-                                   <>
+                                    <>
                                     <button onClick={handleEditClick} disabled={isProcessing} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer">Editar</button>
                                     <button onClick={handleApprove} disabled={isProcessing} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-green-400 cursor-pointer">{isProcessing ? 'Aprovando...' : 'Aprovar'}</button>
-                                   </>
+                                    </>
                                )}
                             </div>
                         </div>
