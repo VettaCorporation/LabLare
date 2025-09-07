@@ -4,8 +4,9 @@ import { useState } from "react";
 import IconSearch from "../../../public/assets/img/icon-search.svg";
 import IconSetaDireita from "../../../public/assets/img/icon-seta-direita.svg";
 import IconSetaDireitaSemTraco from "../../../public/assets/img/icon-seta-direita-sem-traco.svg";
+import Image from "next/image";
 import IconHapvida from "../../../public/assets/img/logo-convenio-hapvida.png";
-import IconBradesco from "../../../public/assets/img/logo-convenio-santander.png";
+import IconBradesco from "../../../public/assets/img/logo-convenio-bradesco.png";
 import Link from "next/link";
 
 const BuscarExames = () => {
@@ -163,7 +164,7 @@ const BuscarExames = () => {
             {/* Cards de exames #4 */}
             <div className="w-67 h-64 pt-9 bg-white rounded-[10px] shadow-[0px_10px_40px_0px_rgba(0,0,0,0.10)]">
               <div className="w-48 ml-12 justify-start text-slate-900 text-2xl font-semibold font-sans uppercase">
-                Urina 
+                Urina
               </div>
               <div className="w-36 h-8 px-9 py-4 ml-11 mt-3 bg-lime-300 rounded-[50px] outlineoutline-offset-[-1px] outline-lime-300 inline-flex justify-center items-center gap-2.5 whitespace-nowrap">
                 <div className="justify-start text-slate-900 text-[9px] font-semibold font-sans capitalize">
@@ -224,10 +225,25 @@ const BuscarExames = () => {
               Convênios aceitos:
             </div>
 
+            <div className="flex items-center mr-172">
+              <Image
+                src={IconBradesco}
+                alt="Convênio Bradesco"
+                width={150}
+                height={90}
+              />
+              <Image
+                src={IconHapvida}
+                alt="Convênio Hapvida"
+                width={170}
+                height={110}
+              />
+            </div>
+
             <Link
               href="/exames"
               className="group px-6 py-3 rounded-full border border-slate-900 text-slate-900 font-semibold font-sans inline-flex items-center gap-2
-             hover:bg-slate-900 hover:text-white transition-colors duration-300"
+    hover:bg-slate-900 hover:text-white transition-colors duration-300"
               aria-label="Ver mais exames"
             >
               <span>Ver mais exames</span>
