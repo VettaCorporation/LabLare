@@ -43,6 +43,7 @@ export async function POST(req: NextRequest, { params }: AprovarRouteParams) {
                 valor_final: valor_final,
             },
         });
+        // aqui que ta dando erro #1
 
         return NextResponse.json({ 
             message: `Solicitação #${solicitacaoId} aprovada com sucesso! Aguardando pagamento.`,

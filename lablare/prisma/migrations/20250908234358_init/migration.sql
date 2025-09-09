@@ -25,6 +25,7 @@ CREATE TABLE `Usuario` (
     UNIQUE INDEX `Usuario_email_key`(`email`),
     UNIQUE INDEX `Usuario_cpf_login_key`(`cpf_login`),
     UNIQUE INDEX `Usuario_reset_password_token_key`(`reset_password_token`),
+    INDEX `Usuario_id_perfil_fkey`(`id_perfil`),
     PRIMARY KEY (`id_usuario`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -70,6 +71,9 @@ CREATE TABLE `Solicitacao` (
     `id_aprovador` INTEGER NULL,
     `status` ENUM('AGUARDANDO_APROVACAO', 'AGUARDANDO_COLETA', 'FINALIZAR_PAGAMENTO', 'AGUARDANDO_PAGAMENTO', 'FINALIZADO', 'CANCELADO') NOT NULL DEFAULT 'AGUARDANDO_APROVACAO',
 
+    INDEX `Solicitacao_id_aprovador_fkey`(`id_aprovador`),
+    INDEX `Solicitacao_id_paciente_fkey`(`id_paciente`),
+    INDEX `Solicitacao_id_recepcionista_fkey`(`id_recepcionista`),
     PRIMARY KEY (`id_solicitacao`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -81,6 +85,7 @@ CREATE TABLE `ItemSolicitacao` (
     `id_exame_catalogo` INTEGER NOT NULL,
 
     INDEX `ItemSolicitacao_id_solicitacao_idx`(`id_solicitacao`),
+    INDEX `ItemSolicitacao_id_exame_catalogo_fkey`(`id_exame_catalogo`),
     PRIMARY KEY (`id_item_solicitacao`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -93,6 +98,7 @@ CREATE TABLE `Pagamento` (
     `valor_pago` DECIMAL(10, 2) NOT NULL,
     `data_pagamento` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 
+    INDEX `Pagamento_id_solicitacao_fkey`(`id_solicitacao`),
     PRIMARY KEY (`id_pagamento`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -110,6 +116,8 @@ CREATE TABLE `Laudo` (
 
     UNIQUE INDEX `Laudo_id_item_solicitacao_key`(`id_item_solicitacao`),
     INDEX `Laudo_status_laudo_idx`(`status_laudo`),
+    INDEX `Laudo_id_biomedico_validador_fkey`(`id_biomedico_validador`),
+    INDEX `Laudo_id_tecnico_fkey`(`id_tecnico`),
     PRIMARY KEY (`id_laudo`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -122,6 +130,7 @@ CREATE TABLE `ParametroResultado` (
     `valores_referencia` VARCHAR(255) NULL,
     `id_laudo` INTEGER NOT NULL,
 
+    INDEX `ParametroResultado_id_laudo_fkey`(`id_laudo`),
     PRIMARY KEY (`id_parametro_resultado`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -137,6 +146,8 @@ CREATE TABLE `Orcamento` (
     `id_paciente` INTEGER NOT NULL,
     `id_recepcionista` INTEGER NOT NULL,
 
+    INDEX `Orcamento_id_paciente_fkey`(`id_paciente`),
+    INDEX `Orcamento_id_recepcionista_fkey`(`id_recepcionista`),
     PRIMARY KEY (`id_orcamento`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -147,6 +158,8 @@ CREATE TABLE `OrcamentoItem` (
     `id_exame_catalogo` INTEGER NOT NULL,
     `preco_exame` DECIMAL(10, 2) NOT NULL,
 
+    INDEX `OrcamentoItem_id_exame_catalogo_fkey`(`id_exame_catalogo`),
+    INDEX `OrcamentoItem_id_orcamento_fkey`(`id_orcamento`),
     PRIMARY KEY (`id_orcamento_item`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -167,31 +180,31 @@ CREATE TABLE `Configuracao` (
 ALTER TABLE `Usuario` ADD CONSTRAINT `Usuario_id_perfil_fkey` FOREIGN KEY (`id_perfil`) REFERENCES `Perfil`(`id_perfil`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_aprovador_fkey` FOREIGN KEY (`id_aprovador`) REFERENCES `Usuario`(`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_paciente_fkey` FOREIGN KEY (`id_paciente`) REFERENCES `Paciente`(`id_paciente`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_recepcionista_fkey` FOREIGN KEY (`id_recepcionista`) REFERENCES `Usuario`(`id_usuario`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Solicitacao` ADD CONSTRAINT `Solicitacao_id_aprovador_fkey` FOREIGN KEY (`id_aprovador`) REFERENCES `Usuario`(`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `ItemSolicitacao` ADD CONSTRAINT `ItemSolicitacao_id_exame_catalogo_fkey` FOREIGN KEY (`id_exame_catalogo`) REFERENCES `ExameCatalogo`(`id_exame_catalogo`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `ItemSolicitacao` ADD CONSTRAINT `ItemSolicitacao_id_solicitacao_fkey` FOREIGN KEY (`id_solicitacao`) REFERENCES `Solicitacao`(`id_solicitacao`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ItemSolicitacao` ADD CONSTRAINT `ItemSolicitacao_id_exame_catalogo_fkey` FOREIGN KEY (`id_exame_catalogo`) REFERENCES `ExameCatalogo`(`id_exame_catalogo`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `Pagamento` ADD CONSTRAINT `Pagamento_id_solicitacao_fkey` FOREIGN KEY (`id_solicitacao`) REFERENCES `Solicitacao`(`id_solicitacao`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Pagamento` ADD CONSTRAINT `Pagamento_id_solicitacao_fkey` FOREIGN KEY (`id_solicitacao`) REFERENCES `Solicitacao`(`id_solicitacao`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `Laudo` ADD CONSTRAINT `Laudo_id_biomedico_validador_fkey` FOREIGN KEY (`id_biomedico_validador`) REFERENCES `Usuario`(`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Laudo` ADD CONSTRAINT `Laudo_id_item_solicitacao_fkey` FOREIGN KEY (`id_item_solicitacao`) REFERENCES `ItemSolicitacao`(`id_item_solicitacao`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Laudo` ADD CONSTRAINT `Laudo_id_tecnico_fkey` FOREIGN KEY (`id_tecnico`) REFERENCES `Usuario`(`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `Laudo` ADD CONSTRAINT `Laudo_id_biomedico_validador_fkey` FOREIGN KEY (`id_biomedico_validador`) REFERENCES `Usuario`(`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `ParametroResultado` ADD CONSTRAINT `ParametroResultado_id_laudo_fkey` FOREIGN KEY (`id_laudo`) REFERENCES `Laudo`(`id_laudo`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -203,7 +216,7 @@ ALTER TABLE `Orcamento` ADD CONSTRAINT `Orcamento_id_paciente_fkey` FOREIGN KEY 
 ALTER TABLE `Orcamento` ADD CONSTRAINT `Orcamento_id_recepcionista_fkey` FOREIGN KEY (`id_recepcionista`) REFERENCES `Usuario`(`id_usuario`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `OrcamentoItem` ADD CONSTRAINT `OrcamentoItem_id_orcamento_fkey` FOREIGN KEY (`id_orcamento`) REFERENCES `Orcamento`(`id_orcamento`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `OrcamentoItem` ADD CONSTRAINT `OrcamentoItem_id_exame_catalogo_fkey` FOREIGN KEY (`id_exame_catalogo`) REFERENCES `ExameCatalogo`(`id_exame_catalogo`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `OrcamentoItem` ADD CONSTRAINT `OrcamentoItem_id_exame_catalogo_fkey` FOREIGN KEY (`id_exame_catalogo`) REFERENCES `ExameCatalogo`(`id_exame_catalogo`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `OrcamentoItem` ADD CONSTRAINT `OrcamentoItem_id_orcamento_fkey` FOREIGN KEY (`id_orcamento`) REFERENCES `Orcamento`(`id_orcamento`) ON DELETE RESTRICT ON UPDATE CASCADE;

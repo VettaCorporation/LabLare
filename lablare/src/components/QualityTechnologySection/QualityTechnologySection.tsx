@@ -1,7 +1,6 @@
 // components/QualityTechnologySection/QualityTechnologySection.tsx
 "use client";
 
-import Image from 'next/image';
 import IconCoracao from "../../../public/assets/img/icon-coracao.svg";
 import IconHospital from '../../../public/assets/img/icon-hospital.svg';
 import IconDoctor from '../../../public/assets/img/icon-doctor.svg';

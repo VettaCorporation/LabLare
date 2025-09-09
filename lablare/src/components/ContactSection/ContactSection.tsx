@@ -6,65 +6,89 @@ import MapaLocalizacao from '../../../public/assets/img/mapa-localizacao.png';
 
 const ContactSection: React.FC = () => {
   return (
-    <section className="bg-[#0047AB] py-16">
+    <section className="bg-[#003580] py-16">
       <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-12">
         <div className="md:w-1/2 w-full text-white">
-          <h2 className="text-3xl font-bold mb-8 text-center md:text-left">NOS CONTATE</h2>
           <form className="space-y-6">
             <div>
-              <label htmlFor="name" className="sr-only">Nome</label>
+              <label htmlFor="name" className="sr-only">
+                Nome
+              </label>
               <input
                 type="text"
                 id="name"
                 placeholder="Nome"
-                className="w-full px-5 py-3 rounded-md bg-[#005ABF] text-white placeholder-gray-300 border border-[#005ABF] focus:outline-none focus:ring-2 focus:ring-[#3CB371]"
+                className="w-[556px] px-7 py-4 bg-white rounded-2xl outline outline-offset-[-1px] outline-lime-600 inline-flex justify-start items-start gap-2.5 overflow-hidden"
               />
             </div>
             <div>
-              <label htmlFor="email" className="sr-only">Email</label>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
               <input
                 type="email"
                 id="email"
                 placeholder="Email"
-                className="w-full px-5 py-3 rounded-md bg-[#005ABF] text-white placeholder-gray-300 border border-[#005ABF] focus:outline-none focus:ring-2 focus:ring-[#3CB371]"
+                className="w-[556px] px-7 py-4 bg-white rounded-2xl outline outline-offset-[-1px] outline-lime-600 inline-flex justify-start items-start gap-2.5 overflow-hidden"
               />
             </div>
             <div>
-              <label htmlFor="phone" className="sr-only">Telefone</label>
+              <label htmlFor="phone" className="sr-only">
+                Telefone
+              </label>
               <input
                 type="tel"
                 id="phone"
                 placeholder="Telefone"
-                className="w-full px-5 py-3 rounded-md bg-[#005ABF] text-white placeholder-gray-300 border border-[#005ABF] focus:outline-none focus:ring-2 focus:ring-[#3CB371]"
+                className="w-[556px] px-7 py-4 bg-white rounded-2xl outline outline-offset-[-1px] outline-lime-600 inline-flex justify-start items-start gap-2.5 overflow-hidden"
               />
             </div>
             <div>
-              <label htmlFor="message" className="sr-only">Mensagem</label>
+              <label htmlFor="message" className="sr-only">
+                Mensagem
+              </label>
               <textarea
                 id="message"
                 placeholder="Mensagem"
                 rows={5}
-                className="w-full px-5 py-3 rounded-md bg-[#005ABF] text-white placeholder-gray-300 border border-[#005ABF] focus:outline-none focus:ring-2 focus:ring-[#3CB371] resize-none"
+                className="w-[556px] px-7 py-4 bg-white rounded-2xl outline outline-offset-[-1px] outline-lime-600 inline-flex justify-start items-start gap-2.5 overflow-hidden"
               ></textarea>
             </div>
-            <button
-              type="submit"
-              className="w-full bg-[#3CB371] hover:bg-[#349860] text-white font-semibold py-3 rounded-md transition-colors duration-200 text-lg shadow-lg cursor-pointer"
-            >
-              Enviar mensagem
-            </button>
           </form>
         </div>
 
-        <div className="md:w-1/2 w-full flex flex-col justify-center items-center md:items-end text-center md:text-right mt-10 md:mt-0">
-          <p className="text-sm text-white mb-2">Para mais informações,</p>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-8">NOS CONTATE</h1>
+        <div className="w-[691px] inline-flex flex-col justify-start items-center gap-[5px] overflow-hidden">
+          <div className="text-center justify-start text-lime-300 text-xl font-semibold font-montserrat leading-normal tracking-tight">
+            Para mais informações,
+          </div>
+          <div className="text-center justify-start text-white text-5xl font-bold font-sans leading-[50px] tracking-tight">
+            NOS CONTATE
+          </div>
           <button
-            type="submit" // Considerar que este botão enviará o formulário do lado esquerdo.
-                          // Se o formulário tiver um 'id', este botão pode ser 'form="form-id-aqui"'
-            className="w-full md:w-auto bg-[#3CB371] hover:bg-[#349860] text-white font-semibold py-3 px-12 rounded-md transition-colors duration-200 text-lg shadow-lg cursor-pointer"
-          >
-            Enviar Mensagem
+            type="button"
+            onClick={() => {
+              /* sua ação aqui */
+            }}
+            className="
+            group relative
+            w-96 h-14 px-9 py-5
+            bg-lime-500 rounded-[5px]
+            inline-flex justify-center items-center gap-2.5
+            text-white text-xl font-light mt-3 font-sans leading-7
+            transition-all duration-150
+            hover:brightness-110 active:scale-95
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-lime-500
+          "
+                  >
+                    Enviar Mensagem
+                    <span
+                      className="
+              pointer-events-none absolute inset-0
+              opacity-0 group-active:opacity-100
+              transition-opacity duration-150
+              bg-white/10
+            "
+            />
           </button>
         </div>
       </div>

@@ -1,9 +1,9 @@
 // components/HeroSection/HeroSection.tsx
 "use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import IconLaboratorio from '../../../public/assets/img/icon-laboratorio-banner.png'; 
+import Image from "next/image";
+import Link from "next/link";
+import IconLaboratorio from "../../../public/assets/img/icon-laboratorio-banner.png";
 
 const HeroSection: React.FC = () => {
   return (
@@ -41,7 +41,7 @@ const HeroSection: React.FC = () => {
             <span className="text-lime-300">NOSSA</span> MISSÃO
           </h1>
           <Link
-            href="/resultados-exames"
+            href="/login"
             className="inline-block bg-[#63C400] hover:bg-[#349860] text-white font-semibold py-3 px-7 rounded-full transition-colors duration-300 shadow-lg transform hover:scale-105 text-lg"
           >
             Resultados de Exames

@@ -12,18 +12,28 @@ interface MonthlyOrcamentoChartProps {
 
 export default function MonthlyOrcamentoChart({ data }: MonthlyOrcamentoChartProps) {
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-gray-700 h-96">
-      <h2 className="text-xl font-semibold text-gray-100 mb-4">Faturamento do Mês</h2>
+    <div className="bg-white backdrop-blur-sm rounded-lg p-6 shadow-lg h-96">
+      <h2 className="text-xl font-semibold text-[#003580] mb-4">
+        Faturamento do Mês
+      </h2>
       <ResponsiveContainer width="100%" height="85%">
-        <BarChart data={data} /* ... (props) */ >
+        <BarChart data={data} /* ... (props) */>
           <XAxis dataKey="name" stroke="#a1a1aa" />
           <YAxis stroke="#a1a1aa" />
           <Tooltip
-            cursor={{ fill: 'rgba(113, 113, 122, 0.3)' }}
-            contentStyle={{ backgroundColor: '#272740', borderColor: '#555', color: '#fff' }}
-            itemStyle={{ color: '#fff' }}
+            cursor={{ fill: "rgba(113, 113, 122, 0.3)" }}
+            contentStyle={{
+              backgroundColor: "#272740",
+              borderColor: "#555",
+              color: "#fff",
+            }}
+            itemStyle={{ color: "#fff" }}
           />
-          <Legend formatter={(value) => <span className="text-gray-300">{value}</span>}/>
+          <Legend
+            formatter={(value) => (
+              <span className="text-gray-300">{value}</span>
+            )}
+          />
           {/* ▼▼▼ ALTERAÇÃO AQUI ▼▼▼ */}
           <Bar dataKey="Orçamentos" fill="#22C55E" /> {/* Cor verde original */}
         </BarChart>

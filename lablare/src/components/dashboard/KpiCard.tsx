@@ -33,18 +33,18 @@ export default function KpiCard({ title, value, icon: Icon, colorClass }: KpiCar
 
 
  return (
-    // ▼▼▼ ALTERAÇÃO AQUI ▼▼▼
-    // Fundo mais escuro e sólido, como no seu print
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-gray-400 flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-400">{title}</p>
-        <p className="text-3xl font-bold text-gray-100 mt-1">{value}</p>
-      </div>
-      {/* ▼▼▼ ALTERAÇÃO AQUI ▼▼▼ */}
-      {/* Usando a cor da classe diretamente, sem opacidade ou modificação */}
-      <div className={`p-3 rounded-full ${colorClass}`}>
-        <Icon className="h-8 w-8 text-white" />
-      </div>
-    </div>
-  );
+   // ▼▼▼ ALTERAÇÃO AQUI ▼▼▼
+   // Fundo mais escuro e sólido, como no seu print
+   <div className="bg-white backdrop-blur-sm rounded-lg p-6 shadow-lg flex items-center justify-between">
+     <div>
+       <p className="text-sm font-medium text-[#003580]">{title}</p>
+       <p className="text-3xl font-bold text-[#003580] mt-1">{value}</p>
+     </div>
+     {/* ▼▼▼ ALTERAÇÃO AQUI ▼▼▼ */}
+     {/* Usando a cor da classe diretamente, sem opacidade ou modificação */}
+     <div className={`p-3 rounded-full ${colorClass}`}>
+       <Icon className="h-8 w-8 text-white" />
+     </div>
+   </div>
+ );
 }

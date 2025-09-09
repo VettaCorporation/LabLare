@@ -16,7 +16,7 @@ const COLORS = ['#22C55E', '#3B82F6', '#14B8A6']; // Verde, Azul, Verde-água
 export default function InfoPieChart({ title, data }: InfoPieChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-dark-card rounded-lg p-6 shadow-lg border border-gray-700 h-80 flex flex-col justify-center items-center">
+      <div className="bg-white rounded-lg p-6 shadow-lg  h-80 flex flex-col justify-center items-center">
         <h2 className="text-xl font-semibold text-text-light mb-4">{title}</h2>
         <p className="text-text-dark">Dados não disponíveis.</p>
       </div>
@@ -24,7 +24,7 @@ export default function InfoPieChart({ title, data }: InfoPieChartProps) {
   }
 
   return (
-    <div className="bg-dark-card rounded-lg p-6 shadow-lg border border-gray-700 h-80 col-span-1">
+    <div className="bg-white rounded-lg p-6 shadow-lg h-80 col-span-1">
       <h2 className="text-xl font-semibold text-text-light mb-4">{title}</h2>
       <ResponsiveContainer width="100%" height="80%">
         <PieChart>
