@@ -48,19 +48,35 @@ interface DashboardStats {
   };
 }
 
-// Componente de Card genérico para envolver os módulos do dashboard
-const DashboardCard = ({ title, children, viewAllLink }: { title: string, children: ReactNode, viewAllLink?: string }) => (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{title}</h2>
-            {viewAllLink && (
-                <Link href={viewAllLink} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
-                    Ver todos
-                </Link>
-            )}
-        </div>
-        <div className="flex-grow">{children}</div>
+const DashboardCard = ({
+  title,
+  children,
+  viewAllLink,
+  className = "",
+}: {
+  title: string;
+  children: ReactNode;
+  viewAllLink?: string;
+  className?: string;
+}) => (
+  <div
+    className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full min-h-[420px] flex flex-col ${className}`}
+  >
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+        {title}
+      </h2>
+      {viewAllLink && (
+        <Link
+          href={viewAllLink}
+          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+          Ver todos
+        </Link>
+      )}
     </div>
+    <div className="flex-grow min-h-0">{children}</div>
+  </div>
 );
 
 export default function DashboardPage() {
@@ -133,34 +149,81 @@ export default function DashboardPage() {
   // Tela de Dashboard (quando os dados estão prontos)
   if (stats) {
     return (
-      <div className="space-y-8 p-4 sm:p-8"> {/* Padding ajustado para telas menores */}
+      <div className="space-y-8 p-4 sm:p-8">
+        {" "}
+        {/* Padding ajustado para telas menores */}
         {/* Seção de KPIs */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard title="Faturamento (30 dias)" value={stats.kpis.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={CurrencyDollarIcon} colorClass="bg-green-500" />
-          <KpiCard title="Novos Pacientes (30 dias)" value={stats.kpis.newPatients} icon={UserGroupIcon} colorClass="bg-blue-500" />
-          <KpiCard title="Solicitações (30 dias)" value={stats.kpis.requests} icon={ChartBarIcon} colorClass="bg-purple-500" />
-          <KpiCard title="Entrega de Laudos (Média)" value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`} icon={ClockIcon} colorClass="bg-orange-500" />
+          <KpiCard
+            title="Faturamento (30 dias)"
+            value={stats.kpis.revenue.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })}
+            icon={CurrencyDollarIcon}
+            colorClass="bg-green-500"
+          />
+          <KpiCard
+            title="Novos Pacientes (30 dias)"
+            value={stats.kpis.newPatients}
+            icon={UserGroupIcon}
+            colorClass="bg-blue-500"
+          />
+          <KpiCard
+            title="Solicitações (30 dias)"
+            value={stats.kpis.requests}
+            icon={ChartBarIcon}
+            colorClass="bg-purple-500"
+          />
+          <KpiCard
+            title="Entrega de Laudos (Média)"
+            value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`}
+            icon={ClockIcon}
+            colorClass="bg-orange-500"
+          />
         </div>
-        
         {/* Seção principal com gráfico de faturamento */}
         <div className="lg:col-span-3">
-            <MonthlyOrcamentoChart data={stats.chartData.monthlyOrcamentos} />
+          <MonthlyOrcamentoChart data={stats.chartData.monthlyOrcamentos} />
         </div>
-        
-        {/* Seção com os gráficos de pizza e a timeline de pacientes - CORRIGIDO O ALINHAMENTO */}
+        {/* Seção com os gráficos de pizza e a timeline */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-            <InfoPieChart title="Top 5 Exames Mais Solicitados" data={stats.chartData.topExams} />
-            <InfoPieChart title="Faturamento por Tipo de Atendimento" data={stats.chartData.revenueByType} />
-            <DashboardCard title="Atividade Recente de Pacientes" viewAllLink="/dashboard/pacientes">
-              <PatientActivityTimeline patients={stats.recentPatients || []} />
-            </DashboardCard>
-        </div>
+          <DashboardCard
+            title="Top 5 Exames Mais Solicitados"
+            className="min-h-[420px]"
+          >
+            <div className="h-full min-h-0">
+              <InfoPieChart data={stats.chartData.topExams} />
+            </div>
+          </DashboardCard>
 
+          <DashboardCard
+            title="Faturamento por Tipo de Atendimento"
+            className="min-h-[420px]"
+          >
+            <div className="h-full min-h-0">
+              <InfoPieChart data={stats.chartData.revenueByType} />
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title="Atividade Recente de Pacientes"
+            viewAllLink="/dashboard/pacientes"
+            className="min-h-[420px]"
+          >
+            <div className="h-full min-h-0 overflow-auto">
+              <PatientActivityTimeline patients={stats.recentPatients || []} />
+            </div>
+          </DashboardCard>
+        </div>
         {/* Seção da tabela de solicitações */}
         <div className="mt-8 box-shadow rounded-md">
-            <DashboardCard title="Últimas Solicitações" viewAllLink="/dashboard/solicitar-exame">
-                <RecentRequests requests={stats.recentRequests || []} />
-            </DashboardCard>
+          <DashboardCard
+            title="Últimas Solicitações"
+            viewAllLink="/dashboard/solicitar-exame"
+          >
+            <RecentRequests requests={stats.recentRequests || []} />
+          </DashboardCard>
         </div>
       </div>
     );

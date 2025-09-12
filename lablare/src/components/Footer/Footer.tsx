@@ -1,70 +1,123 @@
 // src/components/Footer/Footer.tsx
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import LogoLab from '../../../public/assets/img/Logo.png'; // Verifique o caminho real do seu logo
-import MapComponent from '../MapComponent/MapComponent'; // Importe o componente do mapa
+import { MapPin, Phone, Mail, Clock, ChevronRight } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import LogoLab from "../../../public/assets/img/Logo.png";
+import MapComponent from "../MapComponent/MapComponent";
 
 const Footer: React.FC = () => {
   return (
-    <>
-      {/* Rodapé Principal */}
-      <footer className="bg-gray-900 text-gray-300 py-12">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {/* Coluna 1: Logo e Descrição */}
-          <div className="col-span-1">
-            <Link href="/">
-              <Image
-                src={LogoLab}
-                alt="Lare Laboratório Logo"
-                width={100}
-                height={32}
-                className="mb-4"
-              />
-            </Link>
-            <p className="text-sm">
-              Lare Laboratório: Sua saúde é nossa missão. Oferecemos exames precisos e atendimento humanizado.
-            </p>
-          </div>
-
-          {/* Coluna 2: Informações de Contato */}
-          <div className="col-span-1">
-            <h3 className="text-white font-semibold mb-4 text-lg">Informações</h3>
-            <ul className="space-y-2 text-sm">
-              <li>Endereço: Rua Exemplo, 123 - Cidade, UF</li>
-              <li>Telefone: (XX) XXXX-XXXX</li>
-              <li>Email: contato@larelaboratorio.com.br</li>
-              <li>Horário: Seg-Sex: 7h-18h, Sáb: 8h-12h</li>
-            </ul>
-          </div>
-
-          {/* Coluna 3: Links Úteis */}
-          <div className="col-span-1">
-            <h3 className="text-white font-semibold mb-4 text-lg">Links Úteis</h3>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/quem-somos" className="hover:underline">Quem Somos</Link></li>
-              <li><Link href="/exames" className="hover:underline">Exames</Link></li>
-              <li><Link href="/convenios" className="hover:underline">Convênios</Link></li>
-              <li><Link href="/contato" className="hover:underline">Contato</Link></li>
-              <li><Link href="/politica-privacidade" className="hover:underline">Política de Privacidade</Link></li>
-            </ul>
-          </div>
-
-          {/* Coluna 4: Mapa de Localização (mini - AGORA INTERATIVO) */}
-          <div className="col-span-1">
-            <h3 className="text-white font-semibold mb-4 text-lg">Nossa Localização</h3>
-            {/* Substitua latitude e longitude pelas coordenadas exatas da sua localização */}
-            <MapComponent latitude={-23.550520} longitude={-46.633308} zoom={16} />
-          </div>
+    <footer className="relative isolate z-50 bg-white text-gray-300 pt-12 pb-0 overflow-x-hidden">
+      <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {/* Coluna 1 */}
+        <div className="col-span-1">
+          <Link href="/">
+            <Image
+              src={LogoLab}
+              alt="Lare Laboratório Logo"
+              width={100}
+              height={32}
+              className="mb-4"
+            />
+          </Link>
+          <p className="text-[#252B42] text-sm mt-8 font-sans">
+            <span className="font-bold text-lime-500">Lare Laboratório:</span>{" "}
+            Sua saúde é nossa missão. Oferecemos exames precisos e atendimento
+            humanizado.
+          </p>
         </div>
 
-        {/* Direitos Autorais na parte inferior */}
-        <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} Lare Laboratório. Todos os direitos reservados.</p>
+        {/* Coluna 2 */}
+        <div className="col-span-1">
+          <h3 className="text-[#252B42] font-sans font-bold">Links Úteis</h3>
+          <ul className=" space-y-2 text-neutral-500 text-sm font-montserrat mt-7">
+            <li>
+              <Link href="/quem-somos" className="hover:underline">
+                Quem Somos
+              </Link>
+            </li>
+            <li>
+              <Link href="/exames" className="hover:underline">
+                Nossos Exames
+              </Link>
+            </li>
+            <li>
+              <Link href="/politica-privacidade" className="hover:underline">
+                Resultados Online
+              </Link>
+            </li>
+            <li>
+              <Link href="/contato" className="hover:underline">
+                Contato
+              </Link>
+            </li>
+          </ul>
         </div>
-      </footer>
-    </>
+
+        {/* Coluna 3: Informações */}
+        <div className="col-span-1 lg:-ml-15">
+          <h3 className="text-[#252B42] font-semibold text-lg mb-2">
+            Informações
+          </h3>
+          <ul className="space-y-3 text-sm text-neutral-500 font-montserrat leading-normal tracking-tight mt-7">
+            <li className="flex items-start justify-between">
+              <span className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-lime-600 mt-0.5" aria-hidden />
+                <span>
+                  Endereço: R. dos Martírios, n° 98 - Centro, Goiana - PE
+                </span>
+              </span>
+            </li>
+            <li className="flex items-start justify-between">
+              <span className="flex items-start gap-2">
+                <Phone className="w-4 h-4 text-lime-600 mt-0.5" aria-hidden />
+                <span>Telefone: +55 81 3626-0470</span>
+              </span>
+            </li>
+            <li className="flex items-start justify-between">
+              <span className="flex items-start gap-2">
+                <Mail className="w-4 h-4 text-lime-600 mt-0.5" aria-hidden />
+                <span>Email: contato@larelaboratorio.com.br</span>
+              </span>
+            </li>
+            <li className="flex items-start justify-between">
+              <span className="flex items-start gap-2">
+                <Clock className="w-4 h-4 text-lime-600 mt-0.5" aria-hidden />
+                <span>
+                  Horário: Segunda á Sexta das 7h a 17h.
+                  <br />
+                  Fechamos aos sábados e domingos.
+                </span>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Coluna 4: Mapa gratuito (OpenStreetMap + Leaflet) */}
+        <div className="col-span-1">
+          <div className="rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+            <MapComponent
+              latitude={-7.572} //
+              longitude={-34.999} //
+              zoom={18}
+              height={220}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-neutral-400">
+            Mapa por OpenStreetMap &amp; Leaflet — gratuito.
+          </p>
+        </div>
+      </div>
+
+      {/* Barra inferior */}
+      <div className="w-full h-20 bg-lime-300 flex items-center justify-center mt-8">
+        <div className="text-slate-900 text-base font-jost text-center whitespace-nowrap">
+          &copy; {new Date().getFullYear()} Todos os direitos reservados
+        </div>
+      </div>
+    </footer>
   );
 };
 

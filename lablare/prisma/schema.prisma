@@ -1,5 +1,3 @@
-// Este é o seu arquivo de schema do Prisma, representando o banco de dados 'lablare'.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,56 +7,176 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =================================================================
-// Modelos do Prisma
-// =================================================================
-
 model Perfil {
-  id_perfil   Int      @id @default(autoincrement())
-  nome_perfil String   @unique @db.VarChar(50)
-  usuarios    Usuario[]
+  id_perfil   Int       @id @default(autoincrement())
+  nome_perfil String    @unique @db.VarChar(50)
   privilegios String?   @db.Text
+  usuarios    Usuario[]
 }
 
 model Usuario {
-  id_usuario            Int             @id @default(autoincrement())
-  nome_completo         String          @db.VarChar(255)
-  email                 String          @unique @db.VarChar(255)
-  cpf_login             String?         @unique @db.VarChar(11)
-  hash_senha            String          @db.VarChar(255)
-  id_perfil             Int
-  data_criacao          DateTime        @default(now()) @db.Timestamp(0)
-  ativo                 Boolean         @default(true)
-  primeiro_login        Boolean         @default(false)
-  reset_password_token  String?         @unique @db.VarChar(255)
-  reset_password_expires DateTime?
-
-  // Relações
-  perfil                Perfil          @relation(fields: [id_perfil], references: [id_perfil])
+  id_usuario                 Int           @id @default(autoincrement())
+  nome_completo              String        @db.VarChar(255)
+  email                      String        @unique @db.VarChar(255)
+  cpf_login                  String?       @unique @db.VarChar(11)
+  hash_senha                 String        @db.VarChar(255)
+  id_perfil                  Int
+  data_criacao               DateTime      @default(now()) @db.Timestamp(0)
+  ativo                      Boolean       @default(true)
+  primeiro_login             Boolean       @default(false)
+  reset_password_token       String?       @unique @db.VarChar(255)
+  reset_password_expires     DateTime?
+  laudos_validados           Laudo[]       @relation("BiomedicoLaudos")
+  laudos_tecnicos            Laudo[]       @relation("TecnicoLaudos")
+  orcamentos_criados         Orcamento[]   @relation("RecepcionistaOrcamentos")
+  solicitacoes_aprovadas     Solicitacao[] @relation("AprovadorSolicitacoes")
   solicitacoes_recepcionadas Solicitacao[] @relation("RecepcionistaSolicitacoes")
-  
-  // --- ADICIONADO PARA O FLUXO DE APROVAÇÃO ---
-  solicitacoes_aprovadas Solicitacao[] @relation("AprovadorSolicitacoes")
+  perfil                     Perfil        @relation(fields: [id_perfil], references: [id_perfil])
 
-  laudos_tecnicos       Laudo[]         @relation("TecnicoLaudos")
-  laudos_validados      Laudo[]         @relation("BiomedicoLaudos")
-  orcamentos_criados Orcamento[]     @relation("RecepcionistaOrcamentos")
+  @@index([id_perfil], map: "Usuario_id_perfil_fkey")
 }
 
 model Paciente {
-  id_paciente      Int             @id @default(autoincrement())
-  nome_completo    String          @db.VarChar(255)
-  cpf              String          @unique @db.VarChar(14)
-  data_nascimento  DateTime        @db.Date
-  sexo             String?         @db.VarChar(20)
-  contato          String?         @db.VarChar(20)
-  data_cadastro    DateTime        @default(now()) @db.Timestamp(0)
-  email            String?         @unique @db.VarChar(255)
-  
-  solicitacoes     Solicitacao[]
-  orcamentos       Orcamento[]
+  id_paciente     Int           @id @default(autoincrement())
+  nome_completo   String        @db.VarChar(255)
+  cpf             String        @unique @db.VarChar(14)
+  data_nascimento DateTime      @db.Date
+  sexo            String?       @db.VarChar(20)
+  contato         String?       @db.VarChar(20)
+  data_cadastro   DateTime      @default(now()) @db.Timestamp(0)
+  email           String?       @unique @db.VarChar(255)
+  orcamentos      Orcamento[]
+  solicitacoes    Solicitacao[]
 
   @@index([nome_completo])
+}
+
+model ExameCatalogo {
+  id_exame_catalogo Int               @id @default(autoincrement())
+  codigo_pardini    String?           @unique
+  codigo_lare       String?           @unique
+  nome_exame        String            @db.VarChar(100)
+  descricao         String?           @db.Text
+  preco             Decimal           @db.Decimal(10, 2)
+  origem            OrigemExame       @default(LARE)
+  itens_solicitacao ItemSolicitacao[]
+  itens_orcamento   OrcamentoItem[]
+}
+
+model Solicitacao {
+  id_solicitacao        Int               @id @default(autoincrement())
+  data_hora_solicitacao DateTime          @default(now()) @db.Timestamp(0)
+  medico_solicitante    String?           @db.VarChar(255)
+  id_paciente           Int
+  id_recepcionista      Int
+  id_aprovador          Int?
+  status                SolicitacaoStatus @default(AGUARDANDO_APROVACAO)
+  itens_solicitacao     ItemSolicitacao[]
+  pagamentos            Pagamento[]
+  aprovador             Usuario?          @relation("AprovadorSolicitacoes", fields: [id_aprovador], references: [id_usuario])
+  paciente              Paciente          @relation(fields: [id_paciente], references: [id_paciente])
+  recepcionista         Usuario           @relation("RecepcionistaSolicitacoes", fields: [id_recepcionista], references: [id_usuario])
+
+  @@index([id_aprovador], map: "Solicitacao_id_aprovador_fkey")
+  @@index([id_paciente], map: "Solicitacao_id_paciente_fkey")
+  @@index([id_recepcionista], map: "Solicitacao_id_recepcionista_fkey")
+}
+
+model ItemSolicitacao {
+  id_item_solicitacao Int           @id @default(autoincrement())
+  status_item         String        @default("Aguardando Coleta") @db.VarChar(50)
+  id_solicitacao      Int
+  id_exame_catalogo   Int
+  exame_catalogo      ExameCatalogo @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
+  solicitacao         Solicitacao   @relation(fields: [id_solicitacao], references: [id_solicitacao])
+  laudo               Laudo?
+
+  @@index([id_solicitacao])
+  @@index([id_exame_catalogo], map: "ItemSolicitacao_id_exame_catalogo_fkey")
+}
+
+model Pagamento {
+  id_pagamento     Int         @id @default(autoincrement())
+  id_solicitacao   Int
+  tipo_atendimento String      @db.VarChar(50)
+  forma_pagamento  String?     @db.VarChar(50)
+  valor_pago       Decimal     @db.Decimal(10, 2)
+  data_pagamento   DateTime    @default(now()) @db.Timestamp(0)
+  solicitacao      Solicitacao @relation(fields: [id_solicitacao], references: [id_solicitacao])
+
+  @@index([id_solicitacao], map: "Pagamento_id_solicitacao_fkey")
+}
+
+model Laudo {
+  id_laudo               Int                  @id @default(autoincrement())
+  data_lancamento        DateTime?            @db.Timestamp(0)
+  data_validacao         DateTime?            @db.Timestamp(0)
+  observacoes_tecnico    String?              @db.Text
+  observacoes_biomedico  String?              @db.Text
+  status_laudo           String               @default("Aguardando Lançamento") @db.VarChar(50)
+  id_item_solicitacao    Int                  @unique
+  id_tecnico             Int?
+  id_biomedico_validador Int?
+  biomedico_validador    Usuario?             @relation("BiomedicoLaudos", fields: [id_biomedico_validador], references: [id_usuario])
+  item_solicitacao       ItemSolicitacao      @relation(fields: [id_item_solicitacao], references: [id_item_solicitacao])
+  tecnico                Usuario?             @relation("TecnicoLaudos", fields: [id_tecnico], references: [id_usuario])
+  parametros_resultado   ParametroResultado[]
+
+  @@index([status_laudo])
+  @@index([id_biomedico_validador], map: "Laudo_id_biomedico_validador_fkey")
+  @@index([id_tecnico], map: "Laudo_id_tecnico_fkey")
+}
+
+model ParametroResultado {
+  id_parametro_resultado Int     @id @default(autoincrement())
+  nome_parametro         String  @db.VarChar(100)
+  valor_resultado        String  @db.VarChar(100)
+  unidade_medida         String? @db.VarChar(30)
+  valores_referencia     String? @db.VarChar(255)
+  id_laudo               Int
+  laudo                  Laudo   @relation(fields: [id_laudo], references: [id_laudo])
+
+  @@index([id_laudo], map: "ParametroResultado_id_laudo_fkey")
+}
+
+model Orcamento {
+  id_orcamento     Int             @id @default(autoincrement())
+  data_criacao     DateTime        @default(now())
+  data_validade    DateTime
+  valor_bruto      Decimal         @db.Decimal(10, 2)
+  desconto         Decimal         @default(0.00) @db.Decimal(10, 2)
+  valor_final      Decimal         @db.Decimal(10, 2)
+  status           String          @default("Pendente") @db.VarChar(50)
+  id_paciente      Int
+  id_recepcionista Int
+  paciente         Paciente        @relation(fields: [id_paciente], references: [id_paciente])
+  recepcionista    Usuario         @relation("RecepcionistaOrcamentos", fields: [id_recepcionista], references: [id_usuario])
+  itens            OrcamentoItem[]
+
+  @@index([id_paciente], map: "Orcamento_id_paciente_fkey")
+  @@index([id_recepcionista], map: "Orcamento_id_recepcionista_fkey")
+}
+
+model OrcamentoItem {
+  id_orcamento_item Int           @id @default(autoincrement())
+  id_orcamento      Int
+  id_exame_catalogo Int
+  preco_exame       Decimal       @db.Decimal(10, 2)
+  exame_catalogo    ExameCatalogo @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
+  orcamento         Orcamento     @relation(fields: [id_orcamento], references: [id_orcamento])
+
+  @@index([id_exame_catalogo], map: "OrcamentoItem_id_exame_catalogo_fkey")
+  @@index([id_orcamento], map: "OrcamentoItem_id_orcamento_fkey")
+}
+
+model Configuracao {
+  id              Int     @id @default(1)
+  nomeLaboratorio String? @db.VarChar(255)
+  endereco        String? @db.Text
+  telefone        String? @db.VarChar(50)
+  emailContato    String? @db.VarChar(255)
+  logoUrl         String? @db.Text
+  rodapeLaudo     String? @db.Text
 }
 
 enum OrigemExame {
@@ -66,20 +184,6 @@ enum OrigemExame {
   LARE
 }
 
-model ExameCatalogo {
-  id_exame_catalogo Int             @id @default(autoincrement())
-  codigo_pardini    String?         @unique
-  codigo_lare       String?         @unique
-  nome_exame        String          @db.VarChar(100)
-  descricao         String?         @db.Text
-  preco             Decimal         @db.Decimal(10, 2)
-  origem            OrigemExame     @default(LARE)
-
-  itens_solicitacao ItemSolicitacao[]
-  itens_orcamento   OrcamentoItem[]
-}
-
-// --- ALTERADO PARA O FLUXO DE APROVAÇÃO ---
 enum SolicitacaoStatus {
   AGUARDANDO_APROVACAO
   AGUARDANDO_COLETA
@@ -87,110 +191,4 @@ enum SolicitacaoStatus {
   AGUARDANDO_PAGAMENTO
   FINALIZADO
   CANCELADO
-}
-
-// --- ALTERADO PARA O FLUXO DE APROVAÇÃO ---
-model Solicitacao {
-  id_solicitacao        Int             @id @default(autoincrement())
-  data_hora_solicitacao DateTime        @default(now()) @db.Timestamp(0)
-  medico_solicitante    String?         @db.VarChar(255)
-  id_paciente           Int
-  id_recepcionista      Int
-  
-  id_aprovador          Int?
-  status                SolicitacaoStatus @default(AGUARDANDO_APROVACAO)
-  desconto_percentual   Decimal?        @db.Decimal(5, 2) // Adicionado
-  valor_final           Decimal?        @db.Decimal(10, 2) // Adicionado
-
-  paciente              Paciente        @relation(fields: [id_paciente], references: [id_paciente])
-  recepcionista         Usuario         @relation("RecepcionistaSolicitacoes", fields: [id_recepcionista], references: [id_usuario])
-  aprovador             Usuario?        @relation("AprovadorSolicitacoes", fields: [id_aprovador], references: [id_usuario])
-  
-  itens_solicitacao     ItemSolicitacao[]
-  pagamentos            Pagamento[]
-}
-
-model ItemSolicitacao {
-  id_item_solicitacao Int                   @id @default(autoincrement())
-  status_item         String                @default("Aguardando Coleta") @db.VarChar(50)
-  id_solicitacao      Int
-  id_exame_catalogo   Int
-  preco_item          Decimal               @default(0.00) @db.Decimal(10, 2) // <-- Campo corrigido
-
-  solicitacao         Solicitacao           @relation(fields: [id_solicitacao], references: [id_solicitacao])
-  exame_catalogo      ExameCatalogo         @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
-  laudo               Laudo?
-  
-  @@index([id_solicitacao])
-}
-
-model Pagamento {
-  id_pagamento     Int             @id @default(autoincrement())
-  id_solicitacao   Int
-  tipo_atendimento String          @db.VarChar(50)
-  forma_pagamento  String?         @db.VarChar(50)
-  valor_pago       Decimal         @db.Decimal(10, 2)
-  data_pagamento   DateTime        @default(now()) @db.Timestamp(0)
-  solicitacao      Solicitacao     @relation(fields: [id_solicitacao], references: [id_solicitacao])
-}
-
-model Laudo {
-  id_laudo               Int                @id @default(autoincrement())
-  data_lancamento        DateTime?          @db.Timestamp(0)
-  data_validacao         DateTime?          @db.Timestamp(0)
-  observacoes_tecnico    String?            @db.Text
-  observacoes_biomedico  String?            @db.Text
-  status_laudo           String             @default("Aguardando Lançamento") @db.VarChar(50)
-  id_item_solicitacao    Int                @unique
-  id_tecnico             Int?
-  id_biomedico_validador Int?
-  item_solicitacao       ItemSolicitacao    @relation(fields: [id_item_solicitacao], references: [id_item_solicitacao])
-  tecnico                Usuario?           @relation("TecnicoLaudos", fields: [id_tecnico], references: [id_usuario])
-  biomedico_validador    Usuario?           @relation("BiomedicoLaudos", fields: [id_biomedico_validador], references: [id_usuario])
-  parametros_resultado   ParametroResultado[]
-  @@index([status_laudo])
-}
-
-model ParametroResultado {
-  id_parametro_resultado Int      @id @default(autoincrement())
-  nome_parametro         String   @db.VarChar(100)
-  valor_resultado        String   @db.VarChar(100)
-  unidade_medida         String?  @db.VarChar(30)
-  valores_referencia     String?  @db.VarChar(255)
-  id_laudo               Int
-  laudo                  Laudo    @relation(fields: [id_laudo], references: [id_laudo])
-}
-
-model Orcamento {
-  id_orcamento    Int             @id @default(autoincrement())
-  data_criacao    DateTime        @default(now())
-  data_validade   DateTime
-  valor_bruto     Decimal         @db.Decimal(10, 2)
-  desconto        Decimal         @default(0.00) @db.Decimal(10, 2)
-  valor_final     Decimal         @db.Decimal(10, 2)
-  status          String          @default("Pendente") @db.VarChar(50)
-  id_paciente     Int
-  id_recepcionista Int
-  paciente        Paciente        @relation(fields: [id_paciente], references: [id_paciente])
-  recepcionista   Usuario         @relation("RecepcionistaOrcamentos", fields: [id_recepcionista], references: [id_usuario])
-  itens           OrcamentoItem[]
-}
-
-model OrcamentoItem {
-  id_orcamento_item Int             @id @default(autoincrement())
-  id_orcamento      Int
-  id_exame_catalogo Int
-  preco_exame       Decimal         @db.Decimal(10, 2)
-  orcamento         Orcamento       @relation(fields: [id_orcamento], references: [id_orcamento])
-  exame_catalogo    ExameCatalogo   @relation(fields: [id_exame_catalogo], references: [id_exame_catalogo])
-}
-
-model Configuracao {
-  id               Int      @id @default(1)
-  nomeLaboratorio  String?  @db.VarChar(255)
-  endereco         String?  @db.Text
-  telefone         String?  @db.VarChar(50)
-  emailContato     String?  @db.VarChar(255)
-  logoUrl          String?  @db.Text
-  rodapeLaudo      String?  @db.Text
 }
