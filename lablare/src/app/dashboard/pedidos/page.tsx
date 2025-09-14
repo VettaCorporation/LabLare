@@ -4,17 +4,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+import { formatCpfForDisplay } from '@/utils/cpfFormatter';
 
 // Interfaces
 interface Solicitacao {
     id_solicitacao: number;
     data_hora_solicitacao: string;
     status: string;
-    paciente: { nome_completo: string };
+    paciente: { nome_completo: string; cpf: string };
     aprovador?: { nome_completo: string } | null;
     itens_solicitacao: { exame_catalogo: { preco: number, nome_exame: string } }[];
     desconto_percentual: number | null;
     valor_final: number | null;
+    motivo_recusa: string | null;
 }
 
 interface DadosPagamento {
@@ -39,13 +41,60 @@ const getStatusBadge = (status: string) => {
     );
 };
 
+// Componente para o Modal de Detalhes
+const PedidoDetalhesModal = ({ pedido, onClose }: { pedido: Solicitacao; onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-200/80 backdrop-blur-sm">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xl overflow-hidden">
+                <div className="flex justify-between items-center border-b pb-2 mb-4">
+                    <h2 className="text-xl font-bold">Detalhes do Pedido #{pedido.id_solicitacao}</h2>
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <p className="text-sm text-gray-600">Paciente:</p>
+                        <p className="font-semibold">{pedido.paciente.nome_completo}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-600">CPF:</p>
+                        <p className="font-semibold">{formatCpfForDisplay(pedido.paciente.cpf) || 'Não informado'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-600">Data:</p>
+                        <p className="font-semibold">{new Date(pedido.data_hora_solicitacao).toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-600">Exames:</p>
+                        <ul className="list-disc list-inside mt-2 max-h-40 overflow-y-auto">
+                            {pedido.itens_solicitacao.map((item, index) => (
+                                <li key={index} className="text-gray-800">{item.exame_catalogo.nome_exame}</li>
+                            ))}
+                        </ul>
+                    </div>
+                    {pedido.status === 'CANCELADO' && pedido.motivo_recusa && (
+                        <div>
+                            <p className="text-sm text-gray-600 font-bold text-red-600">Motivo da Recusa:</p>
+                            <p className="mt-1 p-3 bg-red-50 text-red-800 rounded-md border border-red-200">
+                                {pedido.motivo_recusa}
+                            </p>
+                        </div>
+                    )}
+                </div>
+                <div className="mt-6 flex justify-end">
+                    <button onClick={onClose} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 cursor-pointer">Fechar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function MeusPedidosPage() {
     const { data: session, status: sessionStatus } = useSession();
     const router = useRouter();
     const [pedidos, setPedidos] = useState<Solicitacao[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [pedidoSelecionado, setPedidoSelecionado] = useState<Solicitacao | null>(null);
     const [dadosPagamento, setDadosPagamento] = useState<DadosPagamento>({
         valor_pago: 0,
@@ -54,13 +103,12 @@ export default function MeusPedidosPage() {
     });
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-
     const fetchPedidos = useCallback(async (userId: number) => {
         setLoading(true);
         try {
             const response = await fetch(`/api/solicitacoes?recepcionistaId=${userId}`);
             if (!response.ok) throw new Error("Falha ao buscar pedidos.");
-            const data = await response.json();
+            const data: Solicitacao[] = await response.json();
             setPedidos(data);
         } catch (err: any) {
             toast.error(err.message);
@@ -85,7 +133,12 @@ export default function MeusPedidosPage() {
             ...dadosPagamento,
             valor_pago: valorTotalFinal,
         });
-        setIsModalOpen(true);
+        setIsPaymentModalOpen(true);
+    };
+
+    const handleOpenDetailsModal = (pedido: Solicitacao) => {
+        setPedidoSelecionado(pedido);
+        setIsDetailsModalOpen(true);
     };
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
@@ -108,7 +161,7 @@ export default function MeusPedidosPage() {
                 localStorage.setItem('etiquetaHtml', data.etiquetaHtml);
                 router.push('/dashboard/etiqueta');
             } else {
-                setIsModalOpen(false);
+                setIsPaymentModalOpen(false);
                 fetchPedidos(Number(session?.user?.id));
             }
         } catch (err: any) {
@@ -127,7 +180,7 @@ export default function MeusPedidosPage() {
             <div className="space-y-4">
                 <div className="border-b pb-2">
                     <h3 className="font-semibold text-lg">Resumo do Pedido</h3>
-                    <div className="max-h-40 overflow-y-auto"> {/* Adicionado overflow-y-auto */}
+                    <div className="max-h-40 overflow-y-auto">
                         <ul className="list-none mt-2 space-y-1">
                             {pedido.itens_solicitacao.map((item, index) => (
                                 <li key={index} className="flex justify-between">
@@ -158,15 +211,16 @@ export default function MeusPedidosPage() {
                     <p>Você ainda não criou nenhum pedido.</p>
                 ) : (
                     <div className="overflow-x-auto bg-white rounded-lg shadow">
-                        <table className="min-w-full divide-y divide-gray-200">
+                        <table className="min-w-full table-fixed divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aprovado por</th>
-                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                    <th className="w-16 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th className="w-44 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                                    <th className="w-48 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
+                                    <th className="w-44 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th className="w-48 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aprovado por</th>
+                                    <th className="w-32 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Detalhes</th>
+                                    <th className="w-48 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -177,6 +231,14 @@ export default function MeusPedidosPage() {
                                         <td className="px-6 py-4 text-sm">{pedido.paciente.nome_completo}</td>
                                         <td className="px-6 py-4 text-sm">{getStatusBadge(pedido.status)}</td>
                                         <td className="px-6 py-4 text-sm">{pedido.aprovador?.nome_completo || '---'}</td>
+                                        <td className="px-6 py-4 text-center text-sm">
+                                            <button
+                                                onClick={() => handleOpenDetailsModal(pedido)}
+                                                className="bg-gray-200 text-gray-800 font-semibold px-3 py-1 rounded-md hover:bg-gray-300 cursor-pointer"
+                                            >
+                                                Visualizar
+                                            </button>
+                                        </td>
                                         <td className="px-6 py-4 text-center text-sm">
                                             {pedido.status === 'AGUARDANDO_PAGAMENTO' && (
                                                 <button
@@ -196,13 +258,9 @@ export default function MeusPedidosPage() {
             </div>
 
             {/* --- MODAL DE PAGAMENTO --- */}
-            {isModalOpen && pedidoSelecionado && (
+            {isPaymentModalOpen && pedidoSelecionado && (
                 <div 
-                    className="fixed inset-0 flex items-center justify-center z-50 transition-opacity duration-300" 
-                    style={{ 
-                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                        backdropFilter: 'blur(4px)',
-                    }}
+                    className="fixed inset-0 flex items-center justify-center z-50 transition-opacity duration-300 bg-gray-200/80 backdrop-blur-sm" 
                 >
                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md animate-fade-in overflow-hidden">
                         <h2 className="text-xl font-bold mb-4">Finalizar Pagamento do Pedido #{pedidoSelecionado.id_solicitacao}</h2>
@@ -234,7 +292,7 @@ export default function MeusPedidosPage() {
                                 </select>
                             </div>
                             <div className="flex justify-end gap-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancelar</button>
+                                <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancelar</button>
                                 <button type="submit" disabled={isProcessingPayment} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400">
                                     {isProcessingPayment ? 'Processando...' : 'Confirmar Pagamento'}
                                 </button>
@@ -242,6 +300,14 @@ export default function MeusPedidosPage() {
                         </form>
                     </div>
                 </div>
+            )}
+            
+            {/* --- MODAL DE DETALHES --- */}
+            {isDetailsModalOpen && pedidoSelecionado && (
+                <PedidoDetalhesModal 
+                    pedido={pedidoSelecionado} 
+                    onClose={() => setIsDetailsModalOpen(false)} 
+                />
             )}
         </>
     );

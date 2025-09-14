@@ -1,4 +1,3 @@
-// Caminho: src/app/api/solicitacoes/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -15,22 +14,43 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const statusFilter = searchParams.get('status');
-        const recepcionistaId = searchParams.get('recepcionistaId');
+        const idFilter = searchParams.get('id');
+        const pacienteFilter = searchParams.get('paciente');
+        const solicitanteFilter = searchParams.get('solicitante');
 
         let whereCondition: any = {};
         if (statusFilter) {
             whereCondition.status = statusFilter;
         }
-        if (recepcionistaId) {
-            whereCondition.id_recepcionista = parseInt(recepcionistaId, 10);
+        if (idFilter) {
+            whereCondition.id_solicitacao = parseInt(idFilter, 10);
+        }
+        if (pacienteFilter) {
+            whereCondition.paciente = {
+                nome_completo: {
+                    contains: pacienteFilter,
+                },
+            };
+        }
+        if (solicitanteFilter) {
+            whereCondition.recepcionista = {
+                nome_completo: {
+                    contains: solicitanteFilter,
+                },
+            };
         }
 
         const solicitacoes = await prisma.solicitacao.findMany({
             where: whereCondition,
             include: {
-                paciente: { select: { nome_completo: true } },
+                paciente: { 
+                    select: { 
+                        nome_completo: true,
+                        cpf: true, // <-- AQUI FOI ADICIONADO O CPF
+                    } 
+                },
                 recepcionista: { select: { nome_completo: true } },
-                aprovador: { select: { nome_completo: true } }, // Adicionando o aprovador
+                aprovador: { select: { nome_completo: true } },
                 itens_solicitacao: {
                     select: {
                         exame_catalogo: {
@@ -67,6 +87,20 @@ export async function POST(req: NextRequest) {
         
         const id_usuario_recepcionista = Number(session.user?.id);
 
+        const idsExames = examesSelecionados.map((exame: { id_exame_catalogo: number }) => exame.id_exame_catalogo);
+        
+        const examesComPreco = await prisma.exameCatalogo.findMany({
+            where: {
+                id_exame_catalogo: {
+                    in: idsExames,
+                },
+            },
+            select: {
+                id_exame_catalogo: true,
+                preco: true,
+            },
+        });
+        
         const novaSolicitacao = await prisma.solicitacao.create({
             data: {
                 id_paciente: pacienteId,
@@ -74,8 +108,9 @@ export async function POST(req: NextRequest) {
                 medico_solicitante: medico_solicitante,
                 status: SolicitacaoStatus.AGUARDANDO_APROVACAO,
                 itens_solicitacao: {
-                    create: examesSelecionados.map((exameId: number) => ({
-                        id_exame_catalogo: exameId,
+                    create: examesComPreco.map((exame) => ({
+                        id_exame_catalogo: exame.id_exame_catalogo,
+                        preco_item: exame.preco,
                     })),
                 },
             },

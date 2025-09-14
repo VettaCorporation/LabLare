@@ -83,6 +83,7 @@ CREATE TABLE `ItemSolicitacao` (
     `status_item` VARCHAR(50) NOT NULL DEFAULT 'Aguardando Coleta',
     `id_solicitacao` INTEGER NOT NULL,
     `id_exame_catalogo` INTEGER NOT NULL,
+    `preco_item` DECIMAL(10, 2) NOT NULL,
 
     INDEX `ItemSolicitacao_id_solicitacao_idx`(`id_solicitacao`),
     INDEX `ItemSolicitacao_id_exame_catalogo_fkey`(`id_exame_catalogo`),
