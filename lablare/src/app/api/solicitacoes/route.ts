@@ -2,13 +2,13 @@ import { NextResponse, NextRequest } from 'next/server';
 import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import prisma from '@/lib/prisma'; // Usando o cliente centralizado
+import prisma from '@/lib/prisma';
 
-// GET: Lista solicitações com filtro de status
+
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session) {
+        if (!session || !session.user || !session.user.id) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
 
@@ -17,8 +17,12 @@ export async function GET(request: NextRequest) {
         const idFilter = searchParams.get('id');
         const pacienteFilter = searchParams.get('paciente');
         const solicitanteFilter = searchParams.get('solicitante');
+        const idUsuarioLogado = Number(session.user.id);
 
-        let whereCondition: any = {};
+        let whereCondition: any = {
+            id_recepcionista: idUsuarioLogado
+        };
+
         if (statusFilter) {
             whereCondition.status = statusFilter;
         }
@@ -43,11 +47,11 @@ export async function GET(request: NextRequest) {
         const solicitacoes = await prisma.solicitacao.findMany({
             where: whereCondition,
             include: {
-                paciente: { 
-                    select: { 
+                paciente: {
+                    select: {
                         nome_completo: true,
-                        cpf: true, // <-- AQUI FOI ADICIONADO O CPF
-                    } 
+                        cpf: true,
+                    }
                 },
                 recepcionista: { select: { nome_completo: true } },
                 aprovador: { select: { nome_completo: true } },
@@ -70,25 +74,25 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST: Cria uma nova solicitação de exame
+
 export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
-        
+
         const body = await req.json();
         const { pacienteId, examesSelecionados, medico_solicitante } = body;
-        
+
         if (!pacienteId || !examesSelecionados || examesSelecionados.length === 0) {
             return NextResponse.json({ message: 'Dados de solicitação inválidos.' }, { status: 400 });
         }
-        
+
         const id_usuario_recepcionista = Number(session.user?.id);
 
         const idsExames = examesSelecionados.map((exame: { id_exame_catalogo: number }) => exame.id_exame_catalogo);
-        
+
         const examesComPreco = await prisma.exameCatalogo.findMany({
             where: {
                 id_exame_catalogo: {
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
                 preco: true,
             },
         });
-        
+
         const novaSolicitacao = await prisma.solicitacao.create({
             data: {
                 id_paciente: pacienteId,
@@ -120,7 +124,7 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(novaSolicitacao, { status: 201 });
-        
+
     } catch (error: any) {
         console.error('Erro ao criar solicitação:', error);
         return NextResponse.json({ message: 'Erro interno do servidor ao criar a solicitação.' }, { status: 500 });
