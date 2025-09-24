@@ -103,10 +103,13 @@ export default function MeusPedidosPage() {
     });
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-    const fetchPedidos = useCallback(async (userId: number) => {
+    const fetchPedidos = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/solicitacoes?recepcionistaId=${userId}`);
+            // CORREÇÃO: Chama a API sempre com o filtro `minhas=true`
+            const url = '/api/solicitacoes?minhas=true';
+
+            const response = await fetch(url);
             if (!response.ok) throw new Error("Falha ao buscar pedidos.");
             const data: Solicitacao[] = await response.json();
             setPedidos(data);
@@ -115,16 +118,16 @@ export default function MeusPedidosPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [session]);
 
     useEffect(() => {
         if (sessionStatus === 'authenticated' && session.user.id) {
-            fetchPedidos(Number(session.user.id));
+            fetchPedidos();
         }
         if (sessionStatus === 'unauthenticated') {
             router.push('/login');
         }
-    }, [session, sessionStatus, router, fetchPedidos]);
+    }, [sessionStatus, session, router, fetchPedidos]);
 
     const handleOpenPaymentModal = (pedido: Solicitacao) => {
         const valorTotalFinal = pedido.valor_final ?? pedido.itens_solicitacao.reduce((acc, item) => acc + Number(item.exame_catalogo.preco), 0);
@@ -162,7 +165,7 @@ export default function MeusPedidosPage() {
                 router.push('/dashboard/etiqueta');
             } else {
                 setIsPaymentModalOpen(false);
-                fetchPedidos(Number(session?.user?.id));
+                fetchPedidos();
             }
         } catch (err: any) {
             toast.error(err.message);

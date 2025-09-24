@@ -1,3 +1,4 @@
+// src/app/api/solicitacoes/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -17,14 +18,18 @@ export async function GET(request: NextRequest) {
         const idFilter = searchParams.get('id');
         const pacienteFilter = searchParams.get('paciente');
         const solicitanteFilter = searchParams.get('solicitante');
+        const minhasSolicitacoes = searchParams.get('minhas'); // Novo parâmetro
         const idUsuarioLogado = Number(session.user.id);
 
-        let whereCondition: any = {
-            id_recepcionista: idUsuarioLogado
-        };
+        let whereCondition: any = {};
+
+        // Lógica CORRIGIDA: Aplica o filtro de usuário SOMENTE se a requisição for para "minhas solicitações"
+        if (minhasSolicitacoes === 'true') {
+            whereCondition.id_recepcionista = idUsuarioLogado;
+        }
 
         if (statusFilter) {
-            whereCondition.status = statusFilter;
+            whereCondition.status = statusFilter as SolicitacaoStatus;
         }
         if (idFilter) {
             whereCondition.id_solicitacao = parseInt(idFilter, 10);
@@ -81,7 +86,14 @@ export async function POST(req: NextRequest) {
         if (!session) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
-
+        const userPrivileges = (session.user as any)?.privilegios || [];
+        const userProfile = (session.user as any)?.nome_perfil;
+        
+        // CORREÇÃO: Verifica se o perfil é Administrador OU se tem o privilégio de solicitar exame
+        if (userProfile !== 'Administrador' && !userPrivileges.includes('/dashboard/solicitar-exame')) {
+            return NextResponse.json({ message: 'Acesso negado para criar solicitações.' }, { status: 403 });
+        }
+        
         const body = await req.json();
         const { pacienteId, examesSelecionados, medico_solicitante } = body;
 

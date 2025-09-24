@@ -12,6 +12,7 @@ interface RouteParams {
     };
 }
 
+// GET: Busca um paciente e suas solicitações
 export async function GET(
     request: NextRequest,
     { params }: RouteParams
@@ -21,10 +22,17 @@ export async function GET(
         if (!session) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
+        
+        // Acesso total para o Administrador, outros perfis precisam da permissão
+        const userProfile = (session.user as any)?.nome_perfil;
+        if (userProfile !== 'Administrador') {
+            const userPrivileges = (session.user as any)?.privilegios || [];
+            if (!userPrivileges.includes('/dashboard/pacientes')) {
+                return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
+            }
+        }
 
-        // CORREÇÃO: Acessa o ID diretamente do objeto params
         const pacienteId = parseInt(params.id, 10);
-
         if (isNaN(pacienteId)) {
             return NextResponse.json({ message: 'ID do paciente inválido.' }, { status: 400 });
         }
@@ -49,14 +57,13 @@ export async function GET(
         }
 
         return NextResponse.json(paciente, { status: 200 });
-
     } catch (error: any) {
         console.error(`ERRO DETALHADO AO BUSCAR PACIENTE ${params.id}:`, error);
         return NextResponse.json({ message: 'Erro interno do servidor.', details: error.message }, { status: 500 });
     }
 }
 
-// Rota para ATUALIZAR um paciente (PUT)
+// PUT: Atualiza um paciente
 export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -67,10 +74,12 @@ export async function PUT(
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
 
-        const allowedProfiles = ['Administrador', 'Recepcionista'];
-        const userProfile = session.user?.nome_perfil;
-        if (!userProfile || !allowedProfiles.includes(userProfile)) {
-            return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
+        const userProfile = (session.user as any)?.nome_perfil;
+        const userPrivileges = (session.user as any)?.privilegios || [];
+        
+        // VERIFICAÇÃO DE PRIVILÉGIO PARA EDIÇÃO
+        if (userProfile !== 'Administrador' && !userPrivileges.includes('/dashboard/pacientes/editar')) {
+            return NextResponse.json({ message: 'Acesso negado para editar paciente.' }, { status: 403 });
         }
 
         const pacienteId = parseInt(params.id, 10);
@@ -81,6 +90,7 @@ export async function PUT(
         const body = await request.json();
         const { data_nascimento, ...updateData } = body;
 
+        // Note: O campo `cpf` não deve ser alterado aqui para evitar erros.
         if ('cpf' in updateData) {
             delete updateData.cpf;
         }
@@ -102,7 +112,7 @@ export async function PUT(
     }
 }
 
-// Rota para DELETAR um paciente (DELETE)
+// DELETE: Exclui um paciente
 export async function DELETE(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -113,10 +123,12 @@ export async function DELETE(
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
 
-        const allowedProfiles = ['Administrador', 'Recepcionista'];
-        const userProfile = session.user?.nome_perfil;
-        if (!userProfile || !allowedProfiles.includes(userProfile)) {
-            return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
+        const userProfile = (session.user as any)?.nome_perfil;
+        const userPrivileges = (session.user as any)?.privilegios || [];
+        
+        // VERIFICAÇÃO DE PRIVILÉGIO PARA EXCLUSÃO
+        if (userProfile !== 'Administrador' && !userPrivileges.includes('/dashboard/pacientes/excluir')) {
+            return NextResponse.json({ message: 'Acesso negado para excluir paciente.' }, { status: 403 });
         }
 
         const pacienteId = parseInt(params.id, 10);

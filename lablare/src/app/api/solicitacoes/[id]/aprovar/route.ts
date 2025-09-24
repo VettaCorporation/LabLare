@@ -1,3 +1,4 @@
+// src/app/api/solicitacoes/[id]/aprovar/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { SolicitacaoStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -11,15 +12,23 @@ interface AprovarRouteParams {
 export async function POST(req: NextRequest, { params }: AprovarRouteParams) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
-            return NextResponse.json({ message: 'Acesso negado. Apenas administradores podem aprovar solicitações.' }, { status: 403 });
+        if (!session || !session.user) {
+            return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
+        }
+
+        const userProfile = (session.user as any).nome_perfil;
+        const userPrivileges = (session.user as any)?.privilegios || [];
+        const hasApprovalPrivilege = userPrivileges.includes('/dashboard/aprovar-solicitacoes');
+
+        if (userProfile !== 'Administrador' && !hasApprovalPrivilege) {
+            return NextResponse.json({ message: 'Acesso negado. Você não tem permissão para aprovar solicitações.' }, { status: 403 });
         }
 
         const solicitacaoId = parseInt(params.id, 10);
         if (isNaN(solicitacaoId)) {
             return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
         }
-        
+
         const { desconto_percentual, valor_final } = await req.json();
         const aprovadorId = Number((session.user as any).id);
 
@@ -43,9 +52,8 @@ export async function POST(req: NextRequest, { params }: AprovarRouteParams) {
                 valor_final: valor_final,
             },
         });
-        // aqui que ta dando erro #1
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: `Solicitação #${solicitacaoId} aprovada com sucesso! Aguardando pagamento.`,
             solicitacao: solicitacaoAprovada,
         }, { status: 200 });
