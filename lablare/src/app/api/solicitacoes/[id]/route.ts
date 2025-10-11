@@ -2,21 +2,22 @@ import { NextResponse, NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import prisma from '@/lib/prisma';
+import { SolicitacaoStatus } from '@prisma/client';
 
-interface RouteParams {
-  params: {
-    id: string;
-  }
-}
-
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
     }
 
-    const solicitacaoId = parseInt(params.id, 10);
+    // Extrai o ID da URL da requisição
+    const id = req.url.split('/').pop();
+    if (!id) {
+        return NextResponse.json({ message: 'ID da solicitação não fornecido.' }, { status: 400 });
+    }
+    const solicitacaoId = parseInt(id, 10);
+    
     if (isNaN(solicitacaoId)) {
       return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
     }
@@ -48,58 +49,71 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PUT(req: NextRequest, { params }: RouteParams) {
+export async function PUT(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user || (session.user as any).nome_perfil !== 'Administrador') {
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
     
-    const solicitacaoId = parseInt(params.id, 10);
+    // Extrai o ID da URL da requisição
+    const id = req.url.split('/').pop();
+    if (!id) {
+        return NextResponse.json({ message: 'ID da solicitação não fornecido.' }, { status: 400 });
+    }
+    const solicitacaoId = parseInt(id, 10);
+    
     if (isNaN(solicitacaoId)) {
       return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
     }
 
-    const { examesSelecionados, desconto_percentual, valor_final } = await req.json();
+    const { examesSelecionados, desconto_percentual, valor_final, novoStatus, aprovadorId } = await req.json();
 
     await prisma.$transaction(async (prismaTx) => {
-        // 1. Deletar os itens de solicitação antigos
-        await prismaTx.itemSolicitacao.deleteMany({
-            where: { id_solicitacao: solicitacaoId },
-        });
+        if (novoStatus === 'AGUARDANDO_COLETA') {
+            await prismaTx.solicitacao.update({
+                where: { id_solicitacao: solicitacaoId },
+                data: {
+                    status: SolicitacaoStatus.AGUARDANDO_COLETA,
+                    id_aprovador: aprovadorId,
+                }
+            });
+        } else {
+            await prismaTx.itemSolicitacao.deleteMany({
+                where: { id_solicitacao: solicitacaoId },
+            });
 
-        // 2. Criar os novos itens de solicitação
-        const novosItens = await Promise.all(
-            examesSelecionados.map(async (exame: { id_exame_catalogo: number }) => {
-                const exameCatalogo = await prismaTx.exameCatalogo.findUnique({
-                    where: { id_exame_catalogo: exame.id_exame_catalogo },
-                    select: { preco: true }
-                });
+            const novosItens = await Promise.all(
+                examesSelecionados.map(async (exame: { id_exame_catalogo: number }) => {
+                    const exameCatalogo = await prismaTx.exameCatalogo.findUnique({
+                        where: { id_exame_catalogo: exame.id_exame_catalogo },
+                        select: { preco: true }
+                    });
 
-                return prismaTx.itemSolicitacao.create({
-                    data: {
-                        id_solicitacao: solicitacaoId,
-                        id_exame_catalogo: exame.id_exame_catalogo,
-                        preco_item: exameCatalogo?.preco ?? 0
-                    }
-                });
-            })
-        );
+                    return prismaTx.itemSolicitacao.create({
+                        data: {
+                            id_solicitacao: solicitacaoId,
+                            id_exame_catalogo: exame.id_exame_catalogo,
+                            preco_item: exameCatalogo?.preco ?? 0
+                        }
+                    });
+                })
+            );
 
-        // 3. Atualizar a solicitação com o novo desconto e valor final
-        await prismaTx.solicitacao.update({
-            where: { id_solicitacao: solicitacaoId },
-            data: {
-                desconto_percentual,
-                valor_final,
-            }
-        });
+            await prismaTx.solicitacao.update({
+                where: { id_solicitacao: solicitacaoId },
+                data: {
+                    desconto_percentual,
+                    valor_final,
+                }
+            });
+        }
     });
 
     return NextResponse.json({ message: 'Solicitação atualizada com sucesso.' }, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Erro ao atualizar solicitação ${params.id}:`, error);
+    console.error(`Erro ao atualizar solicitação:`, error);
     return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
   }
 }

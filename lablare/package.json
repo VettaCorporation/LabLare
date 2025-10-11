@@ -9,6 +9,7 @@
     "lint": "next lint",
     "import:exames": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/importar-exames.ts",
     "update:origem": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/atualizar-origem-pardini.ts",
+    "import:privilegios": "ts-node --project ./tsconfig.scripts.json ./scripts/importar-privilegios.ts",
     "postinstall": "prisma generate",
     "script:run": "ts-node --project tsconfig.scripts.json"
   },
@@ -27,23 +28,28 @@
     "next": "15.3.5",
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
+    "polished": "^4.3.1",
     "react": "^19.0.0",
     "react-countup": "^6.5.3",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "react-toastify": "^11.0.5",
     "recharts": "^3.1.0",
     "xlsx": "^0.18.5",
-    "xml-js": "^1.6.11"
+    "xml-js": "^1.6.11",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",
     "@types/nodemailer": "^6.4.14",
     "@types/react-input-mask": "^3.0.5",
+    "@types/react-leaflet": "^2.8.3",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "prisma": "^6.15.0",
     "tailwindcss": "^4.1.13",
+    "ts-node": "^10.9.2",
     "typescript": "5.9.2"
   }
 }

@@ -1,217 +1,200 @@
-// Caminho: src/app/dashboard/privilegios/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
-interface Perfil {
-  id_perfil: number;
-  nome_perfil: string;
-  privilegios: string[] | null;
+interface PerfilComPrivilegios {
+    id_perfil: number;
+    nome_perfil: string;
+    privilegios: string[];
 }
 
-interface PagePermission {
-  path: string;
-  name: string;
-  description: string;
-  category: string;
+interface PrivilegioDisponivel {
+    rota: string;
+    nome: string;
+    descricao: string;
 }
 
-const allDashboardPages: PagePermission[] = [
-  { path: '/dashboard', name: 'Painel Principal', description: 'Visualização de KPIs e gráficos.', category: 'Geral' },
-  { path: '/dashboard/senha', name: 'Alteração de Senha', description: 'Página para alterar a própria senha.', category: 'Geral' },
-  { path: '/dashboard/atendimento', name: 'Atendimento ao Paciente', description: 'Buscar/cadastrar pacientes e solicitar exames.', category: 'Atendimento' },
-  { path: '/dashboard/pacientes', name: 'Gestão de Pacientes', description: 'Listar, editar e visualizar pacientes.', category: 'Atendimento' },
-  { path: '/dashboard/etiqueta', name: 'Impressão de Etiquetas', description: 'Gerar e imprimir etiquetas de amostras.', category: 'Atendimento' },
-  { path: '/dashboard/recebimento-amostras', name: 'Recebimento de Amostras', description: 'Registrar a chegada de amostras na área técnica.', category: 'Laboratório' },
-  { path: '/dashboard/lancamento-resultados', name: 'Lançamento de Resultados', description: 'Inserir os resultados dos exames.', category: 'Laboratório' },
-  { path: '/dashboard/validacao-laudos', name: 'Validação de Laudos', description: 'Biomédicos podem validar ou rejeitar laudos.', category: 'Laboratório' },
-  { path: '/dashboard/exames', name: 'Gestão de Exames', description: 'Cadastrar e editar os exames do catálogo.', category: 'Administração' },
-  { path: '/dashboard/colaboradores', name: 'Gestão de Colaboradores', description: 'Adicionar, editar e desativar usuários do sistema.', category: 'Administração' },
-  { path: '/dashboard/privilegios', name: 'Gestão de Privilégios', description: 'Definir o acesso de cada perfil às páginas.', category: 'Administração' },
-];
+const mapPrivilegioToCategory = (rota: string): string => {
+    const categories: { [key: string]: string } = {
+        '/dashboard': 'Geral',
+        '/dashboard/configuracoes/alterar-senha': 'Geral',
+        '/dashboard/solicitar-exame': 'Atendimento',
+        '/dashboard/pacientes': 'Atendimento',
+        '/dashboard/etiqueta': 'Atendimento',
+        '/dashboard/pedidos': 'Atendimento',
+        '/dashboard/aprovar-solicitacoes': 'Atendimento',
+        '/dashboard/recebimento-amostras': 'Laboratório',
+        '/dashboard/lancamento-resultados': 'Laboratório',
+        '/dashboard/laudo': 'Laboratório',
+        '/dashboard/orcamento': 'Financeiro',
+        '/dashboard/exames': 'Administração',
+        '/dashboard/colaboradores': 'Administração',
+        '/dashboard/privilegios': 'Administração',
+        '/dashboard/configuracoes': 'Administração',
+        '/dashboard/pacientes/editar': 'Administração',
+        '/dashboard/pacientes/excluir': 'Administração',
+    };
+    return categories[rota] || 'Outros';
+};
 
-const groupPagesByCategory = (pages: PagePermission[]) => {
-  return pages.reduce((acc, page) => {
-    (acc[page.category] = acc[page.category] || []).push(page);
-    return acc;
-  }, {} as Record<string, PagePermission[]>);
+const groupPrivilegesByCategory = (privilegios: PrivilegioDisponivel[]): Record<string, PrivilegioDisponivel[]> => {
+    const grouped: Record<string, PrivilegioDisponivel[]> = {};
+    privilegios.forEach(p => {
+        const category = mapPrivilegioToCategory(p.rota);
+        if (!grouped[category]) {
+            grouped[category] = [];
+        }
+        grouped[category].push(p);
+    });
+    return grouped;
 };
 
 export default function PrivilegiosPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [perfis, setPerfis] = useState<Perfil[]>([]);
-  const [abaAtivaId, setAbaAtivaId] = useState<number | null>(null);
-  const [alteracoes, setAlteracoes] = useState<Record<number, string[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+    const { data: session, status } = useSession();
+    const router = useRouter();
+    const [perfis, setPerfis] = useState<PerfilComPrivilegios[]>([]);
+    const [abaAtivaId, setAbaAtivaId] = useState<number | null>(null);
+    const [privilegiosDisponiveis, setPrivilegiosDisponiveis] = useState<PrivilegioDisponivel[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-  const canAccessPage = session?.user?.nome_perfil === 'Administrador';
+    const canAccessPage = (session?.user as any)?.nome_perfil === 'Administrador';
 
-  useEffect(() => {
-    if (status === 'authenticated' && canAccessPage) {
-      const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-          const response = await fetch('/api/privilegios');
-          const data = await response.json();
-          setPerfis(data);
-          if (data.length > 0) {
-            setAbaAtivaId(data[0].id_perfil);
-          }
+            const response = await fetch('/api/privilegios');
+            if (!response.ok) throw new Error("Falha ao buscar perfis e privilégios.");
+            const data = await response.json();
+            
+            setPerfis(data.perfis);
+            setPrivilegiosDisponiveis(data.todosPrivilegios);
+
+            if (data.perfis.length > 0) {
+                setAbaAtivaId(data.perfis[0].id_perfil);
+            }
         } catch (error) {
-          console.error("Erro ao buscar perfis", error);
+            console.error("Erro ao buscar dados", error);
+            toast.error('Erro ao carregar dados. Tente novamente.');
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
-      };
-      fetchData();
-    }
-  }, [status, canAccessPage]);
+    }, []);
 
-  // LÓGICA RESTAURADA: Esta função permite que os checkboxes funcionem
-  const handleCheckboxChange = (path: string, isChecked: boolean) => {
-    if (!abaAtivaId) return;
-    const perfilAtual = perfis.find(p => p.id_perfil === abaAtivaId);
-    if (!perfilAtual) return;
+    useEffect(() => {
+        if (status === 'authenticated' && canAccessPage) {
+            fetchData();
+        }
+    }, [status, canAccessPage, fetchData]);
 
-    const currentPermissions = alteracoes[abaAtivaId] ?? perfilAtual.privilegios ?? [];
+    const perfilSelecionado = perfis.find(p => p.id_perfil === abaAtivaId);
+    const privilegiosDoPerfil = perfilSelecionado?.privilegios ?? [];
+
+    const handleTogglePrivilegio = async (rota: string) => {
+        if (!abaAtivaId || !perfilSelecionado) return;
+
+        setSaving(true);
+        try {
+            const novosPrivilegios = privilegiosDoPerfil.includes(rota)
+                ? privilegiosDoPerfil.filter(p => p !== rota)
+                : [...privilegiosDoPerfil, rota];
+
+            const response = await fetch('/api/privilegios', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_perfil: abaAtivaId, privilegios: novosPrivilegios }),
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message);
+            }
+
+            toast.success('Privilégios atualizados com sucesso!');
+            await fetchData();
+        } catch (error: any) {
+            console.error("Erro ao atualizar privilégios", error);
+            toast.error(`Erro: ${error.message}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const groupedAvailablePrivileges = groupPrivilegesByCategory(privilegiosDisponiveis);
     
-    let newPermissions;
-    if (isChecked) {
-      newPermissions = [...currentPermissions, path];
-    } else {
-      newPermissions = currentPermissions.filter(p => p !== path);
+    if (status === 'loading' || loading) {
+        return <div className="p-8 dark:text-gray-300">Carregando gerenciador de privilégios...</div>;
+    }
+    if (status === 'unauthenticated' || !canAccessPage) {
+        router.push('/dashboard');
+        return null;
     }
 
-    setAlteracoes(prev => ({
-      ...prev,
-      [abaAtivaId]: Array.from(new Set(newPermissions))
-    }));
-  };
-
-  const handleSaveChanges = async () => {
-    setSaving(true);
-    setSuccessMessage('');
-    try {
-      const promises = Object.entries(alteracoes).map(([id_perfil, privilegios]) =>
-        fetch('/api/privilegios', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_perfil, privilegios }),
-        })
-      );
-      
-      const responses = await Promise.all(promises);
-      if (responses.some(res => !res.ok)) {
-        throw new Error('Falha ao salvar uma ou mais alterações.');
-      }
-
-      setSuccessMessage('Privilégios salvos com sucesso!');
-      setAlteracoes({});
-      setTimeout(() => setSuccessMessage(''), 5000);
-      
-      const response = await fetch('/api/privilegios');
-      const data = await response.json();
-      setPerfis(data);
-    } catch (error) {
-      console.error("Erro ao salvar privilégios", error);
-    } finally {
-      setSaving(false);
-    }
-  };
-  
-  const perfilSelecionado = perfis.find(p => p.id_perfil === abaAtivaId);
-  const groupedPages = groupPagesByCategory(allDashboardPages);
-  const temAlteracoes = Object.keys(alteracoes).length > 0;
-  
-  if (status === 'loading' || loading) {
-    return <div className="p-8 dark:text-gray-300">Carregando gerenciador de privilégios...</div>;
-  }
-  if (status === 'unauthenticated' || !canAccessPage) {
-    router.push('/dashboard');
-    return null;
-  }
-
-  // O JSX já estava correto, com todos os estilos do modo escuro.
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-4">
-        <ShieldCheckIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Privilégios</h1>
-      </div>
-
-      
-
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-            {perfis.map((perfil) => (
-              <button
-                key={perfil.id_perfil}
-                onClick={() => setAbaAtivaId(perfil.id_perfil)}
-                className={`${
-                  abaAtivaId === perfil.id_perfil
-                    ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400 cursor-pointer'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600 cursor-pointer'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer`}
-              >
-                {perfil.nome_perfil}
-              </button>
-            ))}
-          </nav>
-        </div>
-        
-        <div className="py-6">
-          {perfilSelecionado && Object.entries(groupedPages).map(([category, pages]) => (
-            <div key={category} className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 border-b dark:border-gray-700 pb-2 mb-4">{category}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                {pages.map(page => {
-                  const currentPermissions = alteracoes[perfilSelecionado.id_perfil] ?? perfilSelecionado.privilegios ?? [];
-                  const isChecked = currentPermissions.includes(page.path);
-                  const isEditingAdminOnPrivileges = perfilSelecionado.nome_perfil === 'Administrador' && page.path === '/dashboard/privilegios';
-                  
-                  return (
-                    <label key={page.path} className={`flex items-start p-3 rounded-md transition-colors ${isEditingAdminOnPrivileges ? 'bg-gray-200 dark:bg-gray-800 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
-                      <input
-                        type="checkbox"
-                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        checked={isChecked}
-                        disabled={isEditingAdminOnPrivileges}
-                        onChange={(e) => handleCheckboxChange(page.path, e.target.checked)}
-                      />
-                      <div className="ml-3 text-sm">
-                        <p className="font-medium text-gray-800 dark:text-gray-200">{page.name}</p>
-                        <p className="text-gray-500 dark:text-gray-400">{page.description}</p>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+    return (
+        <div className="space-y-8 p-6">
+            <div className="flex items-center gap-4 mb-8">
+                <ShieldCheckIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Gerenciamento de Privilégios</h1>
             </div>
-          ))}
-        </div>
-        
-        <div className="flex justify-end pt-4 border-t dark:border-gray-700">
-            <button 
-                onClick={handleSaveChanges}
-                disabled={!temAlteracoes || saving}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
-            </button>
-        </div>
 
-        {successMessage && (
-        <div className="p-4 text-sm text-green-700 bg-green-100 rounded-lg">{successMessage}</div>
-      )}
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+                <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+                    <label htmlFor="perfil-select" className="text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                        Selecionar Perfil:
+                    </label>
+                    <select
+                        id="perfil-select"
+                        value={abaAtivaId ?? ''}
+                        onChange={(e) => setAbaAtivaId(Number(e.target.value))}
+                        className="w-full sm:w-auto p-2 border border-gray-300 rounded-md shadow-sm dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
+                        disabled={loading || saving}
+                    >
+                        {perfis.map(perfil => (
+                            <option key={perfil.id_perfil} value={perfil.id_perfil}>
+                                {perfil.nome_perfil}
+                            </option>
+                        ))}
+                    </select>
+                </div>
 
-      </div>
-    </div>
-  );
+                {perfilSelecionado && (
+                    <div className="py-6 space-y-8">
+                        {Object.entries(groupedAvailablePrivileges).map(([category, privileges]) => (
+                            <div key={category} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2 mb-4">{category}</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    {privileges.map((p) => {
+                                        const isChecked = privilegiosDoPerfil.includes(p.rota);
+                                        return (
+                                            <button
+                                                key={p.rota}
+                                                onClick={() => handleTogglePrivilegio(p.rota)}
+                                                className={`flex items-center gap-2 py-2 px-4 rounded-full transition-colors duration-200 cursor-pointer ${
+                                                  isChecked
+                                                    ? 'bg-green-500 text-white hover:bg-green-600'
+                                                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                                disabled={saving}
+                                              >
+                                                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out ${isChecked ? 'bg-green-500' : 'bg-gray-400'}`}>
+                                                  <span
+                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${isChecked ? 'translate-x-6' : 'translate-x-1'}`}
+                                                  />
+                                                </div>
+                                                <span className="ml-2 font-medium">{p.nome}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }

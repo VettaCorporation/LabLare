@@ -7,129 +7,130 @@ import ExameSelection from '@/components/ExameSelection/ExameSelection';
 
 // --- Interfaces ---
 interface Paciente {
-  id_paciente: number;
-  nome_completo: string;
-  cpf: string;
+    id_paciente: number;
+    nome_completo: string;
+    cpf: string;
 }
 
 interface Exame {
-  id_exame_catalogo: number;
-  nome_exame: string;
-  preco: number;
-  codigo_lare?: string | null;
-  codigo_pardini?: string | null;
-  origem: string;
+    id_exame_catalogo: number;
+    nome_exame: string;
+    preco: number;
+    codigo_lare?: string | null;
+    codigo_pardini?: string | null;
+    origem: string;
 }
 
 interface SolicitacaoExameFormProps {
-  paciente: Paciente;
-  onClearSelection: () => void;
+    paciente: Paciente;
+    onClearSelection: () => void;
 }
 
 export default function SolicitacaoExameForm({ paciente, onClearSelection }: SolicitacaoExameFormProps) {
-  const router = useRouter();
-  const [medicoSolicitante, setMedicoSolicitante] = useState('');
-  const [examesSelecionados, setExamesSelecionados] = useState<Exame[]>([]);
-  const [loading, setLoading] = useState(false);
+    const router = useRouter();
+    const [medicoSolicitante, setMedicoSolicitante] = useState('');
+    const [examesSelecionados, setExamesSelecionados] = useState<Exame[]>([]);
+    const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (examesSelecionados.length === 0) {
-      toast.error('Selecione pelo menos um exame.');
-      return;
-    }
-    setLoading(true);
-    
-    const payload = {
-      pacienteId: paciente.id_paciente,
-      examesSelecionados: examesSelecionados.map(ex => ex.id_exame_catalogo),
-      medico_solicitante: medicoSolicitante,
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (examesSelecionados.length === 0) {
+            toast.error('Selecione pelo menos um exame.');
+            return;
+        }
+        setLoading(true);
+        
+        const payload = {
+            pacienteId: paciente.id_paciente,
+            // CORREÇÃO: Mapeando para o formato de objeto que a API espera
+            examesSelecionados: examesSelecionados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
+            medico_solicitante: medicoSolicitante,
+        };
+
+        try {
+            const response = await fetch('/api/solicitacoes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Falha ao criar a solicitação.');
+            }
+            
+            toast.success('Solicitação criada com sucesso!');
+            router.push('/dashboard/pedidos');
+
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    try {
-      const response = await fetch('/api/solicitacoes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+    return (
+        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen py-8">
+            <div className="mx-auto px-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700 mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Nova Solicitação de Exame</h2>
+                        <p className="text-gray-600 dark:text-gray-400">Paciente: <span className="font-semibold">{paciente.nome_completo}</span></p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClearSelection}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                    >
+                        <ArrowUturnLeftIcon className="h-5 w-5" />
+                        Trocar Paciente
+                    </button>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
+                        <div className="flex items-center space-x-3 border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                            <UserCircleIcon className="h-7 w-7 text-blue-600" />
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Médico Solicitante</h3>
+                        </div>
+                        <label htmlFor="medico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Nome do Médico
+                        </label>
+                        <input
+                            id="medico"
+                            type="text"
+                            value={medicoSolicitante}
+                            onChange={(e) => setMedicoSolicitante(e.target.value)}
+                            placeholder="Nome do médico solicitante (opcional)"
+                            className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Falha ao criar a solicitação.');
-      }
-      
-      toast.success('Solicitação criada com sucesso!');
-      router.push('/dashboard/pedidos');
-
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen py-8">
-      <div className="mx-auto px-4">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700 mb-6 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Nova Solicitação de Exame</h2>
-            <p className="text-gray-600 dark:text-gray-400">Paciente: <span className="font-semibold">{paciente.nome_completo}</span></p>
-          </div>
-          <button
-            type="button"
-            onClick={onClearSelection}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-          >
-            <ArrowUturnLeftIcon className="h-5 w-5" />
-            Trocar Paciente
-          </button>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
+                        <div className="flex items-center space-x-3 border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                            <BeakerIcon className="h-7 w-7 text-blue-600" />
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Exames</h3>
+                        </div>
+                        <ExameSelection
+                            onExamesSelected={setExamesSelecionados}
+                            selectedExams={examesSelecionados}
+                        />
+                    </div>
+                    
+                    <div className="p-4 flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={loading || examesSelecionados.length === 0}
+                            className="px-8 py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 shadow-lg"
+                        >
+                            {loading ? 'Enviando...' : 'Finalizar Solicitação'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
-            <div className="flex items-center space-x-3 border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
-              <UserCircleIcon className="h-7 w-7 text-blue-600" />
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Médico Solicitante</h3>
-            </div>
-            <label htmlFor="medico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nome do Médico
-            </label>
-            <input
-              id="medico"
-              type="text"
-              value={medicoSolicitante}
-              onChange={(e) => setMedicoSolicitante(e.target.value)}
-              placeholder="Nome do médico solicitante (opcional)"
-              className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
-            <div className="flex items-center space-x-3 border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
-              <BeakerIcon className="h-7 w-7 text-blue-600" />
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Exames</h3>
-            </div>
-            <ExameSelection
-              onExamesSelected={setExamesSelecionados}
-              selectedExams={examesSelecionados}
-            />
-          </div>
-          
-          <div className="p-4 flex justify-end">
-            <button
-              type="submit"
-              disabled={loading || examesSelecionados.length === 0}
-              className="px-8 py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 shadow-lg"
-            >
-              {loading ? 'Enviando...' : 'Finalizar Solicitação'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+    );
 }

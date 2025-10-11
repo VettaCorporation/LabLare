@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TABELA>
+    <PRIVILEGIO>
+        <NOME>Painel Principal</NOME>
+        <ROTA>/dashboard</ROTA>
+        <DESCRICAO>Visualização de KPIs e gráficos.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Financeiro</NOME>
+        <ROTA>/dashboard/orcamento</ROTA>
+        <DESCRICAO>Acessar o módulo financeiro.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Solicitar Exame</NOME>
+        <ROTA>/dashboard/solicitar-exame</ROTA>
+        <DESCRICAO>Buscar, cadastrar e solicitar exames para pacientes.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Aprovar Solicitações</NOME>
+        <ROTA>/dashboard/aprovar-solicitacoes</ROTA>
+        <DESCRICAO>Aprovar ou rejeitar solicitações de exames.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Meus Pedidos</NOME>
+        <ROTA>/dashboard/pedidos</ROTA>
+        <DESCRICAO>Acompanhar o status dos pedidos do próprio usuário.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Recebimento de Amostras</NOME>
+        <ROTA>/dashboard/recebimento-amostras</ROTA>
+        <DESCRICAO>Registrar a chegada de amostras.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Lançamento de Resultados</NOME>
+        <ROTA>/dashboard/lancamento-resultados</ROTA>
+        <DESCRICAO>Inserir resultados dos exames.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Validação de Laudos</NOME>
+        <ROTA>/dashboard/laudo</ROTA>
+        <DESCRICAO>Validar ou rejeitar laudos de exames.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Gestão de Pacientes</NOME>
+        <ROTA>/dashboard/pacientes</ROTA>
+        <DESCRICAO>Gerenciar pacientes do sistema.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Etiquetas de Amostras</NOME>
+        <ROTA>/dashboard/etiqueta</ROTA>
+        <DESCRICAO>Gerar e imprimir etiquetas de amostras.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Gestão de Exames</NOME>
+        <ROTA>/dashboard/exames</ROTA>
+        <DESCRICAO>Cadastrar e editar exames.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Colaboradores</NOME>
+        <ROTA>/dashboard/colaboradores</ROTA>
+        <DESCRICAO>Gerenciar usuários internos do sistema.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Privilégios</NOME>
+        <ROTA>/dashboard/privilegios</ROTA>
+        <DESCRICAO>Gerenciar privilégios dos perfis.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Configurações do Sistema</NOME>
+        <ROTA>/dashboard/configuracoes</ROTA>
+        <DESCRICAO>Gerenciar configurações gerais do sistema.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+        <NOME>Alteração de Senha</NOME>
+        <ROTA>/dashboard/configuracoes/alterar-senha</ROTA>
+        <DESCRICAO>Página para alterar a própria senha.</DESCRICAO>
+    </PRIVILEGIO>
+    <PRIVILEGIO>
+    <NOME>Editar Paciente</NOME>
+    <ROTA>/dashboard/pacientes/editar</ROTA>
+    <DESCRICAO>Permite editar as informações de um paciente existente.</DESCRICAO>
+</PRIVILEGIO>
+<PRIVILEGIO>
+    <NOME>Excluir Paciente</NOME>
+    <ROTA>/dashboard/pacientes/excluir</ROTA>
+    <DESCRICAO>Permite excluir um paciente do sistema.</DESCRICAO>
+</PRIVILEGIO>
+</TABELA>
+

@@ -1,4 +1,4 @@
-// src/app/api/dashboard/stats/route.ts
+// src/app/api/dashboard/_stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -17,6 +17,7 @@ const calculateAge = (birthDate: string | Date): number => {
     }
     return age;
 };
+
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
@@ -24,28 +25,95 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const year = searchParams.get('year');
-    const startMonth = searchParams.get('startMonth');
-    const endMonth = searchParams.get('endMonth');
+    const userProfile = (session.user as any).nome_perfil;
+    const userId = Number((session.user as any).id);
+
+    // Cria um objeto de filtro dinâmico
+    let userFilter = {};
+    if (userProfile === 'Recepcionista') {
+        userFilter = { id_recepcionista: userId };
+    }
 
     try {
         const today = new Date();
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(today.getDate() - 30);
 
-        // --- KPIs e outras análises (Sem alterações) ---
-        const monthlyRevenue = await prisma.pagamento.aggregate({
-            _sum: { valor_pago: true },
-            where: { data_pagamento: { gte: thirtyDaysAgo } },
-        });
-
+        // Lógica de busca de dados (aplicando o filtro dinâmico)
         const newPatientsCount = await prisma.paciente.count({
             where: { data_cadastro: { gte: thirtyDaysAgo } },
         });
 
         const monthlyRequestsCount = await prisma.solicitacao.count({
-            where: { data_hora_solicitacao: { gte: thirtyDaysAgo } },
+            where: {
+                data_hora_solicitacao: { gte: thirtyDaysAgo },
+                ...userFilter, // Aplica o filtro aqui
+            },
+        });
+
+        const recentRequestsRaw = await prisma.solicitacao.findMany({
+            where: { ...userFilter }, // Aplica o filtro aqui
+            take: 5,
+            orderBy: { data_hora_solicitacao: 'desc' },
+            include: {
+                paciente: { select: { nome_completo: true } },
+                itens_solicitacao: { include: { exame_catalogo: { select: { preco: true } } } },
+                pagamentos: { select: { valor_pago: true } }
+            }
+        });
+
+        // Para os pacientes recentes, filtramos por aqueles que têm solicitações do usuário
+        let recentPatientsData;
+        if (userProfile === 'Recepcionista') {
+            recentPatientsData = await prisma.paciente.findMany({
+                where: {
+                    solicitacoes: {
+                        some: {
+                            id_recepcionista: userId,
+                        }
+                    }
+                },
+                take: 5,
+                orderBy: { data_cadastro: 'desc' },
+                select: {
+                    id_paciente: true,
+                    nome_completo: true,
+                    cpf: true,
+                    email: true,
+                    data_nascimento: true,
+                    contato: true,
+                    solicitacoes: {
+                        orderBy: { data_hora_solicitacao: 'desc' },
+                        take: 1,
+                        select: { data_hora_solicitacao: true }
+                    }
+                }
+            });
+        } else {
+             recentPatientsData = await prisma.paciente.findMany({
+                take: 5,
+                orderBy: { data_cadastro: 'desc' },
+                select: {
+                    id_paciente: true,
+                    nome_completo: true,
+                    cpf: true,
+                    email: true,
+                    data_nascimento: true,
+                    contato: true,
+                    solicitacoes: {
+                        orderBy: { data_hora_solicitacao: 'desc' },
+                        take: 1,
+                        select: { data_hora_solicitacao: true }
+                    }
+                }
+            });
+        }
+
+
+        // --- Resto da lógica (igual para ambos os perfis, mas usando os dados filtrados) ---
+        const monthlyRevenue = await prisma.pagamento.aggregate({
+            _sum: { valor_pago: true },
+            where: { data_pagamento: { gte: thirtyDaysAgo } },
         });
 
         const laudosFinalizados = await prisma.laudo.findMany({
@@ -90,28 +158,6 @@ export async function GET(request: NextRequest) {
             value: Number(item._sum.valor_pago),
         }));
 
-        // --- ▼▼▼ MODIFICAÇÃO PONTUAL AQUI ▼▼▼ ---
-        // Trocamos 'include' por 'select' para garantir que o campo 'contato' seja buscado.
-        const recentPatientsData = await prisma.paciente.findMany({
-            take: 5,
-            orderBy: { data_cadastro: 'desc' },
-            select: {
-                id_paciente: true,
-                nome_completo: true,
-                cpf: true,
-                email: true,
-                data_nascimento: true,
-                contato: true, // <-- AQUI ESTÁ A CORREÇÃO
-                solicitacoes: {
-                    orderBy: { data_hora_solicitacao: 'desc' },
-                    take: 1,
-                    select: { data_hora_solicitacao: true }
-                }
-            }
-        });
-        // --- ▲▲▲ FIM DA MODIFICAÇÃO ▲▲▲ ---
-
-        // CORREÇÃO: Mapeia os dados do paciente para a estrutura que o componente PatientActivityTimeline espera
         const recentPatients = recentPatientsData.map(p => ({
             id: p.id_paciente.toString(),
             name: p.nome_completo,
@@ -121,17 +167,6 @@ export async function GET(request: NextRequest) {
             lastRequest: p.solicitacoes[0]?.data_hora_solicitacao ? new Date(p.solicitacoes[0].data_hora_solicitacao).toLocaleDateString('pt-BR') : 'Nenhuma',
         }));
 
-        const recentRequestsRaw = await prisma.solicitacao.findMany({
-            take: 5,
-            orderBy: { data_hora_solicitacao: 'desc' },
-            include: {
-                paciente: { select: { nome_completo: true } },
-                itens_solicitacao: { include: { exame_catalogo: { select: { preco: true } } } },
-                pagamentos: { select: { valor_pago: true } }
-            }
-        });
-
-        // CORREÇÃO: Mapeia os dados da solicitação para a estrutura que o componente RecentRequests espera
         const recentRequests = recentRequestsRaw.map(req => {
             let valor = 0;
             if (req.pagamentos && req.pagamentos.length > 0) {
@@ -148,49 +183,6 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        let monthlyRevenueData;
-        if (year && startMonth && endMonth) {
-            const yearNum = parseInt(year);
-            const startMonthNum = parseInt(startMonth);
-            const endMonthNum = parseInt(endMonth);
-            monthlyRevenueData = await Promise.all(
-                Array.from({ length: (endMonthNum - startMonthNum) + 1 }).map(async (_, i) => {
-                    const currentMonth = startMonthNum + i;
-                    const date = new Date(yearNum, currentMonth - 1, 1);
-                    const monthName = date.toLocaleString('pt-BR', { month: 'short' });
-                    const startOfMonth = new Date(yearNum, currentMonth - 1, 1);
-                    const endOfMonth = new Date(yearNum, currentMonth, 0, 23, 59, 59);
-                    const revenue = await prisma.pagamento.aggregate({
-                        _sum: { valor_pago: true },
-                        where: { data_pagamento: { gte: startOfMonth, lte: endOfMonth } },
-                    });
-                    return {
-                        name: monthName.charAt(0).toUpperCase() + monthName.slice(1),
-                        Faturamento: revenue._sum.valor_pago || 0,
-                    };
-                })
-            );
-        } else {
-            monthlyRevenueData = await Promise.all(
-                Array.from({ length: 6 }).map(async (_, i) => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const monthName = date.toLocaleString('pt-BR', { month: 'short' });
-                    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-                    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-                    const revenue = await prisma.pagamento.aggregate({
-                        _sum: { valor_pago: true },
-                        where: { data_pagamento: { gte: startOfMonth, lte: endOfMonth } },
-                    });
-                    return {
-                        name: monthName.charAt(0).toUpperCase() + monthName.slice(1),
-                        Faturamento: revenue._sum.valor_pago || 0,
-                    };
-                })
-            );
-            monthlyRevenueData.reverse();
-        }
-
         const stats = {
             kpis: {
                 revenue: monthlyRevenue._sum.valor_pago || 0,
@@ -201,7 +193,7 @@ export async function GET(request: NextRequest) {
             recentRequests,
             recentPatients,
             chartData: {
-                monthlyRevenue: monthlyRevenueData,
+                monthlyOrcamentos: [],
                 topExams: topExamsChart,
                 revenueByType: revenueByTypeChart,
             }
