@@ -5,7 +5,6 @@ import HeroSection from '../../components/HeroSection/HeroSection';
 import StatisticsSection from '../../components/StatisticsSection/StatisticsSection';
 import QualityTechnologySection from '../../components/QualityTechnologySection/QualityTechnologySection';
 import FindExams from '../../components/FindExams/FindExams';
-import FaqSection from '../../components/FaqSection/FaqSection';
 import ContactSection from '../../components/ContactSection/ContactSection';
 
 const HomePage: React.FC = () => {
@@ -15,7 +14,6 @@ const HomePage: React.FC = () => {
       <StatisticsSection />
       <QualityTechnologySection />
       <FindExams />
-      <FaqSection />
       <ContactSection />
     </>
   );

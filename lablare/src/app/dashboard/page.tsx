@@ -193,7 +193,7 @@ export default function DashboardPage() {
             className="min-h-[420px]"
           >
             <div className="h-full min-h-0">
-              <InfoPieChart data={stats.chartData.topExams} />
+              <InfoPieChart data={stats.chartData.topExams} title={''} />
             </div>
           </DashboardCard>
 
@@ -202,7 +202,7 @@ export default function DashboardPage() {
             className="min-h-[420px]"
           >
             <div className="h-full min-h-0">
-              <InfoPieChart data={stats.chartData.revenueByType} />
+              <InfoPieChart data={stats.chartData.revenueByType} title={''} />
             </div>
           </DashboardCard>
 

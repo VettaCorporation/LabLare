@@ -111,12 +111,6 @@ const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* Barra inferior */}
-      <div className="w-full h-20 bg-lime-300 flex items-center justify-center mt-8">
-        <div className="text-slate-900 text-base font-jost text-center whitespace-nowrap">
-          &copy; {new Date().getFullYear()} Todos os direitos reservados
-        </div>
-      </div>
     </footer>
   );
 };

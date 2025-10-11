@@ -14,7 +14,7 @@ const Header: React.FC = () => {
     { href: "/home", label: "Início" },
     { href: "/quem-somos", label: "Quem Somos" },
     { href: "/exames", label: "Exames" },
-    { href: "/login", label: "Resultados Online" },
+    { href: "/portal-paciente", label: "Resultados Online" },
     { href: "/contato", label: "Contato" },
   ];
 

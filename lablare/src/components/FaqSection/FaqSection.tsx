@@ -1,127 +1,95 @@
-// components/FaqSection/FaqSection.tsx
 "use client";
 
 import Image from "next/image";
 import IconDoctorFaq from "../../../public/assets/img/icon-doctor-faq.png";
-import IconElipse from "../../../public/assets/img/icon-elipse.png";
-import IconSetaBaixo from "../../../public/assets/img/icon-seta-baixo.svg";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
-interface FaqItemProps {
-  question: string;
-  answer: string;
-}
-
-const FaqItem: React.FC<FaqItemProps> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [maxH, setMaxH] = useState("0px");
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setMaxH(isOpen ? `${contentRef.current.scrollHeight}px` : "0px");
+const faqs = [
+    {
+        question: "Como os exames são realizados?",
+        answer: "Nossos exames são realizados por uma equipe de profissionais qualificados, utilizando equipamentos de última geração para garantir a precisão dos resultados. Seguimos rigorosos protocolos de segurança e higiene em todas as etapas do processo."
+    },
+    {
+        question: "Preciso de agendamento prévio?",
+        answer: "Para a maioria dos exames, o agendamento prévio é recomendado para garantir sua comodidade e evitar esperas. No entanto, também atendemos pacientes sem agendamento, sujeito à disponibilidade. Consulte a necessidade específica para o seu exame."
+    },
+    {
+        question: "Quais convênios vocês aceitam?",
+        answer: "Aceitamos uma ampla variedade de convênios de saúde. Para verificar se o seu convênio é aceito, entre em contato com nossa central de atendimento ou visite a seção 'Convênios' em nosso site."
+    },
+    {
+        question: "Como posso acessar meus resultados online?",
+        answer: "Você pode acessar seus resultados de forma segura através do nosso 'Portal do Paciente'. Basta clicar em 'Resultados Online' no topo do site e fazer login com seu CPF e a senha fornecida no momento do atendimento."
     }
-  }, [isOpen]);
-
-  return (
-    <div
-      className={[
-        "relative w-full mb-4 bg-white rounded-2xl overflow-hidden transition-all duration-300",
-        "shadow-[0px_0.38px_0px_0px_rgba(99,196,0,1)] border-l-[2.83px] border-l-[#100E3D]",
-        // linha verde inferior:
-        "after:content-[''] after:absolute after:bottom-0 after:h-px after:bg-[#63C400]",
-        "after:left-0 after:right-0",
-      ].join(" ")}
-    >
-      {/*
-      {/* Cabeçalho */}
-      <button
-        onClick={() => setIsOpen((v) => !v)}
-        className="h-20 w-full px-5 py-5 inline-flex justify-between items-center gap-5 relative z-10"
-      >
-        <span
-          className={`text-stone-800 font-sans font-bold transition-all ${
-            isOpen ? "text-2xl" : "text-xl"
-          }`}
-        >
-          {question}
-        </span>
-
-        {/* SVG componente (SVGR) com tamanho fixo, cor forçada e rotação ao abrir */}
-        <IconSetaBaixo
-          className={`w-6 h-6 shrink-0 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : "rotate-0"
-          } text-black`}
-          aria-hidden="true"
-          focusable="false"
-          // garantem visibilidade mesmo se o arquivo vier com fill/ stroke "none"
-          fill="currentColor"
-          stroke="currentColor"
-          strokeWidth={1}
-        />
-      </button>
-
-      {/* Conteúdo colapsável */}
-      <div
-        ref={contentRef}
-        style={{ maxHeight: maxH }}
-        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
-      >
-        <div className="px-5 pb-5">
-          <p className="text-black text-base font-normal font-sans leading-snug">
-            {answer}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
+];
 
 const FaqSection: React.FC = () => {
-  return (
-    <section className="bg-white py-16">
-      <div className="container mx-auto px-4 flex flex-col md:flex-row items-center md:items-start gap-12">
-        <div className="md:w-1/3 flex justify-center md:justify-start relative">
-          <Image
-            src={IconElipse}
-            alt="Elipse decorativa"
-            width={150}
-            height={150}
-            className="absolute w-64 h-6 ml-[5.75rem] mt-60"
-            priority
-          />
-          <Image
-            src={IconDoctorFaq}
-            alt="Profissional de saúde para FAQ"
-            width={300}
-            height={300}
-            className="rounded-lg ml-[3.75rem] -mt-11"
-            priority
-          />
-        </div>
+    const [openIndex, setOpenIndex] = useState<number | null>(0);
 
-        <div className="md:w-2/3 w-full">
-          <h2 className="text-5xl font-bold text-gray-800 mb-8 -mt-20 text-center md:text-left font-sans">
-            Dúvidas Frequentes
-          </h2>
+    const toggleFaq = (index: number) => {
+        setOpenIndex(openIndex === index ? null : index);
+    };
 
-          <FaqItem
-            question="Resultados Online"
-            answer="Você pode acessar seus resultados de exames de forma prática e segura através da nossa plataforma online, utilizando seu login e senha."
-          />
-          <FaqItem
-            question="Convênios aceitos"
-            answer="Aceitamos uma ampla rede de convênios. Para consultar a lista completa, visite nossa página de Convênios ou entre em contato conosco."
-          />
-          <FaqItem
-            question="Horário de Funcionamento"
-            answer="Nosso horário de funcionamento é de Segunda a Sexta, das 7h às 18h, e Sábados, das 8h às 12h. Consulte feriados."
-          />
-        </div>
-      </div>
-    </section>
-  );
+    return (
+        // A cor de fundo e o padding são aplicados aqui, no container principal
+        <section id="faq" className="bg-slate-50 py-24 sm:py-32">
+            <div className="container mx-auto px-4">
+                {/* Layout de duas colunas usando Flexbox */}
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-12 lg:gap-16">
+                    
+                    {/* Coluna da Imagem (Esquerda) */}
+                    <div className="w-full md:w-1/3 flex justify-center">
+                        <Image
+                            src={IconDoctorFaq}
+                            alt="Profissional de saúde para FAQ"
+                            width={460} // Aumentei um pouco para melhor proporção
+                            height={560}
+                            className="rounded-lg object-cover" // object-cover previne distorção
+                            priority
+                        />
+                    </div>
+
+                    {/* Coluna do Conteúdo (Direita) */}
+                    <div className="w-full md:w-2/3">
+                        <h3 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-12 text-center md:text-left font-sans">
+                            Dúvidas Frequentes
+                        </h3>
+
+                        <dl className="space-y-4">
+                            {faqs.map((faq, index) => {
+                                const isOpen = openIndex === index;
+                                return (
+                                    <div key={index} className={`rounded-lg bg-white shadow-sm border transition-all duration-300 ${isOpen ? 'border-green-300' : 'border-gray-200'}`}>
+                                        <dt>
+                                            <button
+                                                onClick={() => toggleFaq(index)}
+                                                className="flex w-full items-center justify-between p-6 text-left"
+                                            >
+                                                <span className={`text-base font-semibold leading-7 transition-colors duration-300 ${isOpen ? 'text-green-700' : 'text-gray-900'}`}>{faq.question}</span>
+                                                <span className="ml-6 flex h-7 items-center">
+                                                    {isOpen ? (
+                                                        <ChevronUpIcon className="h-6 w-6 text-green-600" />
+                                                    ) : (
+                                                        <ChevronDownIcon className="h-6 w-6 text-gray-400" />
+                                                    )}
+                                                </span>
+                                            </button>
+                                        </dt>
+                                        {isOpen && (
+                                            <dd className="px-6 pb-6 animate-fade-in">
+                                                <p className="text-base leading-7 text-gray-600">{faq.answer}</p>
+                                            </dd>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
 };
 
 export default FaqSection;
