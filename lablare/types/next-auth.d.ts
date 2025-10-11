@@ -1,47 +1,40 @@
-// lablare/types/next-auth.d.ts
-
 import 'next-auth';
-import { JWT } from 'next-auth/jwt';
+import { DefaultSession, DefaultUser } from 'next-auth';
+import { JWT, DefaultJWT } from 'next-auth/jwt';
+
+// Estendendo os tipos padrão do NextAuth para incluir nossos campos personalizados
 
 declare module 'next-auth' {
-  interface Session {
-    user: {
-      id?: string | null;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
+    /**
+     * O objeto `Session` retornado por `useSession`, `getSession` e recebido no provider `SessionProvider`.
+     */
+    interface Session {
+        user: {
+            id: string;
+            nome_perfil: string;
+            isInternalUser: boolean;
+            privilegios: string[];
+        } & DefaultSession['user']; // Herda os campos padrão (name, email, image)
+    }
 
-      id_perfil?: number | null;
-      nome_perfil?: string | null;
-      isInternalUser?: boolean | null;
-      cpf?: string | null;
-      cpf_login?: string | null;
-      data_nascimento?: string | null;
-      privilegios?: string[] | null; // <-- ADICIONADO AQUI
-    };
-  }
-
-  interface User {
-    id?: string | null;
-    id_perfil?: number | null;
-    nome_perfil?: string | null;
-    isInternalUser?: boolean | null;
-    cpf?: string | null;
-    cpf_login?: string | null;
-    data_nascimento?: string | null;
-    privilegios?: string[] | null; // <-- ADICIONADO AQUI
-  }
+    /**
+     * O objeto `User` retornado pela função `authorize` do provider.
+     */
+    interface User extends DefaultUser {
+        nome_perfil?: string | null;
+        isInternalUser?: boolean;
+        privilegios?: string[];
+    }
 }
 
 declare module 'next-auth/jwt' {
-  interface JWT {
-    id?: string | null;
-    id_perfil?: number | null;
-    nome_perfil?: string | null;
-    isInternalUser?: boolean | null;
-    cpf?: string | null;
-    cpf_login?: string | null;
-    data_nascimento?: string | null;
-    privilegios?: string[] | null; // <-- ADICIONADO AQUI
-  }
+    /**
+     * O token retornado pelo callback `jwt`.
+     */
+    interface JWT extends DefaultJWT {
+        id: string;
+        nome_perfil: string;
+        isInternalUser: boolean;
+        privilegios: string[];
+    }
 }

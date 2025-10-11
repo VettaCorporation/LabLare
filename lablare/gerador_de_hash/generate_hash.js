@@ -1,22 +1,24 @@
-// generate_hash.js
-    const bcrypt = require('bcrypt');
-    const plainTextPassword = 'rejane'; // Altere esta senha para a que você deseja hashear
+const bcrypt = require('bcryptjs'); // MUDANÇA AQUI
+const { program } = require('commander');
 
-    async function generateAndPrintHash() {
-        const saltRounds = 10;
-        try {
-            const hashedPassword = await bcrypt.hash(plainTextPassword, saltRounds);
-            console.log('----------------------------------------------------');
-            console.log('Senha Original:', plainTextPassword);
-            console.log('HASH GERADO (COPIE ESTE VALOR):');
-            console.log(hashedPassword);
-            console.log('----------------------------------------------------');
-        } catch (error) {
-            console.error('Erro ao gerar o hash:', error);
-        }
+program
+    .option('-p, --password <type>', 'Password to hash')
+    .parse(process.argv);
+
+const options = program.opts();
+
+if (!options.password) {
+    console.error('Password is required. Use -p or --password option.');
+    process.exit(1);
+}
+
+const saltRounds = 10;
+bcrypt.hash(options.password, saltRounds, function (err, hash) {
+    if (err) {
+        console.error('Error hashing password:', err);
+        return;
     }
+    console.log('Hashed Password:', hash);
+});
 
-    generateAndPrintHash();
-
-
-    // para utilizar é so abrir no terminal e colocar "node generate_hash.js" e onde tem no código DIGITE SENHA , é so escolher a sua
+// Quando quiser uma outra nova senha, entrar na pasta -> cd gerador_de_hash    e dpsrodar -> node generate_hash.js -p SUA_SENHA_AQUI

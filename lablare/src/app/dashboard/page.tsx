@@ -11,6 +11,7 @@ import PatientActivityTimeline from '@/components/dashboard/PatientActivityTimel
 import InfoPieChart from '@/components/dashboard/InfoPieChart';
 import MonthlyOrcamentoChart from '@/components/dashboard/MonthlyOrcamentoChart';
 
+// --- Interfaces (Tipos de Dados) ---
 interface Patient {
     id: string;
     name: string;
@@ -44,6 +45,7 @@ interface DashboardStats {
     };
 }
 
+// --- Componentes Internos do Dashboard ---
 const DashboardCard = ({
     title,
     children,
@@ -168,6 +170,8 @@ const RecepDashboard = ({ stats }: { stats: DashboardStats }) => (
     </div>
 );
 
+
+// --- Componente Principal da Página ---
 export default function DashboardPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
@@ -186,7 +190,6 @@ export default function DashboardPage() {
             }
             const dashboardData = await dashboardRes.json();
             
-            // Verifica se o usuário tem a permissão de orçamentos antes de chamar a API
             const hasOrcamentoPrivilege = (session?.user as any)?.privilegios?.includes('/dashboard/orcamento');
             let orcamentoData = { barChart: [] };
 
@@ -194,7 +197,6 @@ export default function DashboardPage() {
                 const orcamentoRes = await fetch(`/api/orcamentos/stats`);
                 if (!orcamentoRes.ok) {
                     console.error('Falha ao carregar dados de orçamentos.');
-                    // Não lança um erro para não interromper o carregamento do dashboard
                 } else {
                     orcamentoData = await orcamentoRes.json();
                 }
@@ -224,107 +226,34 @@ export default function DashboardPage() {
         }
     }, [status, fetchDashboardData, router]);
 
-<<<<<<< HEAD
-  // Tela de Carregamento
-  if (status === 'loading' || loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-lg text-gray-400">Carregando dashboard...</p>
-        {/* Opcional: Adicionar um spinner aqui */}
-      </div>
-    );
-  }
-
-  // Tela de Erro
-  if (error) {
-     return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-lg text-red-400">Erro ao carregar dados: {error}</p>
-      </div>
-    );
-  }
-
-  // Tela de Dashboard (quando os dados estão prontos)
-  if (stats) {
-    return (
-      <div className="space-y-8 p-4 sm:p-8">
-        {" "}
-        {/* Padding ajustado para telas menores */}
-        {/* Seção de KPIs */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            title="Faturamento (30 dias)"
-            value={stats.kpis.revenue.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-            icon={CurrencyDollarIcon}
-            colorClass="bg-green-500"
-          />
-          <KpiCard
-            title="Novos Pacientes (30 dias)"
-            value={stats.kpis.newPatients}
-            icon={UserGroupIcon}
-            colorClass="bg-blue-500"
-          />
-          <KpiCard
-            title="Solicitações (30 dias)"
-            value={stats.kpis.requests}
-            icon={ChartBarIcon}
-            colorClass="bg-purple-500"
-          />
-          <KpiCard
-            title="Entrega de Laudos (Média)"
-            value={`${stats.kpis.avgTurnaroundTime.toFixed(1)} horas`}
-            icon={ClockIcon}
-            colorClass="bg-orange-500"
-          />
-        </div>
-        {/* Seção principal com gráfico de faturamento */}
-        <div className="lg:col-span-3">
-          <MonthlyOrcamentoChart data={stats.chartData.monthlyOrcamentos} />
-        </div>
-        {/* Seção com os gráficos de pizza e a timeline */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-          <DashboardCard
-            title="Top 5 Exames Mais Solicitados"
-            className="min-h-[420px]"
-          >
-            <div className="h-full min-h-0">
-              <InfoPieChart data={stats.chartData.topExams} title={''} />
-=======
+    // 1. Tela de Carregamento
     if (status === 'loading' || loading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <p className="text-lg text-gray-400">Carregando dashboard...</p>
->>>>>>> 7ea81b6fd14ab877b7b0fc73840f4fd1cd839a6c
             </div>
         );
     }
 
-<<<<<<< HEAD
-          <DashboardCard
-            title="Faturamento por Tipo de Atendimento"
-            className="min-h-[420px]"
-          >
-            <div className="h-full min-h-0">
-              <InfoPieChart data={stats.chartData.revenueByType} title={''} />
-=======
+    // 2. Tela de Erro
     if (error) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <p className="text-lg text-red-400">Erro ao carregar dados: {error}</p>
->>>>>>> 7ea81b6fd14ab877b7b0fc73840f4fd1cd839a6c
             </div>
         );
     }
-        
+    
+    // 3. Tela de Dashboard (quando os dados estão prontos)
     if (stats) {
         const userProfile = (session?.user as any)?.nome_perfil;
         return (
-            userProfile === 'Administrador' ? <AdminDashboard stats={stats} /> : <RecepDashboard stats={stats} />
+            userProfile === 'Administrador' 
+                ? <AdminDashboard stats={stats} /> 
+                : <RecepDashboard stats={stats} />
         );
     }
 
+    // Fallback para caso de não haver stats (evita erro)
     return null;
 }

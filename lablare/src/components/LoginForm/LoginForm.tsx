@@ -1,39 +1,32 @@
-// src/components/LoginForm/LoginForm.tsx
 'use client';
 
 import { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { cpf as cpfValidator } from 'cpf-cnpj-validator';
 
-// ... (schemas de validação permanecem os mesmos)
+// Schemas de validação alinhados com o backend
 const adminSchema = z.object({
   email: z.string().email({ message: 'Email inválido.' }),
-  password: z.string().min(1, { message: 'Senha é obrigatória.' }),
+  senha: z.string().min(1, { message: 'Senha é obrigatória.' }),
 });
 
 const clienteSchema = z.object({
-  cpf: z.string().refine((cpf) => cpfValidator.isValid(cpf), {
+  cpf_login: z.string().refine((cpf) => cpfValidator.isValid(cpf), {
     message: 'CPF inválido.',
   }),
-  password: z.string().min(1, { message: 'Senha é obrigatória.' }),
+  senha: z.string().min(1, { message: 'Senha é obrigatória.' }),
 });
-
-type AdminFormInputs = z.infer<typeof adminSchema>;
-type ClienteFormInputs = z.infer<typeof clienteSchema>;
 
 interface LoginFormProps {
   initialRole: 'admin' | 'cliente';
 }
 
 export default function LoginForm({ initialRole }: LoginFormProps) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-
   const isClient = initialRole === 'cliente';
   const schema = isClient ? clienteSchema : adminSchema;
 
@@ -47,38 +40,40 @@ export default function LoginForm({ initialRole }: LoginFormProps) {
 
   const onSubmit: SubmitHandler<any> = async (data) => {
     setError(null);
-    const result = await signIn('credentials', {
-      redirect: false,
-      loginType: initialRole,
-      username: isClient ? data.cpf : data.email,
-      password: data.password,
-    });
+
+    const result = await signIn(
+        isClient ? 'credentials-paciente' : 'credentials-admin-recep',
+        {
+          ...data,
+          redirect: false,
+        }
+    );
 
     if (result?.error) {
-      setError(result.error);
+      setError("Credenciais inválidas. Verifique os dados e tente novamente.");
+    } else if (result?.ok) {
+      // Redirecionamento manual para garantir que a sessão seja estabelecida primeiro
+      window.location.href = '/dashboard';
     } else {
-      router.push('/dashboard');
+      setError("Ocorreu um erro inesperado. Tente novamente mais tarde.");
     }
   };
 
   return (
-    // O div principal foi removido daqui para ser controlado pela página
     <div className="sm:mx-auto sm:w-full sm:max-w-sm">
         <h2 className="mb-8 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
           {isClient ? 'Acesse seus resultados' : 'Acesso ao Painel'}
         </h2>
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           {isClient ? (
-            // Formulário do Cliente
             <div>
-              <label htmlFor="cpf" className="block text-sm font-medium leading-6 text-gray-900">CPF</label>
+              <label htmlFor="cpf_login" className="block text-sm font-medium leading-6 text-gray-900">CPF</label>
               <div className="mt-2">
-                <input id="cpf" {...register('cpf')} className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-                {errors.cpf && <p className="mt-2 text-sm text-red-600">{`${errors.cpf.message}`}</p>}
+                <input id="cpf_login" {...register('cpf_login')} className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+                {errors.cpf_login && <p className="mt-2 text-sm text-red-600">{`${errors.cpf_login.message}`}</p>}
               </div>
             </div>
           ) : (
-            // Formulário do Admin
             <div>
               <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">Email</label>
               <div className="mt-2">
@@ -89,14 +84,13 @@ export default function LoginForm({ initialRole }: LoginFormProps) {
           )}
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">Senha</label>
+            <label htmlFor="senha" className="block text-sm font-medium leading-6 text-gray-900">Senha</label>
             <div className="mt-2">
-              <input id="password" type="password" {...register('password')} className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-              {errors.password && <p className="mt-2 text-sm text-red-600">{`${errors.password.message}`}</p>}
+              <input id="senha" type="password" {...register('senha')} className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+              {errors.senha && <p className="mt-2 text-sm text-red-600">{`${errors.senha.message}`}</p>}
             </div>
           </div>
-          
-          {/* Link "Esqueceu a senha?" movido para cá */}
+
           <div className="text-sm text-center">
             <Link href="/esqueci-senha" className="font-semibold text-indigo-600 hover:text-indigo-500">Esqueceu a senha?</Link>
           </div>
@@ -109,6 +103,6 @@ export default function LoginForm({ initialRole }: LoginFormProps) {
             </button>
           </div>
         </form>
-      </div>
+    </div>
   );
 }
