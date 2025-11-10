@@ -1,113 +1,115 @@
-// Caminho: src/app/api/lancamento-resultados/route.ts
+// Caminho: src/app/api/solicitacoes/[id]/pagar/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../generated/prisma/index.js'; // Caminho ajustado
+// Importação do Enum (a ser usado como string literal, se necessário)
+import { SolicitacaoStatus } from '@prisma/client'; 
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route'; // Caminho ajustado
+import { authOptions } from '../auth/[...nextauth]/route';
+import { generateLabelHtml } from '../../../utils/printTemplates/generateLabelHtml';
+import prisma from '@/lib/prisma'; // Usa a instância centralizada
 
-const prisma = new PrismaClient();
-
-/**
- * Manipula requisições POST para lançar resultados de exames.
- * Cria um Laudo, associa Parâmetros de Resultado e atualiza o status do ItemSolicitacao.
- * @param {NextRequest} req - O objeto de requisição do Next.js.
- * @returns {NextResponse} Uma resposta JSON indicando sucesso ou erro.
- */
-export async function POST(req: NextRequest) {
+// --- MÉTODO POST para registrar o pagamento de uma solicitação ---
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const solicitacaoId = parseInt(params.id, 10);
+  
   try {
-    // 1. Verificação de Sessão e Permissão
     const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
+    if (!session || !session.user) {
+      return NextResponse.json({ message: 'Não autorizado.' }, { status: 401 });
     }
 
-    const allowedProfiles = ['Administrador', 'Técnico de Laboratório'];
-    const userProfile = session.user?.nome_perfil;
-    const userId = Number(session.user?.id); // ID do Técnico logado
-
-    if (!userProfile || !allowedProfiles.includes(userProfile) || isNaN(userId) || userId <= 0) {
-      return NextResponse.json({ message: 'Acesso negado. Apenas Técnicos de Laboratório ou Administradores podem lançar resultados.' }, { status: 403 });
+    if (isNaN(solicitacaoId)) {
+        return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
+    }
+    
+    const { tipo_atendimento, forma_pagamento, valor_pago } = await req.json();
+    if (!tipo_atendimento || !forma_pagamento || valor_pago === undefined) {
+        return NextResponse.json({ message: 'Dados de pagamento são obrigatórios.' }, { status: 400 });
     }
 
-    const {
-      id_item_solicitacao,
-      resultados, // Array de { nome_parametro, valor_resultado, unidade_medida, valores_referencia }
-      observacoes_tecnico,
-    } = await req.json();
+    // Usa uma transação para garantir consistência
+    const solicitacaoPaga = await prisma.$transaction(async (tx) => {
+        const solicitacao = await tx.solicitacao.findUnique({
+            where: { id_solicitacao: solicitacaoId },
+        });
 
-    // Validação básica
-    if (!id_item_solicitacao || !resultados || resultados.length === 0) {
-      return NextResponse.json({ message: 'ID do item de solicitação e resultados são obrigatórios.' }, { status: 400 });
-    }
+        if (!solicitacao) {
+            throw new Error('Solicitação não encontrada.');
+        }
 
-    const parsedItemId = parseInt(id_item_solicitacao);
-    if (isNaN(parsedItemId)) {
-      return NextResponse.json({ message: 'ID do item de solicitação inválido.' }, { status: 400 });
-    }
+        // VERIFICAÇÃO CRÍTICA: Status deve ser AGUARDANDO_PAGAMENTO. 
+        // Usamos a string literal para maior segurança em runtime.
+        if (solicitacao.status !== 'AGUARDANDO_PAGAMENTO') {
+            // Se já está AGUARDANDO_COLETA ou superior, ignora e segue o fluxo para gerar a etiqueta.
+            if (solicitacao.status === 'AGUARDANDO_COLETA' || solicitacao.status === 'LAUDO_VALIDADO') {
+                return solicitacao; 
+            }
+            throw new Error(`Esta solicitação não está aguardando pagamento. Status atual: ${solicitacao.status}`);
+        }
 
-    // Inicia uma transação para garantir atomicidade
-    const transactionResult = await prisma.$transaction(async (tx) => {
-      // 1. Verifica se o ItemSolicitacao existe e está no status correto
-      const itemSolicitacao = await tx.itemSolicitacao.findUnique({
-        where: { id_item_solicitacao: parsedItemId },
-        include: { laudo: true }, // Inclui laudo para verificar se já existe
-      });
+        // 1. Atualiza a solicitação para o status AGUARDANDO_COLETA (STATUS PAGO/PRONTO)
+        const updatedSolicitacao = await tx.solicitacao.update({
+            where: { id_solicitacao: solicitacaoId },
+            data: {
+                status: 'AGUARDANDO_COLETA', // <--- MANTEMOS ESTE STATUS COMO "PAGO"
+            },
+        });
 
-      if (!itemSolicitacao) {
-        throw new Error('Item de solicitação não encontrado. Verifique o ID.');
-      }
+        // 2. Cria o registro de pagamento
+        await tx.pagamento.create({
+            data: {
+                id_solicitacao: solicitacaoId,
+                tipo_atendimento,
+                forma_pagamento,
+                valor_pago,
+            }
+        });
 
-      // CORREÇÃO: Altera o status esperado para 'Amostra Recebida'
-      if (itemSolicitacao.status_item !== 'Amostra Recebida') {
-        throw new Error(`A amostra não está pronta para lançamento de resultados. Status atual: "${itemSolicitacao.status_item}".`);
-      }
-
-      if (itemSolicitacao.laudo) {
-        throw new Error('Resultados já lançados para esta amostra.');
-      }
-
-      // 2. Cria o registro de Laudo
-      const newLaudo = await tx.laudo.create({
-        data: {
-          id_item_solicitacao: parsedItemId,
-          id_tecnico: userId, // Associa o técnico que lançou
-          data_lancamento: new Date(),
-          observacoes_tecnico: observacoes_tecnico,
-          status_laudo: 'Pendente de Validação', // Status inicial do laudo
-        },
-      });
-
-      // 3. Cria os registros de ParametroResultado
-      const parametrosResultadoData = resultados.map((param: any) => ({
-        id_laudo: newLaudo.id_laudo,
-        nome_parametro: param.nome_parametro,
-        valor_resultado: String(param.valor_resultado), // Garante que é string para DB.VarChar
-        unidade_medida: param.unidade_medida || null,
-        valores_referencia: param.valores_referencia || null,
-      }));
-
-      await tx.parametroResultado.createMany({
-        data: parametrosResultadoData,
-      });
-
-      // 4. Atualiza o status do ItemSolicitacao para 'Pendente de Validação'
-      await tx.itemSolicitacao.update({
-        where: { id_item_solicitacao: parsedItemId },
-        data: { status_item: 'Pendente de Validação' },
-      });
-
-      return { newLaudo, updatedItemSolicitacao: itemSolicitacao };
+        return updatedSolicitacao;
     });
 
-    return NextResponse.json({
-      message: 'Resultados lançados com sucesso e amostra enviada para validação!',
-      laudoId: transactionResult.newLaudo.id_laudo,
+    // 3. Após o pagamento, gera a etiqueta de coleta
+    // Busca a solicitação completa para garantir que o status atualizado e todos os dados sejam usados.
+    const solicitacaoCompleta = await prisma.solicitacao.findUnique({
+        where: { id_solicitacao: solicitacaoId },
+        include: {
+            paciente: true,
+            itens_solicitacao: { include: { exame_catalogo: true } },
+        }
+    });
+
+    if (!solicitacaoCompleta) {
+        throw new Error('Erro ao buscar dados completos da solicitação para gerar etiqueta.');
+    }
+    
+    // ... (calculateAge e geração de etiqueta)
+
+    const calculateAge = (birthdate: Date): number => {
+        const today = new Date();
+        let age = today.getFullYear() - birthdate.getFullYear();
+        const m = today.getMonth() - birthdate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthdate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
+    const idadePaciente = calculateAge(solicitacaoCompleta.paciente.data_nascimento);
+    const examesParaEtiqueta = solicitacaoCompleta.itens_solicitacao.map(item => ({
+        nome_exame: item.exame_catalogo.nome_exame,
+    }));
+    const etiquetaHtml = generateLabelHtml(solicitacaoCompleta.paciente, idadePaciente, examesParaEtiqueta);
+
+
+    return NextResponse.json({ 
+        message: 'Pagamento registrado e solicitação liberada para coleta!',
+        solicitacao: solicitacaoPaga,
+        etiquetaHtml: etiquetaHtml
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao lançar resultados:', error);
-    return NextResponse.json({ message: error.message || 'Erro interno do servidor ao lançar resultados.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    console.error(`Erro ao processar pagamento da solicitação ${solicitacaoId}:`, error.message);
+    // Retorna a mensagem de erro específica para o frontend
+    return NextResponse.json({ message: error.message || 'Erro interno do servidor.' }, { status: 500 });
   }
 }
