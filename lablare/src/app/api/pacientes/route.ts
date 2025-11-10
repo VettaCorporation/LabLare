@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
 
         const whereClause: any = {};
         if (nome) {
-            whereClause.nome_completo = { contains: nome, mode: 'insensitive' };
+            // CORREÇÃO AQUI: Removendo 'mode: 'insensitive''
+            whereClause.nome_completo = { contains: nome };
         }
         if (cpf) {
             whereClause.cpf = { startsWith: cpf.replace(/\D/g, '') };

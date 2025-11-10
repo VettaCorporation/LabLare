@@ -1,15 +1,18 @@
 // src/app/api/solicitacoes/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { SolicitacaoStatus } from '@prisma/client';
+import prisma from '@/lib/prisma'; 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import prisma from '@/lib/prisma';
-
+import { createNotification } from '@/utils/notification'; 
 
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user || !session.user.id) {
+        
+        const userIdFromSession = (session?.user as any)?.id_usuario || (session?.user as any)?.id;
+        const idUsuarioLogado = parseInt(userIdFromSession?.toString() || '0', 10); 
+        
+        if (!session || idUsuarioLogado === 0) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
 
@@ -18,18 +21,16 @@ export async function GET(request: NextRequest) {
         const idFilter = searchParams.get('id');
         const pacienteFilter = searchParams.get('paciente');
         const solicitanteFilter = searchParams.get('solicitante');
-        const minhasSolicitacoes = searchParams.get('minhas'); // Novo parâmetro
-        const idUsuarioLogado = Number(session.user.id);
+        const minhasSolicitacoes = searchParams.get('minhas'); 
 
         let whereCondition: any = {};
 
-        // Lógica CORRIGIDA: Aplica o filtro de usuário SOMENTE se a requisição for para "minhas solicitações"
         if (minhasSolicitacoes === 'true') {
             whereCondition.id_recepcionista = idUsuarioLogado;
         }
 
         if (statusFilter) {
-            whereCondition.status = statusFilter as SolicitacaoStatus;
+            whereCondition.status = statusFilter; 
         }
         if (idFilter) {
             whereCondition.id_solicitacao = parseInt(idFilter, 10);
@@ -62,6 +63,9 @@ export async function GET(request: NextRequest) {
                 aprovador: { select: { nome_completo: true } },
                 itens_solicitacao: {
                     select: {
+                        // *** CORREÇÃO AQUI: INCLUIR O ID DO ITEM DA SOLICITAÇÃO ***
+                        id_item_solicitacao: true,
+                        // -----------------------------------------------------
                         exame_catalogo: {
                             select: { nome_exame: true, preco: true },
                         },
@@ -89,8 +93,10 @@ export async function POST(req: NextRequest) {
         const userPrivileges = (session.user as any)?.privilegios || [];
         const userProfile = (session.user as any)?.nome_perfil;
         
-        // CORREÇÃO: Verifica se o perfil é Administrador OU se tem o privilégio de solicitar exame
-        if (userProfile !== 'Administrador' && !userPrivileges.includes('/dashboard/solicitar-exame')) {
+        const isAdmin = userProfile === 'Administrador';
+        const hasSolicitarPrivilege = userPrivileges.includes('/dashboard/solicitar-exame');
+        
+        if (!isAdmin && !hasSolicitarPrivilege) {
             return NextResponse.json({ message: 'Acesso negado para criar solicitações.' }, { status: 403 });
         }
         
@@ -101,7 +107,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Dados de solicitação inválidos.' }, { status: 400 });
         }
 
-        const id_usuario_recepcionista = Number(session.user?.id);
+        const userIdFromSession = (session.user as any)?.id_usuario || (session.user as any)?.id;
+        const id_usuario_recepcionista = parseInt(userIdFromSession?.toString() || '0', 10); 
+        
+        if (isNaN(id_usuario_recepcionista) || id_usuario_recepcionista === 0) {
+             return NextResponse.json({ message: 'ID do recepcionista inválido na sessão. Tente logar novamente.' }, { status: 400 });
+        }
 
         const idsExames = examesSelecionados.map((exame: { id_exame_catalogo: number }) => exame.id_exame_catalogo);
 
@@ -116,17 +127,44 @@ export async function POST(req: NextRequest) {
                 preco: true,
             },
         });
+        
+        // *** CORREÇÃO: Busca do Aprovador em Duas Etapas para Robustez ***
+        const perfilAdmin = await prisma.perfil.findUnique({
+            where: { nome_perfil: 'Administrador' },
+            select: { id_perfil: true }
+        });
+
+        const idPerfilAdmin = perfilAdmin?.id_perfil || 0;
+        let idAprovador: number | null = null;
+        
+        if (idPerfilAdmin > 0) {
+             const aprovador = await prisma.usuario.findFirst({
+                where: { id_perfil: idPerfilAdmin },
+                select: { id_usuario: true }
+            });
+            idAprovador = aprovador?.id_usuario || null;
+        }
+        // ----------------------------------------------------------------
 
         const novaSolicitacao = await prisma.solicitacao.create({
             data: {
-                id_paciente: pacienteId,
-                id_recepcionista: id_usuario_recepcionista,
+                paciente: {
+                    connect: { id_paciente: pacienteId }
+                },
+                recepcionista: {
+                    connect: { id_usuario: id_usuario_recepcionista }
+                },
+                aprovador: idAprovador ? {
+                    connect: { id_usuario: idAprovador }
+                } : undefined, 
+                
                 medico_solicitante: medico_solicitante,
-                status: SolicitacaoStatus.AGUARDANDO_APROVACAO,
+                status: 'AGUARDANDO_APROVACAO', 
                 itens_solicitacao: {
                     create: examesComPreco.map((exame) => ({
                         id_exame_catalogo: exame.id_exame_catalogo,
                         preco_item: exame.preco,
+                        desconto_item: 0, 
                     })),
                 },
             },
@@ -134,6 +172,21 @@ export async function POST(req: NextRequest) {
                 itens_solicitacao: true,
             },
         });
+        
+        // DISPARO DE NOTIFICAÇÕES
+        if (idAprovador) {
+            await createNotification(
+                idAprovador,
+                `Nova Solicitação #${novaSolicitacao.id_solicitacao} aguarda aprovação.`,
+                `/dashboard/aprovar-solicitacoes?id=${novaSolicitacao.id_solicitacao}`
+            );
+        }
+
+        await createNotification(
+            id_usuario_recepcionista,
+            `Solicitação #${novaSolicitacao.id_solicitacao} foi criada com sucesso.`,
+            `/dashboard/pedidos?id=${novaSolicitacao.id_solicitacao}`
+        );
 
         return NextResponse.json(novaSolicitacao, { status: 201 });
 

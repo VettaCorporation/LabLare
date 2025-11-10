@@ -93,9 +93,15 @@ export default function SolicitacaoDetalhePage() {
         setDesconto(parsedValue);
     };
 
-    const valorTotalOriginal = (isEditing ? examesEditados.reduce((acc, exame) => acc + (Number(exame.preco) || 0), 0) : (solicitacao?.itens_solicitacao || []).reduce((acc, item) => acc + (Number(item.preco_item) || 0), 0));
+    const valorTotalOriginal = (isEditing ? 
+        examesEditados.reduce((acc, exame) => acc + (Number(exame.preco) || 0), 0) 
+        : (solicitacao?.itens_solicitacao || []).reduce((acc, item) => acc + (Number(item.preco_item) || 0), 0)
+    );
 
     const subtotalComDesconto = valorTotalOriginal * (1 - (desconto / 100));
+    
+    // CÁLCULO PARA O VALOR DO DESCONTO ABSOLUTO
+    const valorDoDesconto = valorTotalOriginal - subtotalComDesconto; 
 
     const handleApprove = async () => {
         if (!solicitacao || sessionStatus !== 'authenticated') return;
@@ -148,7 +154,11 @@ export default function SolicitacaoDetalhePage() {
 
     const handleCancelEdit = () => {
         if (solicitacao) {
-            setExamesEditados(solicitacao.itens_solicitacao.map(item => item.exame_catalogo));
+            const mappedExames = solicitacao.itens_solicitacao.map(item => ({
+                ...item.exame_catalogo,
+                preco: Number(item.preco_item), 
+            }));
+            setExamesEditados(mappedExames as ExameItem[]);
             setDesconto(solicitacao.desconto_percentual || 0);
             setDescontoInput(solicitacao.desconto_percentual ? solicitacao.desconto_percentual.toString() : '');
         }
@@ -250,10 +260,23 @@ export default function SolicitacaoDetalhePage() {
                             </ul>
                         )}
                     </div>
+                    
                     <div className="border-t pt-4 mt-4 space-y-2">
                         <p className="text-right text-lg font-bold text-gray-700">
                             Valor Total Original: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotalOriginal)}
                         </p>
+                        
+                        {valorDoDesconto > 0 && (
+                            <p className="text-right text-base text-red-600 font-semibold">
+                                Desconto Aplicado (
+                                {
+                                    // *** CORREÇÃO AQUI: Formatando sem casas decimais (maximumFractionDigits: 0) ***
+                                    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(desconto)
+                                }
+                                %): -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDoDesconto)}
+                            </p>
+                        )}
+                        
                         {isEditing && (
                             <div className="flex items-center justify-end gap-2">
                                 <label htmlFor="desconto" className="text-gray-600">Desconto (%):</label>
@@ -266,11 +289,9 @@ export default function SolicitacaoDetalhePage() {
                                 />
                             </div>
                         )}
-                        {desconto > 0 && (
-                            <p className="text-right text-lg font-bold text-green-600">
-                                Subtotal com Desconto: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalComDesconto)}
-                            </p>
-                        )}
+                        <p className="text-right text-xl font-bold text-green-700">
+                            Subtotal com Desconto: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalComDesconto)}
+                        </p>
                     </div>
                 </div>
 

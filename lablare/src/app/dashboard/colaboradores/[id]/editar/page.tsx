@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 
+// --- INTERFACES FALTANTES ---
 interface ColaboradorData {
   nome_completo: string;
   email: string;
@@ -16,6 +17,7 @@ interface Perfil {
     id_perfil: number;
     nome_perfil: string;
 }
+// ----------------------------
 
 export default function EditarColaboradorPage() {
   const { data: session, status } = useSession();
@@ -29,7 +31,13 @@ export default function EditarColaboradorPage() {
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
   const [loading, setLoading] = useState(true);
 
-  const canAccessPage = session?.user?.nome_perfil === 'Administrador';
+  // LÓGICA DE ACESSO
+  const userIdLogado = (session?.user as any)?.id_usuario?.toString();
+  const isEditingOwnProfile = userIdLogado === id;
+  const isAdmin = session?.user?.nome_perfil === 'Administrador';
+  
+  const canAccessPage = isAdmin || isEditingOwnProfile; 
+  // ------------------------------------
 
   const fetchColaboradorData = useCallback(async () => {
     if (!id) return;
@@ -57,7 +65,7 @@ export default function EditarColaboradorPage() {
   }, [id]);
 
   useEffect(() => {
-    if (status === 'authenticated' && canAccessPage) {
+    if (status === 'authenticated' && canAccessPage) { 
       fetchColaboradorData();
     }
   }, [status, canAccessPage, fetchColaboradorData]);
@@ -65,16 +73,39 @@ export default function EditarColaboradorPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // *** CORREÇÃO 1: Definição da variável dataToSend FORA do fetch ***
+    let dataToSend: Partial<ColaboradorData>;
+
+    if (isAdmin) {
+        // Se for admin, envia todos os dados (pode mudar perfil/status)
+        dataToSend = formData;
+    } else {
+        // Se não for admin (e for auto-edição), permite mudar apenas nome e email
+        dataToSend = { 
+            nome_completo: formData.nome_completo, 
+            email: formData.email 
+        };
+    }
+    // -------------------------------------------------------------------
+
     try {
       const response = await fetch(`/api/colaboradores/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend), // *** CORREÇÃO 2: Usa dataToSend corretamente ***
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
       
-      router.push('/dashboard/colaboradores?success=true');
+      if (isEditingOwnProfile) {
+          setMessage('Perfil atualizado com sucesso!');
+          setMessageType('success');
+          setLoading(false);
+      } else {
+          router.push('/dashboard/colaboradores?success=true');
+      }
+      
     } catch (err: any) {
       setMessage(err.message || 'Ocorreu um erro inesperado.');
       setMessageType('error');
@@ -84,11 +115,24 @@ export default function EditarColaboradorPage() {
   
   if (status === 'loading' || loading) { return <div className="p-8">Carregando...</div>; }
   if (status === 'unauthenticated') { router.push('/login'); return null; }
-  if (!canAccessPage) { return <div className="p-8 bg-yellow-100 text-yellow-800 rounded">Acesso Negado.</div>; }
+  
+  // Condição que impede o acesso de não-Admins a perfis de outros
+  if (!canAccessPage) { 
+      return (
+          <div className="p-8 bg-yellow-100 text-yellow-800 rounded">
+              Acesso Negado. Você não tem permissão para editar este colaborador.
+          </div>
+      ); 
+  }
+  
+  // Determina se os campos de ADMIN devem ser desabilitados
+  const shouldDisableAdminFields = isEditingOwnProfile && !isAdmin;
 
   return (
     <div className="space-y-8 p-8">
-      <h1 className="text-3xl font-bold text-gray-800">Editar Colaborador #{id}</h1>
+      <h1 className="text-3xl font-bold text-gray-800">
+          {isEditingOwnProfile ? 'Editar Meu Perfil' : `Editar Colaborador #${id}`}
+      </h1>
       <div className="bg-white p-6 rounded-lg shadow-md border">
         <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -97,6 +141,7 @@ export default function EditarColaboradorPage() {
                     type="text" id="nome_completo" value={formData.nome_completo}
                     onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    disabled={loading}
                 />
             </div>
             <div>
@@ -105,6 +150,7 @@ export default function EditarColaboradorPage() {
                     type="email" id="email" value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    disabled={loading || shouldDisableAdminFields} // Desabilitado para auto-edição (se for o campo de login)
                 />
             </div>
             <div>
@@ -113,6 +159,7 @@ export default function EditarColaboradorPage() {
                     id="id_perfil" value={formData.id_perfil}
                     onChange={(e) => setFormData({ ...formData, id_perfil: Number(e.target.value) })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    disabled={loading || shouldDisableAdminFields} // Desabilitado para auto-edição
                 >
                     {perfis.map(p => <option key={p.id_perfil} value={p.id_perfil}>{p.nome_perfil}</option>)}
                 </select>
@@ -123,18 +170,23 @@ export default function EditarColaboradorPage() {
                     id="ativo" value={String(formData.ativo)}
                     onChange={(e) => setFormData({ ...formData, ativo: e.target.value === 'true' })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    disabled={loading || shouldDisableAdminFields} // Desabilitado para auto-edição
                 >
                     <option value="true">Ativo</option>
                     <option value="false">Inativo</option>
                 </select>
             </div>
              {message && (
-                <div className={`p-3 rounded-md text-sm ${messageType === 'error' ? 'bg-red-100 text-red-700' : ''}`}>
+                <div className={`p-3 rounded-md text-sm ${messageType === 'error' ? 'bg-red-100 text-red-700' : messageType === 'success' ? 'bg-green-100 text-green-700' : ''}`}>
                     {message}
                 </div>
             )}
             <div className="flex justify-end gap-4 pt-4 border-t">
-                <Link href="/dashboard/colaboradores" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg cursor-pointer">
+                {/* O botão Cancelar agora volta para o Dashboard se for auto-edição */}
+                <Link 
+                    href={isEditingOwnProfile ? '/dashboard' : '/dashboard/colaboradores'} 
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg cursor-pointer"
+                >
                     Cancelar
                 </Link>
                 <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 cursor-pointer">

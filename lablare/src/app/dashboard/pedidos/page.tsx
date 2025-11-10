@@ -13,7 +13,11 @@ interface Solicitacao {
     status: string;
     paciente: { nome_completo: string; cpf: string };
     aprovador?: { nome_completo: string } | null;
-    itens_solicitacao: { exame_catalogo: { preco: number, nome_exame: string } }[];
+    itens_solicitacao: { 
+        // *** CORREÇÃO: ADICIONAR ID DO ITEM AQUI ***
+        id_item_solicitacao: number; // <--- NOVO
+        exame_catalogo: { preco: number, nome_exame: string } 
+    }[];
     desconto_percentual: number | null;
     valor_final: number | null;
     motivo_recusa: string | null;
@@ -41,7 +45,7 @@ const getStatusBadge = (status: string) => {
     );
 };
 
-// Componente para o Modal de Detalhes
+// Componente para o Modal de Detalhes (Substitua este bloco no seu arquivo)
 const PedidoDetalhesModal = ({ pedido, onClose }: { pedido: Solicitacao; onClose: () => void }) => {
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-200/80 backdrop-blur-sm">
@@ -50,27 +54,26 @@ const PedidoDetalhesModal = ({ pedido, onClose }: { pedido: Solicitacao; onClose
                     <h2 className="text-xl font-bold">Detalhes do Pedido #{pedido.id_solicitacao}</h2>
                 </div>
                 <div className="space-y-4">
-                    <div>
-                        <p className="text-sm text-gray-600">Paciente:</p>
-                        <p className="font-semibold">{pedido.paciente.nome_completo}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-600">CPF:</p>
-                        <p className="font-semibold">{formatCpfForDisplay(pedido.paciente.cpf) || 'Não informado'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-600">Data:</p>
-                        <p className="font-semibold">{new Date(pedido.data_hora_solicitacao).toLocaleString('pt-BR')}</p>
-                    </div>
+                    {/* ... (Dados Paciente e Data) ... */}
                     <div>
                         <p className="text-sm text-gray-600">Exames:</p>
                         <ul className="list-disc list-inside mt-2 max-h-40 overflow-y-auto">
-                            {pedido.itens_solicitacao.map((item, index) => (
-                                <li key={index} className="text-gray-800">{item.exame_catalogo.nome_exame}</li>
+                            {pedido.itens_solicitacao.map((item) => (
+                                <li key={item.id_item_solicitacao} className="text-gray-800 flex justify-between">
+                                    <span>{item.exame_catalogo.nome_exame}</span>
+                                    {/* *** CORREÇÃO AQUI: Exibir ID do Item da Solicitação *** */}
+                                    <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                        ID Item: {item.id_item_solicitacao}
+                                    </span>
+                                </li>
                             ))}
                         </ul>
+                        <p className="mt-2 text-xs text-red-500">
+                            * Use o ID do Item para registrar o recebimento da amostra.
+                        </p>
                     </div>
                     {pedido.status === 'CANCELADO' && pedido.motivo_recusa && (
+                        // ... (Motivo Recusa)
                         <div>
                             <p className="text-sm text-gray-600 font-bold text-red-600">Motivo da Recusa:</p>
                             <p className="mt-1 p-3 bg-red-50 text-red-800 rounded-md border border-red-200">

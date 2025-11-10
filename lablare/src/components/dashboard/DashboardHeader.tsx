@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import Link from 'next/link'; 
 import { Cog6ToothIcon, BellIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export default function DashboardHeader() {
@@ -10,8 +11,16 @@ export default function DashboardHeader() {
   const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
+  const userId = Number((session?.user as any)?.id_usuario || (session?.user as any)?.id) || 0; 
+  
+  // *** CORREÇÃO AQUI ***
+  // Ajusta a rota para: /colaboradores/[ID_DO_USUÁRIO]/editar
+  const profileRoute = userId ? `/dashboard/colaboradores/${userId}/editar` : '#';
+  // ----------------------
+
   // Efeito para fechar o menu ao clicar fora dele
   useEffect(() => {
+    // ... (código anterior)
     function handleClickOutside(event: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false);
@@ -23,11 +32,17 @@ export default function DashboardHeader() {
     };
   }, [profileMenuRef]);
 
+  // Função para fechar o menu após a navegação
+  const handleNavigation = () => {
+    setProfileMenuOpen(false);
+  };
+  
+  const isDisabled = !session || userId === 0;
+
   return (
     <div className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:gap-x-6 sm:px-6 lg:px-8">
-      {/* Container principal que agora empurrará seu conteúdo para a direita */}
+      {/* Container principal */}
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        {/* Este é o container dos ícones. "ml-auto" faz a mágica. */}
         <div className="ml-auto flex items-center gap-x-4 lg:gap-x-6">
           <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 cursor-pointer">
             <span className="sr-only">Ver notificações</span>
@@ -52,9 +67,20 @@ export default function DashboardHeader() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{session?.user?.email}</p>
                   <p className="text-xs font-medium text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 mt-2 inline-block dark:bg-blue-900/50 dark:text-blue-400">{(session?.user as any)?.nome_perfil}</p>
                 </div>
+                
                 <div className="p-2">
+                    <Link 
+                        href={profileRoute} // <-- A ROTA CORRIGIDA ESTÁ AQUI
+                        onClick={handleNavigation}
+                        className={`w-full text-left block rounded-md px-3 py-2 text-sm leading-6 text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition ${isDisabled ? 'pointer-events-none opacity-50' : ''}`}
+                    >
+                        Editar Perfil
+                    </Link>
+                </div>
+
+                <div className="p-2 border-t border-gray-200 dark:border-gray-800">
                   <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
+                    onClick={() => signOut({ callbackUrl: '/login' })} 
                     className="w-full text-left block rounded-md px-3 py-2 text-sm leading-6 text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100 cursor-pointer"
                   >
                     Sair

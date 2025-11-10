@@ -1,95 +1,103 @@
-// lablare/src/app/api/laudos/aprovar/route.ts
-
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; // Ajuste o caminho conforme sua estrutura de pastas
+// Caminho: src/app/api/laudos/[id]/aprovar/route.ts
+import { NextResponse, NextRequest } from 'next/server';
+import prisma from '@/lib/prisma'; // Use o helper centralizado
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; // Ajuste o caminho
+import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
+import { createNotification } from '@/utils/notification'; // Helper de notificação
 
-const prisma = new PrismaClient();
-
-// --- MÉTODO POST ---
 /**
- * Manipula a requisição POST para aprovar um laudo.
- * Atualiza o status do Laudo e do ItemSolicitacao associado para "Validado".
- * @param {NextRequest} req - O objeto de requisição do Next.js.
- * @returns {NextResponse} Uma resposta JSON indicando sucesso ou erro.
+ * Manipula requisições POST/PUT para aprovar (validar) um laudo.
+ * Atualiza o status do Laudo para 'Validado' e a Solicitação principal para 'LAUDO_VALIDADO'.
  */
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const laudoId = parseInt(params.id);
+
   try {
-    // 1. Verificação de Sessão e Permissão
     const session = await getServerSession(authOptions);
-    if (!session) {
+    const userId = (session?.user as any)?.id_usuario;
+
+    if (!session || !userId) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
     }
 
-    // ALTERAÇÃO: Apenas o perfil de Administrador pode validar laudos
-    const allowedProfiles = ['Administrador'];
-    const userProfile = session.user?.nome_perfil;
-    const userId = Number(session.user?.id); // ID do usuário logado (o Administrador)
-
-    if (!userProfile || !allowedProfiles.includes(userProfile) || isNaN(userId) || userId <= 0) {
-      return NextResponse.json({ message: 'Acesso negado. Apenas Administradores podem validar laudos.' }, { status: 403 });
+    const allowedProfiles = ['Administrador', 'Biomédico'];
+    if (!session.user?.nome_perfil || !allowedProfiles.includes(session.user.nome_perfil)) {
+      return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para validar laudos.' }, { status: 403 });
     }
 
-    const { id_laudo, observacoes_biomedico } = await req.json();
-
-    // Validação básica
-    if (!id_laudo) {
-      return NextResponse.json({ message: 'ID do laudo é obrigatório.' }, { status: 400 });
-    }
-
-    const parsedLaudoId = parseInt(id_laudo);
-    if (isNaN(parsedLaudoId)) {
+    if (isNaN(laudoId)) {
       return NextResponse.json({ message: 'ID do laudo inválido.' }, { status: 400 });
     }
 
-    // Inicia uma transação para garantir atomicidade
-    const transactionResult = await prisma.$transaction(async (tx) => {
-      // 1. Verifica se o Laudo existe e se está no status correto
-      const laudo = await tx.laudo.findUnique({
-        where: { id_laudo: parsedLaudoId },
-        include: { item_solicitacao: true },
-      });
-
-      if (!laudo) {
-        throw new Error('Laudo não encontrado.');
-      }
-
-      if (laudo.status_laudo !== 'Pendente de Validação') {
-        throw new Error(`O laudo não pode ser validado. Status atual: "${laudo.status_laudo}".`);
-      }
-
-      // 2. Atualiza o registro de Laudo
-      const updatedLaudo = await tx.laudo.update({
-        where: { id_laudo: parsedLaudoId },
+    // Transação para garantir consistência
+    const resultado = await prisma.$transaction(async (tx) => {
+      
+      // 1. Atualiza o status do Laudo para 'Validado'
+      const laudo = await tx.laudo.update({
+        where: { id_laudo: laudoId },
         data: {
-          id_biomedico_validador: userId, // Associa o usuário (Administrador) que validou
+          status_laudo: 'Validado', // Status do Laudo
           data_validacao: new Date(),
-          observacoes_biomedico: observacoes_biomedico,
-          status_laudo: 'Validado', // Altera o status para "Validado"
+          id_biomedico_validador: userId, // Registra quem validou
         },
+        include: {
+            item_solicitacao: { 
+                include: { 
+                    solicitacao: { 
+                        select: { 
+                            id_solicitacao: true, 
+                            id_paciente: true, 
+                            id_recepcionista: true,
+                        }
+                    } 
+                } 
+            }
+        }
       });
-
-      // 3. Atualiza o status do ItemSolicitacao para 'Laudo Validado'
-      await tx.itemSolicitacao.update({
-        where: { id_item_solicitacao: laudo.id_item_solicitacao },
-        data: { status_item: 'Laudo Validado' },
+      
+      const solicitacaoId = laudo.item_solicitacao.solicitacao.id_solicitacao;
+      
+      // 2. Verifica se TODOS os laudos da solicitação foram validados
+      
+      // Busca todos os laudos relacionados a esta solicitação
+      const laudosDaSolicitacao = await tx.laudo.findMany({
+          where: {
+              item_solicitacao: {
+                  solicitacao: {
+                      id_solicitacao: solicitacaoId
+                  }
+              }
+          }
       });
+      
+      // VERIFICAÇÃO CRÍTICA: Se o status_laudo for 'Validado' para TODOS, a solicitação avança.
+      const todosLaudosValidados = laudosDaSolicitacao.every(l => l.status_laudo === 'Validado');
 
-      // Retorna o resultado esperado da transação
-      return updatedLaudo;
+      // 3. Se todos os laudos estiverem validados, atualiza o status da SOLICITAÇÃO principal
+      if (todosLaudosValidados) {
+          await tx.solicitacao.update({
+              where: { id_solicitacao: solicitacaoId },
+              data: {
+                  status: 'LAUDO_VALIDADO', // <--- NOVO STATUS FINAL
+              },
+          });
+          
+          // Disparo de Notificação para o Recepcionista sobre a Conclusão
+          await createNotification(
+              laudo.item_solicitacao.solicitacao.id_recepcionista,
+              `Laudo(s) da Solicitação #${solicitacaoId} foram validados. A solicitação está PRONTA.`,
+              `/dashboard/pedidos?id=${solicitacaoId}` 
+          );
+      }
+      
+      return laudo;
+
     });
 
-    return NextResponse.json({
-      message: 'Laudo validado com sucesso!',
-      laudoId: transactionResult.id_laudo,
-    }, { status: 200 });
+    return NextResponse.json({ message: 'Laudo aprovado com sucesso!', laudo: resultado }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao validar laudo:', error);
-    // Erros lançados dentro da transação ou outros erros serão capturados aqui
-    return NextResponse.json({ message: error.message || 'Erro interno do servidor ao validar laudo.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
-  }
+    console.error(`Erro ao aprovar laudo ${laudoId}:`, error);
+    return NextResponse.json({ message: error.message || 'Erro interno do servidor ao aprovar laudo.' }, { status: 500 });
+  } 
 }

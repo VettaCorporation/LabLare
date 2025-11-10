@@ -1,21 +1,17 @@
-// lablare/src/app/api/amostras/recebimento/route.ts
+// Caminho: lablare/src/app/api/amostras/recebimento/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
+import prisma from '@/lib/prisma'; 
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
-
-const prisma = new PrismaClient();
+import { authOptions } from '../../auth/[...nextauth]/route'; 
+import { createNotification } from '@/utils/notification'; 
 
 /**
  * Manipula requisições POST para registrar o recebimento de uma amostra.
- * Atualiza o status de um ItemSolicitacao para "Recebida pela área técnica".
- * @param {NextRequest} req - O objeto de requisição do Next.js.
- * @returns {NextResponse} Uma resposta JSON indicando sucesso ou erro.
+ * Atualiza o status de um ItemSolicitacao para 'Amostra Recebida' e a Solicitação para AGUARDANDO_LAUDO.
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verificação de Sessão e Permissão
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
@@ -26,7 +22,7 @@ export async function POST(req: NextRequest) {
     const userId = Number(session.user?.id);
 
     if (!userProfile || !allowedProfiles.includes(userProfile) || isNaN(userId) || userId <= 0) {
-      return NextResponse.json({ message: 'Acesso negado. Apenas Técnicos de Laboratório ou Administradores podem registrar o recebimento de amostras.' }, { status: 403 });
+      return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para recebimento.' }, { status: 403 });
     }
 
     const { id_item_solicitacao } = await req.json();
@@ -40,24 +36,82 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'ID do item de solicitação inválido.' }, { status: 400 });
     }
 
-    // 2. Atualiza o status do ItemSolicitacao
-    const updatedItem = await prisma.itemSolicitacao.update({
-      where: { id_item_solicitacao: parsedItemId },
-      data: {
-        status_item: 'Recebida pela área técnica',
-        // Você pode adicionar um campo para registrar quem recebeu e quando, se necessário
-        // id_tecnico_recebimento: userId,
-        // data_recebimento: new Date(),
-      },
-      include: { // Inclui dados para a resposta
-        solicitacao: {
-          select: {
-            id_solicitacao: true,
-            paciente: { select: { nome_completo: true } },
-          },
-        },
-        exame_catalogo: { select: { nome_exame: true } },
-      },
+    // --- TRANSAÇÃO: Receber Amostra e Atualizar Status da Solicitação ---
+    const updatedItem = await prisma.$transaction(async (tx) => {
+        
+        // Define o status unificado para itens recebidos
+        const NOVO_STATUS_ITEM = 'Amostra Recebida'; 
+        const STATUS_INICIAL_ESPERADO = 'Aguardando Coleta';
+
+        // A. VERIFICAÇÃO DE PRÉ-CONDIÇÃO
+        const itemPreCheck = await tx.itemSolicitacao.findUnique({
+             where: { id_item_solicitacao: parsedItemId },
+             select: { status_item: true, solicitacao: { select: { status: true, id_recepcionista: true } } }
+        });
+
+        if (!itemPreCheck) {
+             throw new Error('Item de solicitação não encontrado.');
+        }
+
+        // Garante que só pode receber o item se estiver no status correto
+        if (itemPreCheck.status_item !== STATUS_INICIAL_ESPERADO) {
+            throw new Error(`Não é possível receber amostra. Status atual é: ${itemPreCheck.status_item}.`);
+        }
+        
+        // B. Atualiza o status do ItemSolicitacao
+        const item = await tx.itemSolicitacao.update({
+            where: { id_item_solicitacao: parsedItemId },
+            data: {
+                status_item: NOVO_STATUS_ITEM, 
+            },
+            include: { 
+                solicitacao: { 
+                    select: { 
+                        id_solicitacao: true,
+                        id_recepcionista: true, 
+                        paciente: { select: { nome_completo: true } }
+                    } 
+                },
+                exame_catalogo: { select: { nome_exame: true } },
+            },
+        });
+
+        const solicitacaoId = item.solicitacao.id_solicitacao;
+        const idRecepcionista = item.solicitacao.solicitacao.id_recepcionista;
+        
+        // C. Conta o número total de itens e o número de itens recebidos
+        const totalItens = await tx.itemSolicitacao.count({
+            where: { id_solicitacao: solicitacaoId }
+        });
+        
+        const itensRecebidosCount = await tx.itemSolicitacao.count({
+            where: { 
+                id_solicitacao: solicitacaoId,
+                status_item: NOVO_STATUS_ITEM 
+            }
+        });
+        
+        // D. Verifica se todos os itens estão agora no status de recebido
+        const todosRecebidos = itensRecebidosCount === totalItens;
+
+        // E. Se todos estiverem recebidos, muda o status da Solicitação principal
+        if (todosRecebidos) {
+            await tx.solicitacao.update({
+                where: { id_solicitacao: solicitacaoId },
+                data: {
+                    status: 'AGUARDANDO_LAUDO', // Novo status para a Solicitação
+                },
+            });
+            
+            // Disparo de Notificação
+             await createNotification(
+                idRecepcionista,
+                `Amostras da Solicitação #${solicitacaoId} foram recebidas. Status: AGUARDANDO LAUDO.`,
+                `/dashboard/pedidos?id=${solicitacaoId}` 
+            );
+        }
+        
+        return item; 
     });
 
     return NextResponse.json({
@@ -67,11 +121,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Erro ao registrar recebimento de amostra:', error);
-    if (error.code === 'P2025') { // Prisma error for record not found
+    if (error.code === 'P2025') { 
       return NextResponse.json({ message: 'Item de solicitação não encontrado. Verifique o ID.' }, { status: 404 });
     }
-    return NextResponse.json({ message: 'Erro interno do servidor ao registrar recebimento de amostra.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
-  }
+    // Retorna a mensagem de erro customizada da validação (B. Verificação de Pré-Condição)
+    return NextResponse.json({ message: error.message || 'Erro interno do servidor ao registrar recebimento de amostra.' }, { status: 409 }); 
+  } 
 }
