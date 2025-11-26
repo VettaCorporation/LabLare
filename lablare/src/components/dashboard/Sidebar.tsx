@@ -1,3 +1,4 @@
+// src/components/dashboard/Sidebar.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -20,6 +21,8 @@ import {
     ClipboardDocumentListIcon,
     QueueListIcon,
     ChevronDownIcon,
+    // --- 1. ADICIONE O ÍCONE DE "LOGS" AQUI ---
+    ArchiveBoxIcon, 
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -101,6 +104,8 @@ export default function Sidebar() {
                 { name: 'Colaboradores', href: '/dashboard/colaboradores' },
                 { name: 'Privilégios', href: '/dashboard/privilegios' },
                 { name: 'Configurações do Sistema', href: '/dashboard/configuracoes' },
+                // --- 2. ADICIONE O NOVO ITEM DE MENU AQUI ---
+                { name: 'Logs de Operações', href: '/dashboard/configuracoes/logs' },
             ],
         },
     ];

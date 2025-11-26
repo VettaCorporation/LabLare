@@ -6,6 +6,10 @@ import bcrypt from 'bcrypt';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 
+// --- [NOVA IMPORTAÇÃO] ---
+// Importa o serviço de log (caminho relativo ajustado)
+import { registrarLog, ACAO_LOG } from '../../../lib/logService';
+
 const prisma = new PrismaClient();
 
 // Função para buscar pacientes com base em privilégios
@@ -58,11 +62,17 @@ export async function GET(request: NextRequest) {
 
 // Função para adicionar um novo paciente com base em privilégios
 export async function POST(request: NextRequest) {
+    // --- [ID DO USUÁRIO LOGADO] ---
+    let idUsuarioLogado: number | null = null;
+
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
+        
+        // Captura o ID do usuário para o log
+        idUsuarioLogado = Number((session.user as any)?.id);
 
         // CORREÇÃO: Verifica se o perfil é 'Administrador' primeiro
         const userProfile = (session.user as any)?.nome_perfil;
@@ -129,9 +139,30 @@ export async function POST(request: NextRequest) {
             return { newPatient };
         });
 
+        // --- [LOG ADICIONADO] ---
+        // Registra o log após a transação ser bem-sucedida
+        if (idUsuarioLogado) {
+            await registrarLog(
+                idUsuarioLogado,
+                ACAO_LOG.PACIENTE_CRIADO,
+                `Paciente: ${newPatientAndUser.newPatient.nome_completo} (ID: ${newPatientAndUser.newPatient.id_paciente})`
+            );
+        }
+
         return NextResponse.json(newPatientAndUser.newPatient, { status: 201 });
     } catch (error: any) {
         console.error('Erro ao cadastrar o paciente:', error);
+        
+        // --- [LOG ADICIONADO] ---
+        // Opcional: Logar a falha
+        if (idUsuarioLogado) {
+            await registrarLog(
+                idUsuarioLogado,
+                "FALHA_CRIAR_PACIENTE", // Você pode adicionar isso ao seu ACAO_LOG
+                `Erro: ${error.message}`
+            );
+        }
+
         return NextResponse.json({ message: 'Erro interno do servidor ao tentar cadastrar o paciente.' }, { status: 500 });
     } finally {
         await prisma.$disconnect();

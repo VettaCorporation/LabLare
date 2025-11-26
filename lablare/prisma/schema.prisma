@@ -34,6 +34,7 @@ model Usuario {
   perfil               Perfil     @relation(fields: [id_perfil], references: [id_perfil])
   // *** ADIÇÃO 1/2: Lista de Notificações para o usuário ***
   notificacoes         Notificacao[] 
+  logs_operacao        OperacaoLog[] @relation("LogsDoUsuario")
 
   @@index([id_perfil], map: "Usuario_id_perfil_fkey")
 }
@@ -213,6 +214,23 @@ model Notificacao {
   @@index([lida])
 }
 
+// --- Modelagem do Log de Operações ---
+
+model OperacaoLog {
+  id_log     Int       @id @default(autoincrement())
+  data_hora  DateTime  @default(now()) @db.Timestamp(0)
+  acao       String    @db.VarChar(255) // Ex: "Criação de Paciente", "Login", "Edição de Exame"
+  detalhes   String?   @db.Text         // Opcional: para salvar um JSON ou texto com mais infos
+  
+  // Relacionamento com o usuário que fez a ação
+  id_usuario Int?      // Opcional, para casos de "Login Falhou" onde o ID não é conhecido
+  usuario    Usuario?  @relation("LogsDoUsuario", fields: [id_usuario], references: [id_usuario])
+
+  @@index([data_hora(sort: Desc)]) // Index para ordenar por data rapidamente
+  @@index([id_usuario])
+  @@index([acao])
+}
+
 enum OrigemExame {
   PARDINI
   LARE
@@ -229,3 +247,4 @@ enum SolicitacaoStatus {
   FINALIZADO      
   CANCELADO
 }
+
