@@ -269,10 +269,7 @@ export default function SolicitacaoDetalhePage() {
                         {valorDoDesconto > 0 && (
                             <p className="text-right text-base text-red-600 font-semibold">
                                 Desconto Aplicado (
-                                {
-                                    // *** CORREÇÃO AQUI: Formatando sem casas decimais (maximumFractionDigits: 0) ***
-                                    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(desconto)
-                                }
+                                {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(desconto)}
                                 %): -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDoDesconto)}
                             </p>
                         )}

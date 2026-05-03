@@ -1,11 +1,11 @@
 // lablare/src/app/api/lancamento-resultados/pendentes/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { STATUS_ITEM } from '@/lib/statuses';
 
 /**
  * Manipula requisições GET para listar itens de solicitação que estão com amostras recebidas
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     // 2. Busca ItemSolicitacao com status 'Amostra Recebida' e sem laudo associado
     const pendingItems = await prisma.itemSolicitacao.findMany({
       where: {
-        status_item: 'Amostra Recebida', // Alterado o status para o novo fluxo
+        status_item: STATUS_ITEM.AMOSTRA_RECEBIDA,
         laudo: null, // Garante que ainda não há um laudo (resultados não lançados)
       },
       orderBy: {
@@ -67,9 +67,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(pendingItems, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao buscar amostras pendentes de lançamento:', error);
+    logger.error('Erro ao buscar amostras pendentes de lançamento', error, { ctx: 'lancamento-resultados' });
     return NextResponse.json({ message: 'Erro interno do servidor ao buscar amostras pendentes de lançamento.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

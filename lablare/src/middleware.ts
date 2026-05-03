@@ -1,6 +1,7 @@
 // src/middleware.ts
 import { withAuth, NextRequestWithAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export default withAuth(
   async function middleware(request: NextRequestWithAuth) {
@@ -19,6 +20,14 @@ export default withAuth(
     // Se o usuário não estiver logado e a rota não for pública, ele já será redirecionado para o login.
     if (!token) {
         return NextResponse.next();
+    }
+
+    // Força troca de senha no primeiro login (paciente recém-cadastrado, ou
+    // colaborador com flag setada). Permite acessar apenas /primeiro-acesso e
+    // o endpoint que aplica a troca.
+    const primeiroLogin = (token.primeiro_login as boolean | undefined) === true;
+    if (primeiroLogin && pathname !== '/primeiro-acesso') {
+        return NextResponse.redirect(new URL('/primeiro-acesso', request.url));
     }
 
     // --- LÓGICA DE PERFIL E PRIVILÉGIOS ---
@@ -56,7 +65,11 @@ export default withAuth(
     if (isInternalUser && pathname.startsWith('/dashboard') && pathname !== '/dashboard') {
         const hasAccess = userPrivileges.includes(pathname);
         if (!hasAccess) {
-            console.warn(`ACESSO NEGADO para ${userProfile} em ${pathname}. Redirecionando...`);
+            logger.warn('Acesso negado a rota privilegiada', {
+                ctx: 'middleware',
+                userProfile,
+                pathname,
+            });
             // Redireciona para a primeira página permitida, não para o dashboard, para evitar loops
             if (userPrivileges.length > 0) {
                 return NextResponse.redirect(new URL(userPrivileges[0], request.url));

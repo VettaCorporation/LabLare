@@ -1,7 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { STATUS_ORCAMENTO } from '@/lib/statuses';
+import { expirePendingOrcamentos } from '@/lib/jobs/orcamentoExpiry';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,20 +13,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    // --- Cálculos dos KPIs (sem alteração) ---
-    const orcamentosPendentes = await prisma.orcamento.count({ where: { status: 'Pendente' } });
+    // KPIs dependem do status correto — marca expirados antes de contar.
+    await expirePendingOrcamentos();
+
+    const orcamentosPendentes = await prisma.orcamento.count({ where: { status: STATUS_ORCAMENTO.PENDENTE } });
     const totalPendenteAgg = await prisma.orcamento.aggregate({
       _sum: { valor_final: true },
-      where: { status: 'Pendente' },
+      where: { status: STATUS_ORCAMENTO.PENDENTE },
     });
     const valorTotalPendente = totalPendenteAgg._sum.valor_final || 0;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const aprovadosUltimoMes = await prisma.orcamento.count({
-      where: { status: 'Aprovado', data_criacao: { gte: thirtyDaysAgo } },
+      where: { status: STATUS_ORCAMENTO.APROVADO, data_criacao: { gte: thirtyDaysAgo } },
     });
     const expiradosUltimoMes = await prisma.orcamento.count({
-        where: { status: 'Expirado', data_criacao: { gte: thirtyDaysAgo } }
+        where: { status: STATUS_ORCAMENTO.EXPIRADO, data_criacao: { gte: thirtyDaysAgo } }
     });
     const totalFinalizadosUltimoMes = aprovadosUltimoMes + expiradosUltimoMes;
     const taxaDeConversao = totalFinalizadosUltimoMes > 0 ? (aprovadosUltimoMes / totalFinalizadosUltimoMes) * 100 : 0;
@@ -83,7 +88,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(stats, { status: 200 });
 
   } catch (error) {
-    console.error('Erro ao buscar estatísticas de orçamentos:', error);
+    logger.error('Erro ao buscar estatísticas de orçamentos', error, { ctx: 'orcamentos' });
     return NextResponse.json({ message: 'Erro interno ao buscar estatísticas.' }, { status: 500 });
   }
 }

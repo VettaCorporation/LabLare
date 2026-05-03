@@ -62,7 +62,7 @@ export default function PrivilegiosPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const canAccessPage = (session?.user as any)?.nome_perfil === 'Administrador';
+    const canAccessPage = session?.user?.nome_perfil === 'Administrador';
 
     const fetchData = useCallback(async () => {
         setLoading(true);

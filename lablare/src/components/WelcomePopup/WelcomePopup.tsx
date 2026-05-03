@@ -30,11 +30,12 @@ export default function WelcomePopup({ onClose, patientName }: WelcomePopupProps
       setIsVisible(false);
       // Pequeno atraso para permitir que a transição visual de fechamento ocorra
       const hideTimer = setTimeout(() => {
-        onClose(); 
-      }, 300); 
+        onClose();
+      }, 300);
 
       return () => clearTimeout(hideTimer);
     }
+    return undefined;
   }, [countdown, onClose]);
 
   // Não renderiza o componente se ele não estiver visível

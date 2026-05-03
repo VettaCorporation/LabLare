@@ -1,14 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
 
 // GET: Buscar um único colaborador por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,7 +14,7 @@ export async function GET(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID de colaborador inválido.' }, { status: 400 });
     }
@@ -45,7 +43,7 @@ export async function GET(
 // PUT: Atualizar um colaborador existente
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -53,7 +51,7 @@ export async function PUT(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID inválido.' }, { status: 400 });
     }
@@ -82,7 +80,7 @@ export async function PUT(
 // DELETE: Desativar um colaborador
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -90,7 +88,7 @@ export async function DELETE(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID inválido.' }, { status: 400 });
     }

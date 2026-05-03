@@ -7,7 +7,6 @@ export const formatCpfForDisplay = (cpf: string = ''): string => {
   return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 };
 
-// MUDANÇA: Função aprimorada para formatar enquanto digita
 export const formatCpfOnType = (cpf: string = ''): string => {
   if (!cpf) return '';
   const numericValue = cpf.replace(/\D/g, '');

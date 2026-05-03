@@ -42,10 +42,8 @@ const MonthlyRevenueLineChart: React.FC<MonthlyRevenueLineChartProps> = ({
     };
 
   return (
-    // MUDANÇA 1: Fundo do card
     <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md h-auto lg:h-96 flex flex-col">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            {/* MUDANÇA 2: Cor do título */}
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Faturamento Mensal</h3>
             
             <div className="flex items-center gap-2">

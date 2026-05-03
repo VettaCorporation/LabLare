@@ -32,7 +32,8 @@ export default function EditarColaboradorPage() {
   const [loading, setLoading] = useState(true);
 
   // LÓGICA DE ACESSO
-  const userIdLogado = (session?.user as any)?.id_usuario?.toString();
+  // session.user.id já é string (DefaultUser do NextAuth)
+  const userIdLogado = session?.user?.id;
   const isEditingOwnProfile = userIdLogado === id;
   const isAdmin = session?.user?.nome_perfil === 'Administrador';
   
@@ -74,7 +75,6 @@ export default function EditarColaboradorPage() {
     e.preventDefault();
     setLoading(true);
     
-    // *** CORREÇÃO 1: Definição da variável dataToSend FORA do fetch ***
     let dataToSend: Partial<ColaboradorData>;
 
     if (isAdmin) {
@@ -87,13 +87,12 @@ export default function EditarColaboradorPage() {
             email: formData.email 
         };
     }
-    // -------------------------------------------------------------------
 
     try {
       const response = await fetch(`/api/colaboradores/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataToSend), // *** CORREÇÃO 2: Usa dataToSend corretamente ***
+        body: JSON.stringify(dataToSend),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);

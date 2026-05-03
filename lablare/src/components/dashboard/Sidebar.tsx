@@ -60,8 +60,8 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { data: session, status } = useSession();
 
-    const userProfile = (session?.user as any)?.nome_perfil;
-    const userPrivileges = (session?.user as any)?.privilegios || [];
+    const userProfile = session?.user?.nome_perfil;
+    const userPrivileges = session?.user?.privilegios || [];
 
     const navigationData: NavType[] = [
         { name: 'Painel', href: '/dashboard', icon: HomeIcon, type: 'single' },

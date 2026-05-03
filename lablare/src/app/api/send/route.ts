@@ -1,33 +1,34 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Instancia o Resend usando a API Key do .env.local
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// O e-mail para ONDE você quer receber as mensagens de contato
-// Substitua pelo seu e-mail pessoal ou profissional.
+// Endereços fixos do formulário público de contato.
 const SEU_EMAIL_DE_DESTINO = 'vettacontatto@gmail.com';
-
-// O e-mail que aparecerá no campo "De:"
-// Para testes, o Resend permite usar 'onboarding@resend.dev'
-// Para produção, você DEVE verificar seu domínio no painel do Resend.
+// Para produção, verificar domínio próprio no painel do Resend.
 const EMAIL_REMETENTE_VERIFICADO = 'onboarding@resend.dev';
 
 export async function POST(request: Request) {
   try {
-    // 1. Processa o corpo (body) da requisição (os dados do formulário)
     const body = await request.json();
     const { nome, email, telefone, mensagem } = body;
 
-    // 2. Validação simples (pode ser melhorada com Zod, por exemplo)
     if (!nome || !email || !mensagem) {
       return NextResponse.json(
         { error: 'Campos obrigatórios (nome, email, mensagem) faltando.' },
-        { status: 400 } // Bad Request
+        { status: 400 },
       );
     }
 
-    // 3. Envia o e-mail usando o Resend
+    // Lazy-init do Resend: instanciar no module load quebra `next build`
+    // quando RESEND_API_KEY não está setada (Resend lança no construtor).
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Serviço de envio de e-mail não configurado.' },
+        { status: 503 },
+      );
+    }
+    const resend = new Resend(apiKey);
+
     const data = await resend.emails.send({
       from: `Contato LabLare <${EMAIL_REMETENTE_VERIFICADO}>`, // Ex: "Nome do Site <contato@seusite.com>"
       to: [SEU_EMAIL_DE_DESTINO], // O e-mail que VAI RECEBER a mensagem

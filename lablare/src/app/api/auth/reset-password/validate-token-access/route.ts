@@ -1,9 +1,8 @@
 // src/app/api/auth/reset-password/validate-token-access/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../../generated/prisma'; // Ajuste o caminho do Prisma Client
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,9 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Token de validação válido.' }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro na API de validação de token de acesso:', error);
+    logger.error('Erro ao validar token de acesso', error, { ctx: 'reset-password' });
     return NextResponse.json({ message: 'Erro interno do servidor ao validar token de acesso.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

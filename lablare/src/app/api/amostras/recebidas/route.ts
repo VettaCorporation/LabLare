@@ -1,11 +1,11 @@
 // lablare/src/app/api/amostras/recebidas/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js'; // Caminho ajustado
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { STATUS_ITEM } from '@/lib/statuses';
 
 /**
  * Manipula requisições GET para listar amostras com status "Recebida pela área técnica".
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     // 2. Busca os ItemSolicitacao com status "Recebida pela área técnica"
     const receivedSamples = await prisma.itemSolicitacao.findMany({
       where: {
-        status_item: 'Recebida pela área técnica',
+        status_item: STATUS_ITEM.RECEBIDA_AREA_TECNICA,
       },
       orderBy: {
         // Você pode ordenar por data de recebimento, se adicionar um campo 'data_recebimento'
@@ -70,9 +70,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(receivedSamples, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao buscar amostras recebidas:', error);
+    logger.error('Erro ao buscar amostras recebidas', error, { ctx: 'amostras' });
     return NextResponse.json({ message: 'Erro interno do servidor ao buscar amostras recebidas.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

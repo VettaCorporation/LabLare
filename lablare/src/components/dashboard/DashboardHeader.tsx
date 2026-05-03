@@ -11,12 +11,9 @@ export default function DashboardHeader() {
   const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  const userId = Number((session?.user as any)?.id_usuario || (session?.user as any)?.id) || 0; 
+  const userId = Number(session?.user?.id) || 0;
   
-  // *** CORREÇÃO AQUI ***
-  // Ajusta a rota para: /colaboradores/[ID_DO_USUÁRIO]/editar
   const profileRoute = userId ? `/dashboard/colaboradores/${userId}/editar` : '#';
-  // ----------------------
 
   // Efeito para fechar o menu ao clicar fora dele
   useEffect(() => {
@@ -65,7 +62,7 @@ export default function DashboardHeader() {
                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{session?.user?.name}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{session?.user?.email}</p>
-                  <p className="text-xs font-medium text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 mt-2 inline-block dark:bg-blue-900/50 dark:text-blue-400">{(session?.user as any)?.nome_perfil}</p>
+                  <p className="text-xs font-medium text-blue-700 bg-blue-100 rounded-full px-2 py-0.5 mt-2 inline-block dark:bg-blue-900/50 dark:text-blue-400">{session?.user?.nome_perfil}</p>
                 </div>
                 
                 <div className="p-2">

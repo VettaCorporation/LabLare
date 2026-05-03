@@ -19,7 +19,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onCancel }) => {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   
-  // MUDANÇA 1: Agora temos apenas UM estado para controlar AMBAS as senhas
   const [senhasVisiveis, setSenhasVisiveis] = useState(false);
 
   // A lógica de submit e fetch de perfis continua a mesma
@@ -121,7 +120,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onCancel }) => {
           </div>
           <div className="md:col-span-2"></div>
 
-          {/* MUDANÇA 2: Campo de Senha agora usa o estado sincronizado */}
           <div>
             <label htmlFor="senha" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
             <div className="relative mt-1">
@@ -147,7 +145,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onCancel }) => {
             </div>
           </div>
 
-          {/* MUDANÇA 3: Campo de Confirmar Senha TAMBÉM usa o estado sincronizado */}
           <div>
             <label htmlFor="confirmarSenha" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirmar Senha</label>
             <div className="relative mt-1">

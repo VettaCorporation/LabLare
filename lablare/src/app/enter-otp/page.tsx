@@ -29,6 +29,7 @@ export default function EnterOtpPage() {
       }, 1000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [resendCountdown]);
 
   // Handler para mudança de dígito no OTP
@@ -124,12 +125,10 @@ export default function EnterOtpPage() {
       }
 
       setMessage(data.message || 'Código validado com sucesso!');
-      
-      // ==================================================================
-      // AQUI ESTÁ A ÚNICA CORREÇÃO LÓGICA APLICADA
-      // Trocamos `validationToken` por `token` para corresponder à API e à página de destino.
-      // ==================================================================
-      router.push(`/reset-password?token=${data.token}`);
+
+      // Token agora viaja em cookie httpOnly setado pela API. Não passamos
+      // mais via querystring (evita vazamento em URL/history/Referer).
+      router.push('/reset-password');
 
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao validar o código.');

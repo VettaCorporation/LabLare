@@ -1,14 +1,15 @@
 // src/app/api/privilegios/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // GET: Retorna a lista de perfis com seus privilégios e a lista completa de privilégios
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
-    if (!session || (session.user as any)?.nome_perfil !== 'Administrador') {
+    if (!session || session.user?.nome_perfil !== 'Administrador') {
         return NextResponse.json({ message: 'Não autorizado.' }, { status: 401 });
     }
 
@@ -56,10 +57,8 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error("Erro ao buscar perfis e privilégios:", error);
+        logger.error('Erro ao buscar perfis e privilégios', error, { ctx: 'privilegios' });
         return NextResponse.json({ message: 'Erro interno ao buscar privilégios.' }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
     }
 }
 
@@ -67,7 +66,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
-    if (!session || (session.user as any)?.nome_perfil !== 'Administrador') {
+    if (!session || session.user?.nome_perfil !== 'Administrador') {
         return NextResponse.json({ message: 'Não autorizado.' }, { status: 401 });
     }
 
@@ -103,9 +102,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ message: 'Privilégios atualizados com sucesso.' });
 
     } catch (error) {
-        console.error("Erro ao atualizar privilégios:", error);
+        logger.error('Erro ao atualizar privilégios', error, { ctx: 'privilegios' });
         return NextResponse.json({ message: 'Erro ao salvar os privilégios.' }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
     }
 }

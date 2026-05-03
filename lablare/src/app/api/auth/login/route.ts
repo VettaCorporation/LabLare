@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +28,7 @@ export async function POST(req: NextRequest) {
     // Em uma aplicação real, você retornaria um JWT aqui
     return NextResponse.json({ message: 'Login bem-sucedido' }, { status: 200 });
   } catch (error) {
-    console.error('Erro ao fazer login:', error);
+    logger.error('Erro ao fazer login (rota legacy)', error, { ctx: 'auth' });
     return NextResponse.json({ error: 'Erro ao fazer login' }, { status: 500 });
   }
 }

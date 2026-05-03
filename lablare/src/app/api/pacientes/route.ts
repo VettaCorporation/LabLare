@@ -1,16 +1,75 @@
 // Caminho: src/app/api/pacientes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { isValidCPF } from '../../../utils/cpfValidator';
 import bcrypt from 'bcrypt';
+import nodemailer from 'nodemailer';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
-// --- [NOVA IMPORTAÇÃO] ---
-// Importa o serviço de log (caminho relativo ajustado)
+import prisma from '@/lib/prisma';
 import { registrarLog, ACAO_LOG } from '../../../lib/logService';
+import { generateTemporaryPassword } from '../../../lib/passwordGenerator';
+import { logger } from '@/lib/logger';
 
-const prisma = new PrismaClient();
+/**
+ * Envia a senha temporária por e-mail. Falha aqui é silenciosa para não
+ * bloquear o cadastro: a senha também é retornada na resposta da API
+ * para o recepcionista anotar/imprimir.
+ */
+async function sendTemporaryPasswordEmail(
+  to: string,
+  patientName: string,
+  cpf: string,
+  temporaryPassword: string,
+): Promise<boolean> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_SMTP_HOST,
+      port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
+      secure: process.env.EMAIL_SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"${process.env.EMAIL_FROM_NAME || 'LabLare'}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+      to,
+      subject: 'Acesso ao Portal do Paciente - LabLare',
+      html: `
+        <body style="margin: 0; padding: 0; background-color: #003b54;">
+          <table align="center" width="100%" cellpadding="0" cellspacing="0" style="background-color: #003b54; padding: 40px 0;">
+            <tr><td align="center">
+              <table width="500" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; padding: 40px 30px; font-family: Arial, sans-serif; text-align: center;">
+                <tr><td style="font-size: 22px; font-weight: bold; color: #003b54; padding-bottom: 8px;">Cadastro realizado</td></tr>
+                <tr><td style="font-size: 15px; color: #333; padding-bottom: 24px;">
+                  Olá ${patientName},<br />
+                  Seu cadastro no Portal do Paciente foi criado.<br />
+                  Use os dados abaixo para acessar:
+                </td></tr>
+                <tr><td style="font-size: 14px; color: #333; padding-bottom: 8px;"><strong>CPF:</strong> ${cpf}</td></tr>
+                <tr><td style="background-color: #e0f2ff; color: #0077b6; font-size: 22px; font-weight: bold; padding: 14px; border-radius: 8px; letter-spacing: 3px; font-family: monospace;">
+                  ${temporaryPassword}
+                </td></tr>
+                <tr><td style="font-size: 13px; color: #777; padding-top: 24px;">
+                  Esta é uma senha temporária. Por segurança, após o primeiro acesso, troque sua senha em "Esqueci a senha".
+                </td></tr>
+                <tr><td style="font-size: 11px; color: #ccc; padding-top: 30px;">
+                  © ${new Date().getFullYear()} Lare Laboratório – Todos os direitos reservados.
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      `,
+    });
+    return true;
+  } catch (error) {
+    logger.error('Falha ao enviar email com senha temporária', error, { ctx: 'pacientes' });
+    return false;
+  }
+}
 
 // Função para buscar pacientes com base em privilégios
 export async function GET(request: NextRequest) {
@@ -20,13 +79,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
         
-        // CORREÇÃO: Verifica se o perfil é 'Administrador' primeiro
-        const userProfile = (session.user as any)?.nome_perfil;
+        const userProfile = session.user?.nome_perfil;
         if (userProfile === 'Administrador') {
             // Permite o acesso total, sem mais verificações
         } else {
             // Para outros perfis, checa se o privilégio da rota existe na lista de privilégios do usuário.
-            const userPrivileges = (session.user as any)?.privilegios || [];
+            const userPrivileges = session.user?.privilegios || [];
             if (!userPrivileges.includes('/dashboard/pacientes')) {
                 return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
             }
@@ -36,9 +94,8 @@ export async function GET(request: NextRequest) {
         const nome = searchParams.get('nome');
         const cpf = searchParams.get('cpf');
 
-        const whereClause: any = {};
+        const whereClause: any = { ativo: true };
         if (nome) {
-            // CORREÇÃO AQUI: Removendo 'mode: 'insensitive''
             whereClause.nome_completo = { contains: nome };
         }
         if (cpf) {
@@ -53,16 +110,13 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(pacientes, { status: 200 });
     } catch (error: any) {
-        console.error('ERRO DETALHADO AO BUSCAR PACIENTES:', error);
+        logger.error('Erro ao buscar pacientes', error, { ctx: 'pacientes' });
         return NextResponse.json({ message: 'Erro interno do servidor ao buscar pacientes.', details: error.message }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
     }
 }
 
 // Função para adicionar um novo paciente com base em privilégios
 export async function POST(request: NextRequest) {
-    // --- [ID DO USUÁRIO LOGADO] ---
     let idUsuarioLogado: number | null = null;
 
     try {
@@ -72,15 +126,14 @@ export async function POST(request: NextRequest) {
         }
         
         // Captura o ID do usuário para o log
-        idUsuarioLogado = Number((session.user as any)?.id);
+        idUsuarioLogado = Number(session.user?.id);
 
-        // CORREÇÃO: Verifica se o perfil é 'Administrador' primeiro
-        const userProfile = (session.user as any)?.nome_perfil;
+        const userProfile = session.user?.nome_perfil;
         if (userProfile === 'Administrador') {
             // Permite o acesso total, sem mais verificações
         } else {
             // Para outros perfis, checa se o privilégio para "Solicitar Exame" existe.
-            const userPrivileges = (session.user as any)?.privilegios || [];
+            const userPrivileges = session.user?.privilegios || [];
             if (!userPrivileges.includes('/dashboard/solicitar-exame')) {
                 return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
             }
@@ -106,17 +159,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'Este CPF já está cadastrado como paciente.' }, { status: 409 });
         }
 
-        const usuarioExistente = await prisma.usuario.findUnique({ where: { email: cleanCpf } });
+        const usuarioExistente = await prisma.usuario.findUnique({ where: { cpf_login: cleanCpf } });
         if (usuarioExistente) {
             return NextResponse.json({ message: 'Já existe um usuário de login cadastrado com este CPF.' }, { status: 409 });
         }
 
-        const day = String(parsedDate.getUTCDate()).padStart(2, '0');
-        const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
-        const year = parsedDate.getUTCFullYear();
-        const initialPassword = `${day}${month}${year}`;
+        // Senha inicial cripto-segura, NÃO derivada de dado público (data de
+        // nascimento). 10 caracteres em alfabeto sem ambíguos.
+        const initialPassword = generateTemporaryPassword();
         const hash_senha_inicial = await bcrypt.hash(initialPassword, 10);
-        
+
         const patientProfile = await prisma.perfil.findUnique({ where: { nome_perfil: 'Paciente' } });
         if (!patientProfile) {
             return NextResponse.json({ message: 'Erro de configuração: Perfil "Paciente" não encontrado.' }, { status: 500 });
@@ -131,16 +183,19 @@ export async function POST(request: NextRequest) {
             });
             await tx.usuario.create({
                 data: {
-                    nome_completo: newPatient.nome_completo, email: newPatient.cpf,
-                    hash_senha: hash_senha_inicial, id_perfil: patientProfile.id_perfil,
+                    nome_completo: newPatient.nome_completo,
+                    // Paciente loga por CPF (cpf_login). email guarda o e-mail real
+                    // se cadastrado; pode ser null.
+                    cpf_login: cleanCpf,
+                    email: newPatient.email || null,
+                    hash_senha: hash_senha_inicial,
+                    id_perfil: patientProfile.id_perfil,
                     primeiro_login: true,
                 },
             });
             return { newPatient };
         });
 
-        // --- [LOG ADICIONADO] ---
-        // Registra o log após a transação ser bem-sucedida
         if (idUsuarioLogado) {
             await registrarLog(
                 idUsuarioLogado,
@@ -149,12 +204,29 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        return NextResponse.json(newPatientAndUser.newPatient, { status: 201 });
+        // Tentativa best-effort de envio por email (não bloqueia cadastro).
+        // A senha também é retornada na resposta para o recepcionista anotar/imprimir.
+        let emailEnviado = false;
+        if (newPatientAndUser.newPatient.email) {
+            emailEnviado = await sendTemporaryPasswordEmail(
+                newPatientAndUser.newPatient.email,
+                newPatientAndUser.newPatient.nome_completo,
+                cleanCpf,
+                initialPassword,
+            );
+        }
+
+        return NextResponse.json(
+            {
+                ...newPatientAndUser.newPatient,
+                senha_temporaria: initialPassword,
+                email_enviado: emailEnviado,
+            },
+            { status: 201 },
+        );
     } catch (error: any) {
-        console.error('Erro ao cadastrar o paciente:', error);
+        logger.error('Erro ao cadastrar paciente', error, { ctx: 'pacientes' });
         
-        // --- [LOG ADICIONADO] ---
-        // Opcional: Logar a falha
         if (idUsuarioLogado) {
             await registrarLog(
                 idUsuarioLogado,
@@ -164,7 +236,5 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json({ message: 'Erro interno do servidor ao tentar cadastrar o paciente.' }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
     }
 }

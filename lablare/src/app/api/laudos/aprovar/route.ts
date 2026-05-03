@@ -1,20 +1,22 @@
 // Caminho: src/app/api/laudos/[id]/aprovar/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import prisma from '@/lib/prisma'; // Use o helper centralizado
+import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; // Caminho ajustado
-import { createNotification } from '@/utils/notification'; // Helper de notificação
+import { authOptions } from '@/lib/auth';
+import { createNotification } from '@/utils/notification';
+import { logger } from '@/lib/logger';
+import { STATUS_LAUDO } from '@/lib/statuses';
 
 /**
  * Manipula requisições POST/PUT para aprovar (validar) um laudo.
  * Atualiza o status do Laudo para 'Validado' e a Solicitação principal para 'LAUDO_VALIDADO'.
  */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const laudoId = parseInt(params.id);
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const laudoId = parseInt((await params).id);
 
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id_usuario;
+    const userId = session?.user?.id ? Number(session.user.id) : null;
 
     if (!session || !userId) {
       return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const laudo = await tx.laudo.update({
         where: { id_laudo: laudoId },
         data: {
-          status_laudo: 'Validado', // Status do Laudo
+          status_laudo: STATUS_LAUDO.VALIDADO,
           data_validacao: new Date(),
           id_biomedico_validador: userId, // Registra quem validou
         },
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
       
       // VERIFICAÇÃO CRÍTICA: Se o status_laudo for 'Validado' para TODOS, a solicitação avança.
-      const todosLaudosValidados = laudosDaSolicitacao.every(l => l.status_laudo === 'Validado');
+      const todosLaudosValidados = laudosDaSolicitacao.every(l => l.status_laudo === STATUS_LAUDO.VALIDADO);
 
       // 3. Se todos os laudos estiverem validados, atualiza o status da SOLICITAÇÃO principal
       if (todosLaudosValidados) {
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ message: 'Laudo aprovado com sucesso!', laudo: resultado }, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Erro ao aprovar laudo ${laudoId}:`, error);
+    logger.error('Erro ao aprovar laudo', error, { ctx: 'laudos', laudoId });
     return NextResponse.json({ message: error.message || 'Erro interno do servidor ao aprovar laudo.' }, { status: 500 });
   } 
 }

@@ -74,8 +74,7 @@ export default function VisualizarExamesPage() {
         const data: SolicitacaoExamesData = await response.json();
         setSolicitacao(data);
 
-        // CORREÇÃO: Converter a origem para minúsculas antes de comparar
-        // Isso garante que o filtro funcione independentemente de ser 'PARDINI' ou 'pardini'.
+        // Compara em minúsculas para tolerar 'PARDINI' ou 'pardini'.
         const pardini = data.itens_solicitacao.filter(
           (item) => item.exame_catalogo.origem?.toLowerCase() === 'pardini'
         );

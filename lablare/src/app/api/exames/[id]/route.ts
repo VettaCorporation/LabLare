@@ -1,17 +1,15 @@
-// Caminho: src/app/api/exames-catalogo/[id]/route.ts
+// Caminho: src/app/api/exames/[id]/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-// MUDANÇA 1: Corrigido o import do Prisma para o padrão
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // GET: Buscar um único exame por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -19,7 +17,7 @@ export async function GET(
       return NextResponse.json({ message: 'Acesso não autorizado.' }, { status: 401 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID do exame inválido.' }, { status: 400 });
     }
@@ -34,7 +32,7 @@ export async function GET(
 
     return NextResponse.json(exame, { status: 200 });
   } catch (error) {
-    console.error(`Erro ao buscar o exame com ID ${params.id}:`, error);
+    logger.error('Erro ao buscar exame', error, { ctx: 'exames', exameId: (await params).id });
     return NextResponse.json({ error: 'Erro interno ao buscar o exame.' }, { status: 500 });
   }
 }
@@ -42,7 +40,7 @@ export async function GET(
 // PUT: Atualizar um exame existente
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -50,12 +48,11 @@ export async function PUT(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID do exame inválido.' }, { status: 400 });
     }
 
-    // MUDANÇA 2: Incluindo todos os campos editáveis
     const { nome_exame, descricao, preco, codigo_lare, codigo_pardini } = await request.json();
     if (!nome_exame || preco === undefined) {
       return NextResponse.json({ message: 'Nome e preço são obrigatórios.' }, { status: 400 });
@@ -75,7 +72,7 @@ export async function PUT(
     return NextResponse.json(updatedExame, { status: 200 });
 
   } catch (error) {
-    console.error(`Erro ao atualizar o exame com ID ${params.id}:`, error);
+    logger.error('Erro ao atualizar exame', error, { ctx: 'exames', exameId: (await params).id });
     return NextResponse.json({ error: 'Erro interno ao atualizar o exame.' }, { status: 500 });
   }
 }
@@ -83,7 +80,7 @@ export async function PUT(
 // DELETE: Excluir um exame
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -91,24 +88,21 @@ export async function DELETE(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     if (isNaN(id)) {
       return NextResponse.json({ message: 'ID do exame inválido.' }, { status: 400 });
     }
     
-    await prisma.exameCatalogo.delete({
+    // Soft-delete: preserva FK em ItemSolicitacao e OrcamentoItem.
+    await prisma.exameCatalogo.update({
       where: { id_exame_catalogo: id },
+      data: { ativo: false },
     });
 
     return NextResponse.json({ message: 'Exame excluído com sucesso!' }, { status: 200 });
 
   } catch (error: any) {
-    // MUDANÇA 3: Tratamento de erro aprimorado
-    // Este erro (P2003) ocorre quando tentamos apagar um exame que já está em uma solicitação
-    if (error.code === 'P2003') {
-      return NextResponse.json({ error: 'Não é possível excluir. O exame está associado a solicitações existentes.' }, { status: 409 });
-    }
-    console.error(`Erro ao excluir o exame com ID ${params.id}:`, error);
+    logger.error('Erro ao excluir exame', error, { ctx: 'exames', exameId: (await params).id });
     return NextResponse.json({ error: 'Erro interno ao excluir o exame.' }, { status: 500 });
   }
 }

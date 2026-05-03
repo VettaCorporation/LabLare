@@ -1,10 +1,9 @@
 // Caminho: src/app/api/exames-catalogo/route.ts
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // GET: Lista os exames com busca, filtro de origem e paginação
 export async function GET(request: Request) {
@@ -20,8 +19,8 @@ export async function GET(request: Request) {
     const origemFilter = searchParams.get('origem') || 'all';
     const skip = (page - 1) * pageSize;
 
-    const whereConditions: any[] = [];
-    
+    const whereConditions: any[] = [{ ativo: true }];
+
     if (searchTerm) {
       whereConditions.push({
         OR: [
@@ -33,12 +32,10 @@ export async function GET(request: Request) {
     }
 
     if (origemFilter !== 'all') {
-      whereConditions.push({
-        origem: origemFilter,
-      });
+      whereConditions.push({ origem: origemFilter });
     }
 
-    const whereCondition = whereConditions.length > 0 ? { AND: whereConditions } : {};
+    const whereCondition = { AND: whereConditions };
 
     const exames = await prisma.exameCatalogo.findMany({
       where: whereCondition,
@@ -54,7 +51,7 @@ export async function GET(request: Request) {
       pagination: { page, pageSize, totalItems: totalExames, totalPages },
     });
   } catch (error) {
-    console.error('Erro ao buscar exames:', error);
+    logger.error('Erro ao buscar exames (catálogo)', error, { ctx: 'exames-catalogo' });
     // Aqui garantimos que o erro é retornado de forma segura, sem expor o erro do Prisma
     return NextResponse.json({ error: 'Não foi possível buscar os exames.' }, { status: 500 });
   }
@@ -82,7 +79,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(novoExame, { status: 201 });
   } catch (error) {
-    console.error('Erro ao criar exame:', error);
+    logger.error('Erro ao criar exame (catálogo)', error, { ctx: 'exames-catalogo' });
     return NextResponse.json({ error: 'Não foi possível criar o exame.' }, { status: 500 });
   }
 }

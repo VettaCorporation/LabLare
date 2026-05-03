@@ -2,39 +2,86 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
-import crypto from 'crypto';
+import { randomBytes } from 'crypto';
 import nodemailer from 'nodemailer';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
+import { parseJson } from '@/lib/schemas/common';
+import { resetRequestSchema } from '@/lib/schemas/auth';
 
-// Função para gerar um código simples e legível
+/**
+ * Gera um código alfanumérico cripto-seguro usando crypto.randomBytes.
+ * Aplica rejection sampling para eliminar bias de módulo: bytes maiores ou
+ * iguais a `maxValid` são descartados, garantindo distribuição uniforme
+ * sobre os 36 caracteres do alfabeto [A-Z0-9].
+ *
+ * @param length Quantidade de caracteres do código gerado.
+ * @returns Código com `length` caracteres em [A-Z0-9].
+ */
 function generateAlphanumericCode(length: number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const charsLen = chars.length; // 36
+  const maxValid = 256 - (256 % charsLen); // 252
+
   let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  while (result.length < length) {
+    const buf = randomBytes(length - result.length);
+    for (const b of buf) {
+      if (b < maxValid) {
+        result += chars[b % charsLen];
+        if (result.length >= length) break;
+      }
+    }
   }
   return result;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { identifier } = await request.json();
-
-    if (!identifier) {
-      return NextResponse.json({ message: 'E-mail é obrigatório.' }, { status: 400 });
-    }
-
-    const user = await prisma.usuario.findUnique({
-      where: { email: identifier },
+    // 3 solicitações por IP a cada 15 minutos: limita custo SMTP e abuso de inbox.
+    const ip = getClientIp(request);
+    const rl = checkRateLimit({
+      key: 'reset-request',
+      clientId: ip,
+      limit: 3,
+      windowMs: 15 * 60 * 1000,
     });
-
-    // Resposta genérica por segurança, não importa se o usuário existe ou não
-    if (!user) {
-      return NextResponse.json({ message: 'Se um usuário com este e-mail existir, um código será enviado.' }, { status: 200 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { message: 'Muitas solicitações. Tente novamente em alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+      );
     }
 
-    // Gera o código de 6 dígitos e define a expiração (ex: 5 minutos)
+    const parsed = await parseJson(request, resetRequestSchema);
+    if (!parsed.ok) return parsed.response;
+    const { identifier } = parsed.data;
+
+    // Identifier pode ser email (colaborador, ou paciente com email cadastrado)
+    // ou CPF puro de 11 dígitos (paciente). Detectamos pelo formato.
+    const cleanedIdentifier = String(identifier).trim();
+    const cpfDigits = cleanedIdentifier.replace(/\D/g, '');
+    const isCpf = /^\d{11}$/.test(cpfDigits);
+
+    const user = isCpf
+      ? await prisma.usuario.findUnique({ where: { cpf_login: cpfDigits } })
+      : await prisma.usuario.findUnique({ where: { email: cleanedIdentifier } });
+
+    // Resposta genérica por segurança em todos os caminhos negativos:
+    // - usuário não encontrado
+    // - usuário sem email cadastrado (não há canal para enviar código)
+    const respostaGenerica = NextResponse.json(
+      { message: 'Se um usuário com este e-mail existir, um código será enviado.' },
+      { status: 200 },
+    );
+
+    if (!user || !user.email) {
+      return respostaGenerica;
+    }
+
+    // Gera o código de 6 dígitos e define a expiração (5 minutos)
     const resetCode = generateAlphanumericCode(6);
-    const resetTokenExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+    const resetTokenExpires = new Date(Date.now() + 5 * 60 * 1000);
 
     await prisma.usuario.update({
       where: { id_usuario: user.id_usuario },
@@ -88,7 +135,7 @@ export async function POST(request: NextRequest) {
                     </tr>
                     <tr>
                       <td style="font-size: 13px; color: #777; padding-top: 24px;">
-                        Este código é válido por até <strong>3 minutos</strong>.<br />
+                        Este código é válido por até <strong>5 minutos</strong>.<br />
                         Se você não solicitou essa redefinição, pode ignorar este e-mail.
                       </td>
                     </tr>
@@ -108,7 +155,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Se um usuário com este e-mail existir, um código será enviado.' }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao solicitar código de redefinição:', error);
+    logger.error('Erro ao solicitar código de redefinição', error, { ctx: 'reset-password' });
     return NextResponse.json({ message: 'Erro interno no servidor.' }, { status: 500 });
   }
 }

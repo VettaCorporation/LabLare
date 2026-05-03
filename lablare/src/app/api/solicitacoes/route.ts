@@ -1,16 +1,16 @@
 // src/app/api/solicitacoes/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import prisma from '@/lib/prisma'; 
+import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-import { createNotification } from '@/utils/notification'; 
+import { authOptions } from '@/lib/auth';
+import { createNotification } from '@/utils/notification';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         
-        const userIdFromSession = (session?.user as any)?.id_usuario || (session?.user as any)?.id;
-        const idUsuarioLogado = parseInt(userIdFromSession?.toString() || '0', 10); 
+        const idUsuarioLogado = session?.user?.id ? parseInt(session.user.id, 10) : 0;
         
         if (!session || idUsuarioLogado === 0) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
@@ -63,9 +63,7 @@ export async function GET(request: NextRequest) {
                 aprovador: { select: { nome_completo: true } },
                 itens_solicitacao: {
                     select: {
-                        // *** CORREÇÃO AQUI: INCLUIR O ID DO ITEM DA SOLICITAÇÃO ***
                         id_item_solicitacao: true,
-                        // -----------------------------------------------------
                         exame_catalogo: {
                             select: { nome_exame: true, preco: true },
                         },
@@ -78,7 +76,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(solicitacoes, { status: 200 });
 
     } catch (error: any) {
-        console.error('Erro ao buscar solicitações:', error);
+        logger.error('Erro ao buscar solicitações', error, { ctx: 'solicitacoes' });
         return NextResponse.json({ message: 'Erro interno do servidor ao buscar solicitações.' }, { status: 500 });
     }
 }
@@ -90,8 +88,8 @@ export async function POST(req: NextRequest) {
         if (!session) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
-        const userPrivileges = (session.user as any)?.privilegios || [];
-        const userProfile = (session.user as any)?.nome_perfil;
+        const userPrivileges = session.user?.privilegios || [];
+        const userProfile = session.user?.nome_perfil;
         
         const isAdmin = userProfile === 'Administrador';
         const hasSolicitarPrivilege = userPrivileges.includes('/dashboard/solicitar-exame');
@@ -107,8 +105,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Dados de solicitação inválidos.' }, { status: 400 });
         }
 
-        const userIdFromSession = (session.user as any)?.id_usuario || (session.user as any)?.id;
-        const id_usuario_recepcionista = parseInt(userIdFromSession?.toString() || '0', 10); 
+        const id_usuario_recepcionista = session.user?.id ? parseInt(session.user.id, 10) : 0;
         
         if (isNaN(id_usuario_recepcionista) || id_usuario_recepcionista === 0) {
              return NextResponse.json({ message: 'ID do recepcionista inválido na sessão. Tente logar novamente.' }, { status: 400 });
@@ -128,7 +125,6 @@ export async function POST(req: NextRequest) {
             },
         });
         
-        // *** CORREÇÃO: Busca do Aprovador em Duas Etapas para Robustez ***
         const perfilAdmin = await prisma.perfil.findUnique({
             where: { nome_perfil: 'Administrador' },
             select: { id_perfil: true }
@@ -144,7 +140,6 @@ export async function POST(req: NextRequest) {
             });
             idAprovador = aprovador?.id_usuario || null;
         }
-        // ----------------------------------------------------------------
 
         const novaSolicitacao = await prisma.solicitacao.create({
             data: {
@@ -191,7 +186,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(novaSolicitacao, { status: 201 });
 
     } catch (error: any) {
-        console.error('Erro ao criar solicitação:', error);
+        logger.error('Erro ao criar solicitação', error, { ctx: 'solicitacoes' });
         return NextResponse.json({ message: 'Erro interno do servidor ao criar a solicitação.' }, { status: 500 });
     }
 }

@@ -26,11 +26,12 @@ export default function AccessDeniedPopup({ message, onClose }: AccessDeniedPopu
     if (countdown === 0) {
       setIsVisible(false);
       const hideTimer = setTimeout(() => {
-        onClose(); 
-      }, 300); 
+        onClose();
+      }, 300);
 
       return () => clearTimeout(hideTimer);
     }
+    return undefined;
   }, [countdown, onClose]);
 
   if (!isVisible) return null;

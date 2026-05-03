@@ -14,6 +14,7 @@ declare module 'next-auth' {
             nome_perfil: string;
             isInternalUser: boolean;
             privilegios: string[];
+            primeiro_login: boolean;
         } & DefaultSession['user']; // Herda os campos padrão (name, email, image)
     }
 
@@ -24,6 +25,7 @@ declare module 'next-auth' {
         nome_perfil?: string | null;
         isInternalUser?: boolean;
         privilegios?: string[];
+        primeiro_login?: boolean;
     }
 }
 
@@ -36,5 +38,6 @@ declare module 'next-auth/jwt' {
         nome_perfil: string;
         isInternalUser: boolean;
         privilegios: string[];
+        primeiro_login: boolean;
     }
 }

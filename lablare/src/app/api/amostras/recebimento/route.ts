@@ -1,10 +1,12 @@
 // Caminho: src/app/api/amostras/recebimento/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import prisma from '@/lib/prisma'; 
+import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route'; 
-import { createNotification } from '@/utils/notification'; 
+import { authOptions } from '@/lib/auth';
+import { createNotification } from '@/utils/notification';
+import { logger } from '@/lib/logger';
+import { STATUS_ITEM } from '@/lib/statuses';
 
 /**
  * Manipula requisições POST para registrar o recebimento de uma amostra.
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
     const userProfile = session.user?.nome_perfil;
     
     // ** CORREÇÃO DE CONSISTÊNCIA DE ID **
-    const userId = Number((session.user as any)?.id_usuario || (session.user as any)?.id); 
+    const userId = Number(session.user?.id); 
 
     if (!userProfile || !allowedProfiles.includes(userProfile) || isNaN(userId) || userId <= 0) {
       return NextResponse.json({ message: 'Acesso negado. Perfil não autorizado para recebimento.' }, { status: 403 });
@@ -41,8 +43,8 @@ export async function POST(req: NextRequest) {
     // --- TRANSAÇÃO: Receber Amostra e Atualizar Status da Solicitação ---
     const updatedItem = await prisma.$transaction(async (tx) => {
         
-        const NOVO_STATUS_ITEM = 'Amostra Recebida'; 
-        const STATUS_INICIAL_ESPERADO = 'Aguardando Coleta';
+        const NOVO_STATUS_ITEM = STATUS_ITEM.AMOSTRA_RECEBIDA;
+        const STATUS_INICIAL_ESPERADO = STATUS_ITEM.AGUARDANDO_COLETA;
 
         // A. VERIFICAÇÃO DE PRÉ-CONDIÇÃO E OBTENÇÃO DO RECEPCIONISTA ID
         const itemPreCheck = await tx.itemSolicitacao.findUnique({
@@ -129,7 +131,7 @@ export async function POST(req: NextRequest) {
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao registrar recebimento de amostra:', error);
+    logger.error('Erro ao registrar recebimento de amostra', error, { ctx: 'amostras' });
     if (error.code === 'P2025') { 
       return NextResponse.json({ message: 'Item de solicitação não encontrado. Verifique o ID.' }, { status: 404 });
     }

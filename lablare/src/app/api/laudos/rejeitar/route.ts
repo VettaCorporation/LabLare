@@ -1,11 +1,11 @@
 // lablare/src/app/api/laudos/rejeitar/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { STATUS_LAUDO, STATUS_ITEM } from '@/lib/statuses';
 
 /**
  * Manipula requisições POST para rejeitar um laudo.
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       const updatedLaudo = await tx.laudo.update({
         where: { id_laudo: parsedLaudoId },
         data: {
-          status_laudo: 'Rejeitado',
+          status_laudo: STATUS_LAUDO.REJEITADO,
           observacoes_biomedico: motivo_rejeicao,
           data_validacao: new Date(),
         },
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
       await tx.itemSolicitacao.update({
         where: { id_item_solicitacao: updatedLaudo.id_item_solicitacao },
-        data: { status_item: 'Recebida pela área técnica' },
+        data: { status_item: STATUS_ITEM.RECEBIDA_AREA_TECNICA },
       });
 
       return updatedLaudo;
@@ -64,12 +64,10 @@ export async function POST(req: NextRequest) {
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao rejeitar laudo:', error);
+    logger.error('Erro ao rejeitar laudo', error, { ctx: 'laudos' });
     if (error.code === 'P2025') {
       return NextResponse.json({ message: 'Laudo não encontrado. Verifique o ID.' }, { status: 404 });
     }
     return NextResponse.json({ message: 'Erro interno do servidor ao rejeitar laudo.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

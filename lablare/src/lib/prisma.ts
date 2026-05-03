@@ -1,29 +1,25 @@
 // Caminho: /src/lib/prisma.ts
+//
+// Singleton de PrismaClient compartilhado por toda a aplicação.
+// Em desenvolvimento, é armazenado em `global.prisma` para sobreviver ao
+// hot-reload do Next.js (sem isso, cada hot-reload criaria nova conexão e
+// esgotaria o pool do MySQL rapidamente).
+//
+// Não chame `prisma.$disconnect()` em rotas: o cliente é um singleton de
+// processo de longa duração; desconectar fecha o pool globalmente e quebra
+// requests subsequentes.
 
-// *** CORREÇÃO AQUI: Importação CommonJS/Compatível ***
-// Usa 'require' e depois a desestruturação para garantir que o módulo seja carregado corretamente.
-// Embora este arquivo use 'import', o NodeJS pode estar tratando '@prisma/client' como um módulo especial.
-// Vamos usar a sintaxe que funciona na maioria dos ambientes híbridos:
-const { PrismaClient } = require('@prisma/client'); 
-// ----------------------------------------
+import { PrismaClient } from '@prisma/client';
 
-// Declara uma variável global para armazenar a instância do Prisma
 declare global {
-  // O tipo correto é importado diretamente aqui, sem conflitos com a sintaxe de exportação
   // eslint-disable-next-line no-var
-  var prisma: typeof PrismaClient | undefined; 
+  var prisma: PrismaClient | undefined;
 }
 
-// Cria a instância do Prisma.
-// Se já houver uma instância global, ela será reutilizada.
-// Se não houver, uma nova instância será criada.
-const prisma = global.prisma || new PrismaClient(); // A instanciação agora deve funcionar
+const prisma = global.prisma ?? new PrismaClient();
 
-// Em ambiente de desenvolvimento, armazena a instância no objeto global.
-// Isso evita que o hot-reloading do Next.js crie múltiplas instâncias do Prisma Client.
 if (process.env.NODE_ENV !== 'production') {
   global.prisma = prisma;
 }
 
-// Exporta a instância única para ser usada em qualquer parte do seu projeto.
 export default prisma;

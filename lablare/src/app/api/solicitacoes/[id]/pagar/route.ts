@@ -1,16 +1,18 @@
 // Caminho: src/app/api/solicitacoes/[id]/pagar/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import prisma from '@/lib/prisma'; 
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route';
-import { generateLabelHtml } from '../../../../../utils/printTemplates/generateLabelHtml'; 
-import { SolicitacaoStatus } from '@prisma/client';
+import { authOptions } from '@/lib/auth';
+import { generateLabelHtml } from '../../../../../utils/printTemplates/generateLabelHtml';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { parseJson } from '@/lib/schemas/common';
+import { pagarSolicitacaoSchema } from '@/lib/schemas/solicitacoes';
 
 // --- MÉTODO POST para registrar o pagamento de uma solicitação ---
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const solicitacaoId = parseInt(params.id, 10);
-  
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const solicitacaoId = parseInt((await params).id, 10);
+
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -20,53 +22,71 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (isNaN(solicitacaoId)) {
         return NextResponse.json({ message: 'ID da solicitação inválido.' }, { status: 400 });
     }
-    
-    const { tipo_atendimento, forma_pagamento, valor_pago } = await req.json();
-    if (!tipo_atendimento || !forma_pagamento || valor_pago === undefined) {
-        return NextResponse.json({ message: 'Dados de pagamento são obrigatórios.' }, { status: 400 });
-    }
+
+    // Aceita apenas tipo_atendimento e forma_pagamento do client. valor_pago
+    // é AUTORITATIVO do backend: vem de Solicitacao.valor_final (gravado na
+    // aprovação). Cliente não pode subvalorizar pagamento.
+    const parsed = await parseJson(req, pagarSolicitacaoSchema);
+    if (!parsed.ok) return parsed.response;
+    const { tipo_atendimento, forma_pagamento } = parsed.data;
 
     // Usa uma transação para garantir consistência
     const solicitacaoPaga = await prisma.$transaction(async (tx) => {
         const solicitacao = await tx.solicitacao.findUnique({
             where: { id_solicitacao: solicitacaoId },
+            include: { itens_solicitacao: { select: { preco_item: true } } },
         });
 
         if (!solicitacao) {
             throw new Error('Solicitação não encontrada.');
         }
 
-        // *** CORREÇÃO: Lógica Simplificada para Pagamento ***
-        // 1. Define os status que indicam que a transação já foi finalizada
-        const FINALIZED_STATUSES = ['AGUARDANDO_COLETA', 'AGUARDANDO_LAUDO', 'LAUDO_VALIDADO', 'FINALIZADO', 'CANCELADO'];
-        
-        if (FINALIZED_STATUSES.includes(solicitacao.status)) {
-            // Se o pedido já está pago, não processa o pagamento, apenas permite gerar a etiqueta.
-            return solicitacao; 
+        // VERIFICAÇÃO CRÍTICA: Status deve ser AGUARDANDO_PAGAMENTO.
+        // Usamos a string literal para maior segurança em runtime.
+        if (solicitacao.status !== 'AGUARDANDO_PAGAMENTO') {
+            // Se já está AGUARDANDO_COLETA ou superior, ignora e segue o fluxo para gerar a etiqueta.
+            if (solicitacao.status === 'AGUARDANDO_COLETA' || solicitacao.status === 'LAUDO_VALIDADO') {
+                return solicitacao;
+            }
+            throw new Error(`Esta solicitação não está aguardando pagamento. Status atual: ${solicitacao.status}`);
         }
 
-        // 2. Garante que a transição de status ocorra para AGUARDANDO_COLETA
+        // valor_pago é determinado pelo backend, NUNCA pelo client.
+        // Preferimos o valor_final gravado na aprovação. Caso esteja ausente
+        // (não deveria pós-aprovação), recomputamos a partir dos itens.
+        let valorPagoCalculado: number;
+        if (solicitacao.valor_final !== null && solicitacao.valor_final !== undefined) {
+            valorPagoCalculado = Number(solicitacao.valor_final);
+        } else {
+            valorPagoCalculado = solicitacao.itens_solicitacao.reduce(
+                (acc, item) => acc + Number(item.preco_item),
+                0,
+            );
+            valorPagoCalculado = Number(valorPagoCalculado.toFixed(2));
+        }
+
+        // 1. Atualiza a solicitação para o status AGUARDANDO_COLETA (STATUS PAGO/PRONTO)
         const updatedSolicitacao = await tx.solicitacao.update({
             where: { id_solicitacao: solicitacaoId },
             data: {
-                status: SolicitacaoStatus.PAGO, // <-- LINHA ALTERADA
+                status: 'AGUARDANDO_COLETA',
             },
         });
 
-        // 3. Cria o registro de pagamento (mesmo que o status original fosse 'FINALIZAR_PAGAMENTO' ou 'AGUARDANDO_PAGAMENTO')
+        // 2. Cria o registro de pagamento com valor autoritativo
         await tx.pagamento.create({
             data: {
                 id_solicitacao: solicitacaoId,
                 tipo_atendimento,
                 forma_pagamento,
-                valor_pago,
+                valor_pago: valorPagoCalculado,
             }
         });
 
         return updatedSolicitacao;
     });
 
-    // 4. Busca a solicitação completa para gerar a etiqueta
+    // 3. Após o pagamento, gera a etiqueta de coleta
     const solicitacaoCompleta = await prisma.solicitacao.findUnique({
         where: { id_solicitacao: solicitacaoId },
         include: {
@@ -78,8 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!solicitacaoCompleta) {
         throw new Error('Erro ao buscar dados completos da solicitação para gerar etiqueta.');
     }
-    
-    // Funções de utilidade
+
     const calculateAge = (birthdate: Date): number => {
         const today = new Date();
         let age = today.getFullYear() - birthdate.getFullYear();
@@ -97,14 +116,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const etiquetaHtml = generateLabelHtml(solicitacaoCompleta.paciente, idadePaciente, examesParaEtiqueta);
 
 
-    return NextResponse.json({ 
+    return NextResponse.json({
         message: 'Pagamento registrado e solicitação liberada para coleta!',
         solicitacao: solicitacaoPaga,
         etiquetaHtml: etiquetaHtml
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Erro ao processar pagamento da solicitação ${solicitacaoId}:`, error.message);
-    return NextResponse.json({ message: error.message || 'Erro interno do servidor.' }, { status: 500 });
+    logger.error('Erro ao processar pagamento de solicitação', error, { ctx: 'solicitacoes', solicitacaoId });
+    return NextResponse.json({ message: error?.message || 'Erro interno do servidor.' }, { status: 500 });
   }
 }

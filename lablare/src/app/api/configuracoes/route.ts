@@ -1,7 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // GET: Busca as configurações atuais do sistema (e as cria se não existirem)
 export async function GET(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     // SE NÃO ENCONTRAR, CRIA A CONFIGURAÇÃO PADRÃO NA HORA!
     if (!config) {
-      console.log('Nenhuma configuração encontrada, criando valores padrão...');
+      logger.info('Nenhuma configuração encontrada, criando valores padrão', { ctx: 'configuracoes' });
       config = await prisma.configuracao.create({
         data: {
           id: 1,
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(config, { status: 200 });
 
   } catch (error) {
-    console.error('Erro ao buscar/criar configurações:', error);
+    logger.error('Erro ao buscar/criar configurações', error, { ctx: 'configuracoes' });
     return NextResponse.json({ message: 'Erro interno ao processar configurações.' }, { status: 500 });
   }
 }
@@ -64,7 +65,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ message: 'Configurações salvas com sucesso!', config: updatedConfig }, { status: 200 });
   } catch (error) {
-    console.error('Erro ao atualizar configurações:', error);
+    logger.error('Erro ao atualizar configurações', error, { ctx: 'configuracoes' });
     return NextResponse.json({ message: 'Erro interno ao salvar as configurações.' }, { status: 500 });
   }
 }

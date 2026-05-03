@@ -1,12 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 // GET: Busca os detalhes de um único orçamento
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     const orcamento = await prisma.orcamento.findUnique({
       where: { id_orcamento: id },
       include: {
@@ -38,7 +38,7 @@ export async function GET(
 // DELETE: Exclui um orçamento
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -46,7 +46,7 @@ export async function DELETE(
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
 
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
 
     // Deleta em uma transação para garantir que os itens e o orçamento sejam removidos juntos
     await prisma.$transaction(async (tx) => {

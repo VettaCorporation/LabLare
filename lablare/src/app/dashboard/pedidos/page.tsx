@@ -13,10 +13,9 @@ interface Solicitacao {
     status: string;
     paciente: { nome_completo: string; cpf: string };
     aprovador?: { nome_completo: string } | null;
-    itens_solicitacao: { 
-        // *** CORREÇÃO: ADICIONAR ID DO ITEM AQUI ***
-        id_item_solicitacao: number; // <--- NOVO
-        exame_catalogo: { preco: number, nome_exame: string } 
+    itens_solicitacao: {
+        id_item_solicitacao: number;
+        exame_catalogo: { preco: number, nome_exame: string }
     }[];
     desconto_percentual: number | null;
     valor_final: number | null;
@@ -110,7 +109,6 @@ export default function MeusPedidosPage() {
     const fetchPedidos = useCallback(async () => {
         setLoading(true);
         try {
-            // CORREÇÃO: Chama a API sempre com o filtro `minhas=true`
             const url = '/api/solicitacoes?minhas=true';
 
             const response = await fetch(url);

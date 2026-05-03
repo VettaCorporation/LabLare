@@ -18,6 +18,7 @@ import KpiCard from '@/components/dashboard/KpiCard';
 import InfoPieChart from '@/components/dashboard/InfoPieChart';
 import MonthlyRevenueLineChart from '@/components/dashboard/MonthlyRevenueLineChart';
 import { generateOrcamentoHtml } from '@/utils/printTemplates/generateOrcamentoHtml';
+import { STATUS_ORCAMENTO } from '@/lib/statuses';
 
 // --- Tipagens ---
 interface Orcamento {
@@ -53,9 +54,9 @@ const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - i);
 const getStatusBadge = (status: string) => {
     let bgColor = 'bg-gray-100 text-gray-800';
     switch (status) {
-      case 'Pendente': bgColor = 'bg-yellow-100 text-yellow-800'; break;
-      case 'Aprovado': bgColor = 'bg-green-100 text-green-800'; break;
-      case 'Expirado': bgColor = 'bg-red-100 text-red-800'; break;
+      case STATUS_ORCAMENTO.PENDENTE: bgColor = 'bg-yellow-100 text-yellow-800'; break;
+      case STATUS_ORCAMENTO.APROVADO: bgColor = 'bg-green-100 text-green-800'; break;
+      case STATUS_ORCAMENTO.EXPIRADO: bgColor = 'bg-red-100 text-red-800'; break;
     }
     return (
       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor}`}>

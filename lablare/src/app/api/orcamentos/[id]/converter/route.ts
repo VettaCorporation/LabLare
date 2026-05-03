@@ -1,29 +1,37 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route';
-import { Decimal } from '@prisma/client/runtime/library'; // Importa o tipo Decimal do Prisma
+import { authOptions } from '@/lib/auth';
+import { Decimal } from '@prisma/client/runtime/library';
+import { logger } from '@/lib/logger';
+import { STATUS_ORCAMENTO } from '@/lib/statuses';
+import { expirePendingOrcamentos } from '@/lib/jobs/orcamentoExpiry';
 
 // POST: Converte um orçamento em uma solicitação de exames
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     const recepcionistaId = Number(session?.user?.id);
-    const id = parseInt(params.id);
+    const id = parseInt((await params).id);
     
     if (!recepcionistaId) {
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
+
+    // Garante que orçamentos vencidos estejam marcados como Expirado antes de
+    // verificarmos o status — evita converter um orçamento que já passou da
+    // validade mas ainda estava 'Pendente' no DB.
+    await expirePendingOrcamentos();
 
     const orcamento = await prisma.orcamento.findUnique({
       where: { id_orcamento: id },
       include: { itens: true },
     });
 
-    if (!orcamento || orcamento.status !== 'Pendente') {
+    if (!orcamento || orcamento.status !== STATUS_ORCAMENTO.PENDENTE) {
       return NextResponse.json({ message: 'Orçamento não encontrado ou já processado.' }, { status: 404 });
     }
 
@@ -52,11 +60,8 @@ export async function POST(
           id_paciente: orcamento.id_paciente,
           id_recepcionista: recepcionistaId,
           medico_solicitante: 'A partir de Orçamento #' + orcamento.id_orcamento,
-          
-          // *** CORREÇÃO: ADICIONANDO DESCONTO E VALOR FINAL ***
           desconto_percentual: descontoPercentual,
           valor_final: orcamento.valor_final,
-          // ----------------------------------------------------
         },
       });
 
@@ -74,7 +79,7 @@ export async function POST(
       // 3. Atualiza o status do orçamento para "Aprovado"
       await tx.orcamento.update({
         where: { id_orcamento: id },
-        data: { status: 'Aprovado' },
+        data: { status: STATUS_ORCAMENTO.APROVADO },
       });
 
       return solicitacao;
@@ -83,7 +88,7 @@ export async function POST(
     return NextResponse.json({ message: `Orçamento convertido com sucesso! Nova solicitação #${novaSolicitacao.id_solicitacao} criada.`, solicitacao: novaSolicitacao }, { status: 200 });
 
   } catch (error) {
-    console.error("Erro ao converter orçamento:", error);
+    logger.error('Erro ao converter orçamento em solicitação', error, { ctx: 'orcamentos' });
     return NextResponse.json({ message: 'Erro interno ao converter o orçamento.' }, { status: 500 });
   }
 }

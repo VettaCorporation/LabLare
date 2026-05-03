@@ -106,6 +106,7 @@ export default function GerenciamentoExamesPage() {
             }, 5000);
             return () => clearTimeout(timer);
         }
+        return undefined;
     }, [searchParams]);
 
     const handleEdit = (id: number) => { router.push(`/dashboard/exames/${id}/editar`); };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import logoLab from '../../../public/assets/img/Logo.png';
 
@@ -16,9 +16,7 @@ const SuccessGear = () => (
 );
 
 export default function ResetPasswordPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token') ?? '';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -49,10 +47,12 @@ export default function ResetPasswordPage() {
     setErrorMessage(null);
 
     try {
+      // Token de reset vive em cookie httpOnly setado por /validate-code.
+      // Cookie é enviado automaticamente pelo browser; não precisamos manipulá-lo aqui.
       const response = await fetch('/api/auth/reset-password/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword: password }),
+        body: JSON.stringify({ newPassword: password }),
       });
 
       const data = await response.json();

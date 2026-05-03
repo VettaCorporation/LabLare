@@ -42,7 +42,6 @@ export default function SolicitacaoExameForm({ paciente, onClearSelection }: Sol
         
         const payload = {
             pacienteId: paciente.id_paciente,
-            // CORREÇÃO: Mapeando para o formato de objeto que a API espera
             examesSelecionados: examesSelecionados.map(ex => ({ id_exame_catalogo: ex.id_exame_catalogo })),
             medico_solicitante: medicoSolicitante,
         };

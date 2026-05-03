@@ -1,10 +1,10 @@
 // src/app/api/dashboard/_stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { STATUS_LAUDO } from '@/lib/statuses';
 
 // Função auxiliar para calcular a idade a partir da data de nascimento
 const calculateAge = (birthDate: string | Date): number => {
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const userProfile = (session.user as any).nome_perfil;
-    const userId = Number((session.user as any).id);
+    const userProfile = session.user.nome_perfil;
+    const userId = Number(session.user.id);
 
     // Cria um objeto de filtro dinâmico
     let userFilter = {};
@@ -117,7 +117,9 @@ export async function GET(request: NextRequest) {
         });
 
         const laudosFinalizados = await prisma.laudo.findMany({
-            where: { status_laudo: 'VALIDADO', data_validacao: { not: null } },
+            // Bug histórico: usava 'VALIDADO' (uppercase) e nunca encontrava nada,
+            // pois `laudos/aprovar` grava 'Validado' (Title Case). KPI ficava zerado.
+            where: { status_laudo: STATUS_LAUDO.VALIDADO, data_validacao: { not: null } },
             include: { item_solicitacao: { include: { solicitacao: true } } },
             take: 100,
             orderBy: { data_validacao: 'desc' }
@@ -202,9 +204,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(stats);
 
     } catch (error) {
-        console.error("Erro ao buscar estatísticas do dashboard:", error);
+        logger.error('Erro ao buscar estatísticas do dashboard', error, { ctx: 'dashboard' });
         return NextResponse.json({ error: 'Erro interno ao buscar estatísticas.' }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
     }
 }

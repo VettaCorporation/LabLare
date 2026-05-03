@@ -4,6 +4,7 @@
     "module": "CommonJS"
   },
   "include": [
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "prisma/**/*.ts"
   ]
 }

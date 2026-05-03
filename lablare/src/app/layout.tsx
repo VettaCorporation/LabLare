@@ -3,7 +3,6 @@
 
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
 
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -27,11 +26,6 @@ export default function RootLayout({
   return (
     <html lang="pt-br" className="h-full">
       <body className="min-h-screen flex flex-col">
-        <Script
-          src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_API_Maps&libraries=places"
-          async
-          defer
-        />
         <SessionProvider>
           {isDashboard ? (
             <div className="flex min-h-screen">

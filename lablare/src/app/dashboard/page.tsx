@@ -190,7 +190,7 @@ export default function DashboardPage() {
             }
             const dashboardData = await dashboardRes.json();
             
-            const hasOrcamentoPrivilege = (session?.user as any)?.privilegios?.includes('/dashboard/orcamento');
+            const hasOrcamentoPrivilege = session?.user?.privilegios?.includes('/dashboard/orcamento');
             let orcamentoData = { barChart: [] };
 
             if (hasOrcamentoPrivilege) {
@@ -246,7 +246,7 @@ export default function DashboardPage() {
     
     // 3. Tela de Dashboard (quando os dados estão prontos)
     if (stats) {
-        const userProfile = (session?.user as any)?.nome_perfil;
+        const userProfile = session?.user?.nome_perfil;
         return (
             userProfile === 'Administrador' 
                 ? <AdminDashboard stats={stats} /> 

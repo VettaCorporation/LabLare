@@ -3,13 +3,40 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
+import { parseJson } from '@/lib/schemas/common';
+import { resetPasswordSchema } from '@/lib/schemas/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, newPassword } = await request.json();
+    // 5 tentativas por IP a cada 15 minutos: limita brute force do token.
+    const ip = getClientIp(request);
+    const rl = checkRateLimit({
+      key: 'reset-finish',
+      clientId: ip,
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { message: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+      );
+    }
 
-    if (!token || !newPassword) {
-      return NextResponse.json({ message: 'Token e nova senha são obrigatórios.' }, { status: 400 });
+    const parsed = await parseJson(request, resetPasswordSchema);
+    if (!parsed.ok) return parsed.response;
+    const { newPassword } = parsed.data;
+
+    // Token vem APENAS do cookie httpOnly setado em /validate-code.
+    // Cliente nunca tem acesso, eliminando vazamento via URL/history/Referer.
+    const token = request.cookies.get('lablare-reset-token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Sessão de redefinição inválida ou expirada. Solicite um novo código.' },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.usuario.findFirst({
@@ -38,10 +65,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ message: 'Senha redefinida com sucesso!' }, { status: 200 });
+    // Limpa o cookie de reset (defesa em profundidade — token já foi invalidado no DB).
+    const response = NextResponse.json({ message: 'Senha redefinida com sucesso!' }, { status: 200 });
+    response.cookies.set({
+      name: 'lablare-reset-token',
+      value: '',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/api/auth/reset-password',
+      maxAge: 0,
+    });
+    return response;
 
   } catch (error: any) {
-    console.error('Erro na redefinição de senha:', error);
+    logger.error('Erro na redefinição de senha', error, { ctx: 'reset-password' });
     return NextResponse.json({ message: 'Erro interno ao redefinir a senha.' }, { status: 500 });
   }
 }

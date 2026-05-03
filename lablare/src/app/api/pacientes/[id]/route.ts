@@ -1,15 +1,14 @@
 // Caminho: src/app/api/pacientes/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 interface RouteParams {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 // GET: Busca um paciente e suas solicitações
@@ -24,15 +23,15 @@ export async function GET(
         }
         
         // Acesso total para o Administrador, outros perfis precisam da permissão
-        const userProfile = (session.user as any)?.nome_perfil;
+        const userProfile = session.user?.nome_perfil;
         if (userProfile !== 'Administrador') {
-            const userPrivileges = (session.user as any)?.privilegios || [];
+            const userPrivileges = session.user?.privilegios || [];
             if (!userPrivileges.includes('/dashboard/pacientes')) {
                 return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
             }
         }
 
-        const pacienteId = parseInt(params.id, 10);
+        const pacienteId = parseInt((await params).id, 10);
         if (isNaN(pacienteId)) {
             return NextResponse.json({ message: 'ID do paciente inválido.' }, { status: 400 });
         }
@@ -58,7 +57,7 @@ export async function GET(
 
         return NextResponse.json(paciente, { status: 200 });
     } catch (error: any) {
-        console.error(`ERRO DETALHADO AO BUSCAR PACIENTE ${params.id}:`, error);
+        logger.error('Erro ao buscar paciente', error, { ctx: 'pacientes', pacienteId: (await params).id });
         return NextResponse.json({ message: 'Erro interno do servidor.', details: error.message }, { status: 500 });
     }
 }
@@ -66,7 +65,7 @@ export async function GET(
 // PUT: Atualiza um paciente
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -74,15 +73,15 @@ export async function PUT(
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
 
-        const userProfile = (session.user as any)?.nome_perfil;
-        const userPrivileges = (session.user as any)?.privilegios || [];
+        const userProfile = session.user?.nome_perfil;
+        const userPrivileges = session.user?.privilegios || [];
         
         // VERIFICAÇÃO DE PRIVILÉGIO PARA EDIÇÃO
         if (userProfile !== 'Administrador' && !userPrivileges.includes('/dashboard/pacientes/editar')) {
             return NextResponse.json({ message: 'Acesso negado para editar paciente.' }, { status: 403 });
         }
 
-        const pacienteId = parseInt(params.id, 10);
+        const pacienteId = parseInt((await params).id, 10);
         if (isNaN(pacienteId)) {
             return NextResponse.json({ message: 'ID do paciente inválido.' }, { status: 400 });
         }
@@ -107,7 +106,7 @@ export async function PUT(
         return NextResponse.json(updatedPaciente, { status: 200 });
 
     } catch (error: any) {
-        console.error(`Erro ao atualizar paciente com ID: ${params.id}`, error);
+        logger.error('Erro ao atualizar paciente', error, { ctx: 'pacientes', pacienteId: (await params).id });
         return NextResponse.json({ message: 'Erro interno do servidor ao atualizar paciente.', details: error.message }, { status: 500 });
     }
 }
@@ -115,7 +114,7 @@ export async function PUT(
 // DELETE: Exclui um paciente
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -123,15 +122,15 @@ export async function DELETE(
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         }
 
-        const userProfile = (session.user as any)?.nome_perfil;
-        const userPrivileges = (session.user as any)?.privilegios || [];
+        const userProfile = session.user?.nome_perfil;
+        const userPrivileges = session.user?.privilegios || [];
         
         // VERIFICAÇÃO DE PRIVILÉGIO PARA EXCLUSÃO
         if (userProfile !== 'Administrador' && !userPrivileges.includes('/dashboard/pacientes/excluir')) {
             return NextResponse.json({ message: 'Acesso negado para excluir paciente.' }, { status: 403 });
         }
 
-        const pacienteId = parseInt(params.id, 10);
+        const pacienteId = parseInt((await params).id, 10);
         if (isNaN(pacienteId)) {
             return NextResponse.json({ message: 'ID do paciente inválido.' }, { status: 400 });
         }
@@ -144,14 +143,16 @@ export async function DELETE(
             return NextResponse.json({ message: 'Paciente não encontrado.' }, { status: 404 });
         }
 
-        await prisma.paciente.delete({
+        // Soft-delete: preserva solicitações/orçamentos históricos vinculados.
+        await prisma.paciente.update({
             where: { id_paciente: pacienteId },
+            data: { ativo: false },
         });
 
         return NextResponse.json({ message: 'Paciente excluído com sucesso.' }, { status: 200 });
 
     } catch (error: any) {
-        console.error(`Erro ao excluir paciente com ID: ${params.id}`, error);
+        logger.error('Erro ao excluir paciente', error, { ctx: 'pacientes', pacienteId: (await params).id });
         return NextResponse.json({ message: 'Erro interno do servidor ao excluir paciente.', details: error.message }, { status: 500 });
     }
 }

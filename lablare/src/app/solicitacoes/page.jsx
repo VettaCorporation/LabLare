@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { SolicitacaoStatus } from '@prisma/client';
 
 export default function SolicitacoesPage() {
   const { data: session, status: sessionStatus } = useSession();
@@ -63,33 +64,40 @@ export default function SolicitacoesPage() {
     return <div className="text-center text-red-500">{error}</div>;
   }
   
+  // Status são valores do enum Prisma SolicitacaoStatus.
+  // Cores históricas mantidas; cases que apontavam para valores inexistentes
+  // ('PENDENTE_DE_VALIDACAO', 'VALIDADO', 'LIBERADA') foram trocados pelos
+  // valores reais do enum (LAUDO_VALIDADO, FINALIZADO).
   const getStatusBadge = (status) => {
     let bgColor = 'bg-gray-200';
     let textColor = 'text-gray-800';
     switch (status) {
-      case 'AGUARDANDO_PAGAMENTO':
-        bgColor = 'bg-yellow-100';
-        textColor = 'text-yellow-800';
-        break;
-      case 'AGUARDANDO_COLETA':
-        bgColor = 'bg-yellow-100';
-        textColor = 'text-yellow-800';
-        break;
-      case 'AMOSTRA_RECEBIDA':
-        bgColor = 'bg-blue-100';
-        textColor = 'text-blue-800';
-        break;
-      case 'PENDENTE_DE_VALIDACAO':
+      case SolicitacaoStatus.AGUARDANDO_APROVACAO:
         bgColor = 'bg-orange-100';
         textColor = 'text-orange-800';
         break;
-      case 'VALIDADO':
+      case SolicitacaoStatus.AGUARDANDO_PAGAMENTO:
+      case SolicitacaoStatus.FINALIZAR_PAGAMENTO:
+        bgColor = 'bg-yellow-100';
+        textColor = 'text-yellow-800';
+        break;
+      case SolicitacaoStatus.PAGO:
+      case SolicitacaoStatus.AGUARDANDO_COLETA:
+        bgColor = 'bg-blue-100';
+        textColor = 'text-blue-800';
+        break;
+      case SolicitacaoStatus.AGUARDANDO_LAUDO:
+        bgColor = 'bg-indigo-100';
+        textColor = 'text-indigo-800';
+        break;
+      case SolicitacaoStatus.LAUDO_VALIDADO:
+      case SolicitacaoStatus.FINALIZADO:
         bgColor = 'bg-green-100';
         textColor = 'text-green-800';
         break;
-      case 'LIBERADA':
-        bgColor = 'bg-purple-100';
-        textColor = 'text-purple-800';
+      case SolicitacaoStatus.CANCELADO:
+        bgColor = 'bg-red-100';
+        textColor = 'text-red-800';
         break;
       default:
         break;

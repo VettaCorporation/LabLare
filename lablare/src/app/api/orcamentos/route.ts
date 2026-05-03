@@ -1,8 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { Decimal } from '@prisma/client/runtime/library';
+import { logger } from '@/lib/logger';
+import { expirePendingOrcamentos } from '@/lib/jobs/orcamentoExpiry';
 
 // GET: Lista todos os orçamentos
 export async function GET(request: NextRequest) {
@@ -13,6 +15,9 @@ export async function GET(request: NextRequest) {
     if (!userProfile || !['Administrador', 'Recepcionista'].includes(userProfile)) {
       return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
     }
+
+    // Marca orçamentos pendentes vencidos como Expirado antes de listar.
+    await expirePendingOrcamentos();
 
     const orcamentos = await prisma.orcamento.findMany({
       orderBy: { data_criacao: 'desc' },
@@ -34,7 +39,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(orcamentos, { status: 200 });
 
   } catch (error) {
-    console.error('Erro ao buscar orçamentos:', error);
+    logger.error('Erro ao buscar orçamentos', error, { ctx: 'orcamentos' });
     return NextResponse.json({ message: 'Erro interno ao buscar orçamentos.' }, { status: 500 });
   }
 }
@@ -92,7 +97,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Orçamento criado com sucesso!', orcamento: novoOrcamento }, { status: 201 });
 
   } catch (error) {
-    console.error('Erro ao criar orçamento:', error);
+    logger.error('Erro ao criar orçamento', error, { ctx: 'orcamentos' });
     return NextResponse.json({ message: 'Erro interno ao criar o orçamento.' }, { status: 500 });
   }
 }

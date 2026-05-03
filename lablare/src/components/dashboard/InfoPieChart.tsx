@@ -4,6 +4,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 interface ChartDataItem {
   name: string;
   value: number;
+  // Index signature requerido pelo tipo `ChartDataInput` do recharts.
+  [key: string]: string | number;
 }
 
 interface InfoPieChartProps {

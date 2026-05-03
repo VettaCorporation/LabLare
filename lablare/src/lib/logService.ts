@@ -1,6 +1,7 @@
 // src/lib/logService.ts
 
-import prisma from '@/lib/prisma'; // Importa seu cliente Prisma
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * Registra uma nova operação no log do sistema.
@@ -22,9 +23,9 @@ export async function registrarLog(
       },
     });
   } catch (error) {
-    // Falha ao salvar o log. Apenas logamos no console.
+    // Falha ao salvar o log. Apenas registramos no logger.
     // Não devemos deixar uma falha no log quebrar a funcionalidade principal.
-    console.error('Falha ao registrar log de operação:', error);
+    logger.error('Falha ao registrar log de operação', error, { ctx: 'log-service' });
   }
 }
 
@@ -39,6 +40,9 @@ export const ACAO_LOG = {
   PACIENTE_CRIADO: 'PACIENTE_CRIADO',
   PACIENTE_ATUALIZADO: 'PACIENTE_ATUALIZADO',
   PACIENTE_DELETADO: 'PACIENTE_DELETADO',
+
+  // Colaboradores
+  COLABORADOR_CRIADO: 'COLABORADOR_CRIADO',
 
   // Solicitações
   SOLICITACAO_CRIADA: 'SOLICITACAO_CRIADA',

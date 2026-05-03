@@ -3,9 +3,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import prisma from '@/lib/prisma';
-// Importe suas authOptions do arquivo onde elas estão definidas
-// (provavelmente o handler do next-auth)
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
+import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,7 +74,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Erro ao buscar logs de operação:', error);
+    logger.error('Erro ao buscar logs de operação', error, { ctx: 'logs' });
     return NextResponse.json(
       { error: 'Erro interno do servidor.' },
       { status: 500 }

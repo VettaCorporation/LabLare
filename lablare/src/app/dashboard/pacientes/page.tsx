@@ -171,8 +171,8 @@ export default function PacientesPage() {
     const router = useRouter();
 
     // Acessa a lista de privilégios da sessão
-    const userPrivileges = (session?.user as any)?.privilegios || [];
-    const isAdmin = (session?.user as any)?.nome_perfil === 'Administrador';
+    const userPrivileges = session?.user?.privilegios ?? [];
+    const isAdmin = session?.user?.nome_perfil === 'Administrador';
 
     // Checagem de permissões para cada ação
     const canAddPatient = isAdmin || userPrivileges.includes('/dashboard/solicitar-exame');

@@ -1,26 +1,37 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '../../../generated/prisma'; // Corrigido o caminho para o Prisma Client
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
-const prisma = new PrismaClient();
+export async function GET(_request: NextRequest) {
+  // AuthN + AuthZ: a lista de colaboradores expõe PII (nome + email + perfil)
+  // e é usada apenas pela página /dashboard/colaboradores (Admin-only).
+  // Mesmo padrão aplicado em /api/colaboradores/[id].
+  const session = await getServerSession(authOptions);
 
-export async function GET() {
+  if (!session || session.user?.nome_perfil !== 'Administrador') {
+    return NextResponse.json(
+      { error: 'Acesso negado. Apenas administradores podem listar colaboradores.' },
+      { status: 403 },
+    );
+  }
+
   try {
     const colaboradores = await prisma.usuario.findMany({
-      // *** CORREÇÃO: FILTRO PARA EXCLUIR PACIENTES ***
       where: {
         perfil: {
           nome_perfil: {
-            not: 'Paciente', // Filtra onde o nome_perfil NÃO é 'Paciente'
+            not: 'Paciente',
           },
         },
       },
-      // **********************************************
       select: {
         id_usuario: true,
         nome_completo: true,
         email: true,
         ativo: true,
-        perfil: { // Inclui o nome do perfil
+        perfil: {
           select: {
             nome_perfil: true,
           },
@@ -33,7 +44,10 @@ export async function GET() {
 
     return NextResponse.json(colaboradores);
   } catch (error) {
-    console.error('Erro ao buscar colaboradores:', error);
-    return NextResponse.json({ error: 'Erro interno ao buscar colaboradores.' }, { status: 500 });
+    logger.error('Erro ao buscar colaboradores', error, { ctx: 'colaboradores' });
+    return NextResponse.json(
+      { error: 'Erro interno ao buscar colaboradores.' },
+      { status: 500 },
+    );
   }
 }

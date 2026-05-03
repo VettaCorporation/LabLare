@@ -1,11 +1,11 @@
 // lablare/src/app/api/laudos/pendentes/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma/index.js';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { STATUS_LAUDO } from '@/lib/statuses';
 
 /**
  * Manipula requisições GET para listar laudos com status "Pendente de Validação".
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     const pendingLaudos = await prisma.laudo.findMany({
       where: {
-        status_laudo: 'Pendente de Validação',
+        status_laudo: STATUS_LAUDO.PENDENTE_VALIDACAO,
       },
       orderBy: {
         data_lancamento: 'asc',
@@ -61,9 +61,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(pendingLaudos, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao buscar laudos pendentes:', error);
+    logger.error('Erro ao buscar laudos pendentes', error, { ctx: 'laudos' });
     return NextResponse.json({ message: 'Erro interno do servidor ao buscar laudos pendentes.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

@@ -11,7 +11,13 @@
     "update:origem": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/atualizar-origem-pardini.ts",
     "import:privilegios": "ts-node --project ./tsconfig.scripts.json ./scripts/importar-privilegios.ts",
     "postinstall": "prisma generate",
-    "script:run": "ts-node --project tsconfig.scripts.json"
+    "script:run": "ts-node --project tsconfig.scripts.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "prisma": {
+    "seed": "ts-node --project tsconfig.scripts.json prisma/seed.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -57,6 +63,7 @@
     "prisma": "^6.15.0",
     "tailwindcss": "^4.1.13",
     "ts-node": "^10.9.2",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^4.1.5"
   }
 }

@@ -16,6 +16,11 @@ interface Paciente {
   contato?: string | null;
 }
 
+interface PacienteCriadoResponse extends Paciente {
+  senha_temporaria?: string;
+  email_enviado?: boolean;
+}
+
 interface PacienteCadastroFormProps {
   onPatientSaved: (patient: Paciente) => void;
   onCancel: () => void;
@@ -48,6 +53,11 @@ export default function PacienteCadastroForm({
   const [formData, setFormData] = useState(initialState);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+  const [credentialsModal, setCredentialsModal] = useState<{
+    paciente: Paciente;
+    senha: string;
+    emailEnviado: boolean;
+  } | null>(null);
   const isEditing = !!initialData;
 
   useEffect(() => {
@@ -185,11 +195,22 @@ export default function PacienteCadastroForm({
         throw new Error(errorData.message || "Falha ao salvar o paciente.");
       }
 
-      const result = await response.json();
-      onPatientSaved(result);
-      toast.success("Paciente salvo com sucesso!");
+      const result: PacienteCriadoResponse = await response.json();
 
-      if (!isEditing) setFormData(initialState);
+      // Em criação, a API retorna a senha temporária. Mostramos em modal e
+      // só notificamos o pai quando o recepcionista confirmar que anotou.
+      if (!isEditing && result.senha_temporaria) {
+        const { senha_temporaria, email_enviado, ...paciente } = result;
+        setCredentialsModal({
+          paciente: paciente as Paciente,
+          senha: senha_temporaria,
+          emailEnviado: !!email_enviado,
+        });
+        setFormData(initialState);
+      } else {
+        onPatientSaved(result);
+        toast.success("Paciente salvo com sucesso!");
+      }
     } catch (error: any) {
       console.error("Erro ao salvar paciente:", error);
       toast.error(
@@ -203,8 +224,84 @@ export default function PacienteCadastroForm({
   // Limites para o input date
   const maxDate = new Date().toISOString().split("T")[0];
 
+  const handleCloseCredentialsModal = () => {
+    if (!credentialsModal) return;
+    const paciente = credentialsModal.paciente;
+    setCredentialsModal(null);
+    onPatientSaved(paciente);
+    toast.success("Paciente salvo com sucesso!");
+  };
+
+  const handleCopyPassword = async () => {
+    if (!credentialsModal) return;
+    try {
+      await navigator.clipboard.writeText(credentialsModal.senha);
+      toast.info("Senha copiada para a área de transferência.");
+    } catch {
+      toast.warn("Não foi possível copiar automaticamente. Anote manualmente.");
+    }
+  };
+
   // --- RENDER ---
   return (
+    <>
+    {credentialsModal && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Paciente cadastrado com sucesso
+          </h2>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            <strong>{credentialsModal.paciente.nome_completo}</strong> foi cadastrado(a) e já pode acessar o Portal do Paciente.
+          </p>
+
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md p-4">
+            <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-200 mb-2 uppercase tracking-wide">
+              Senha temporária — anote ou imprima agora
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-white dark:bg-gray-800 border border-yellow-300 dark:border-yellow-700 rounded px-3 py-2 font-mono text-lg tracking-widest text-gray-900 dark:text-white select-all">
+                {credentialsModal.senha}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopyPassword}
+                className="px-3 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md"
+              >
+                Copiar
+              </button>
+            </div>
+            <p className="text-xs text-yellow-900 dark:text-yellow-200 mt-2">
+              Esta senha não será exibida novamente. O paciente deve trocá-la após o primeiro acesso.
+            </p>
+          </div>
+
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            {credentialsModal.emailEnviado ? (
+              <p>📧 Um e-mail com a senha foi enviado para <strong>{credentialsModal.paciente.email}</strong>.</p>
+            ) : credentialsModal.paciente.email ? (
+              <p className="text-orange-700 dark:text-orange-400">
+                ⚠️ Não foi possível enviar o e-mail. Informe a senha ao paciente manualmente.
+              </p>
+            ) : (
+              <p className="text-orange-700 dark:text-orange-400">
+                ⚠️ Paciente sem e-mail cadastrado. Informe a senha manualmente.
+              </p>
+            )}
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={handleCloseCredentialsModal}
+              className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+            >
+              Concluir
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -429,5 +526,6 @@ export default function PacienteCadastroForm({
         </div>
       </form>
     </div>
+    </>
   );
 }

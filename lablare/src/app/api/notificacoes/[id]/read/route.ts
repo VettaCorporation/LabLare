@@ -1,19 +1,20 @@
 // Caminho: src/app/api/notificacoes/[id]/read/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; // *** CORRIGIDO: Importação do Helper ***
+import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route'; // Ajuste o caminho se necessário
+import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // Rota POST: /api/notificacoes/[id]/read
 export async function POST(
     request: NextRequest, 
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
-    const id = parseInt(params.id); // ID da notificação a ser marcada como lida
+    const id = parseInt((await params).id); // ID da notificação a ser marcada como lida
 
     try {
         const session = await getServerSession(authOptions);
-        const loggedUserId = (session?.user as any)?.id_usuario;
+        const loggedUserId = session?.user?.id ? Number(session.user.id) : null;
 
         if (!loggedUserId) {
             return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
@@ -42,7 +43,7 @@ export async function POST(
         return NextResponse.json(updatedNotification, { status: 200 });
 
     } catch (error) {
-        console.error('Erro ao marcar notificação como lida:', error);
+        logger.error('Erro ao marcar notificação como lida', error, { ctx: 'notificacoes' });
         return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
     } finally {
         // Não é necessário prisma.$disconnect() se estiver usando o helper global

@@ -1,15 +1,16 @@
 // Caminho: src/app/api/notificacoes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; // *** CORRIGIDO: Importação do Helper ***
+import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route'; // Ajuste o caminho se necessário
+import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // Rota GET: /api/notificacoes?userId=[id]
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         
-        const loggedUserId = (session?.user as any)?.id_usuario;
+        const loggedUserId = session?.user?.id ? Number(session.user.id) : null;
         
         const { searchParams } = new URL(request.url);
         const targetUserId = Number(searchParams.get('userId')); 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(notifications, { status: 200 });
 
     } catch (error) {
-        console.error('Erro ao buscar notificações:', error);
+        logger.error('Erro ao buscar notificações', error, { ctx: 'notificacoes' });
         return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
     } finally {
         // Não é necessário prisma.$disconnect() se estiver usando o helper global

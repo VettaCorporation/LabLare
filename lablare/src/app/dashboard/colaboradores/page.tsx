@@ -76,6 +76,7 @@ export default function ColaboradoresPage() {
     } else if (status === 'authenticated') {
       router.push('/dashboard');
     }
+    return undefined;
   }, [session, status, router, fetchColaboradores, searchParams]);
   
   const handleSuccess = () => {

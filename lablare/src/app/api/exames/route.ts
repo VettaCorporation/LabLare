@@ -1,11 +1,11 @@
 // lablare/src/app/api/exames/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient, OrigemExame } from '@prisma/client';
+import { OrigemExame } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // Função auxiliar para gerar um código LARE de 3 dígitos aleatório
 function generateLareCode(): string {
@@ -24,14 +24,12 @@ function generateLareCode(): string {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const searchTerm = searchParams.get('term'); // CORREÇÃO: Usa o nome do parâmetro 'term'
+    const searchTerm = searchParams.get('term');
 
-    const whereClause: any = searchTerm ? {
-      nome_exame: {
-        contains: searchTerm,
-        // CORREÇÃO: O argumento 'mode' foi removido para evitar o erro do Prisma.
-      }
-    } : {};
+    const whereClause: any = { ativo: true };
+    if (searchTerm) {
+      whereClause.nome_exame = { contains: searchTerm };
+    }
 
     const exames = await prisma.exameCatalogo.findMany({
       where: whereClause,
@@ -50,10 +48,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(exames, { status: 200 });
 
   } catch (error: any) {
-    console.error('Erro ao buscar exames do catálogo:', error);
+    logger.error('Erro ao buscar exames do catálogo', error, { ctx: 'exames' });
     return NextResponse.json({ error: 'Erro ao buscar exames disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -116,16 +112,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Exame cadastrado com sucesso!', exame: newExame }, { status: 201 });
 
   } catch (error: any) {
-    console.error('Erro ao cadastrar exame:', error);
+    logger.error('Erro ao cadastrar exame', error, { ctx: 'exames' });
     
     if (error.code === 'P2002') {
       const target = error.meta?.target || 'campo desconhecido';
-      console.error(`Violação de unicidade no campo: ${target}`);
+      logger.warn('Violação de unicidade ao cadastrar exame', { ctx: 'exames', target });
       return NextResponse.json({ message: `Já existe um exame com este código.` }, { status: 409 });
     }
     
     return NextResponse.json({ message: 'Erro ao cadastrar exame.', details: error.message || 'Detalhes não disponíveis.' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
